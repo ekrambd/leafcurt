@@ -1,0 +1,65 @@
+[
+  {
+    "id": "REV-1001",
+    "productId": "3-in-1-laundry-detergent-pods",
+    "productTitle": "3-in-1 Laundry Detergent Pods",
+    "productImage": "/authentic/pod_triple_chamber_main.png",
+    "customerName": "তানভীর আহমেদ",
+    "customerPhone": "01711223344",
+    "rating": 5,
+    "comment": "অসাধারণ কোয়ালিটি! ট্রিপল চেম্বার পড হওয়ায় কাপড় চমৎকার পরিষ্কার হয় এবং পারফিউমের মতো মিষ্টি সুবাস অনেকদিন থাকে। প্যাকেজিং ও ডেলিভারি দ্রুত পেয়েছি।",
+    "images": [
+      "/authentic/pod_packaging_boxes.png",
+      "/authentic/thumb_1_overview.png"
+    ],
+    "createdAt": "2026-10-18T21:42:38.029Z",
+    "isVerifiedBuyer": true,
+    "helpfulCount": 24
+  },
+  {
+    "id": "REV-1002",
+    "productId": "3-in-1-laundry-detergent-pods",
+    "productTitle": "3-in-1 Laundry Detergent Pods",
+    "productImage": "/authentic/pod_triple_chamber_main.png",
+    "customerName": "সানজিদা ইসলাম",
+    "customerPhone": "01822334455",
+    "rating": 5,
+    "comment": "ওয়াশিং মেশিনে ব্যবহার করা খুব সহজ। কাপড়ের রঙ নষ্ট হয় না এবং দাগ সহজে উঠে যায়। ১০০% খাঁটি পণ্য, নিশ্চিতভাবে আবার অর্ডার করব।",
+    "images": [
+      "/authentic/thumb_3_style2_heart.png"
+    ],
+    "createdAt": "2026-10-15T21:42:38.029Z",
+    "isVerifiedBuyer": true,
+    "helpfulCount": 19
+  },
+  {
+    "id": "REV-1003",
+    "productId": "fantine-vb5-repair-serum",
+    "productTitle": "FAИTIИE VB5 REPAIR SERUM",
+    "productImage": "/uploads/file-1791830876714-429462367.jpg",
+    "customerName": "নুসরাত জাহান",
+    "customerPhone": "01933445566",
+    "rating": 5,
+    "comment": "আমার ত্বকের লালচে ভাব ও র‍্যাশ অনেক কমে গেছে এই সেরামটি ব্যবহারের পর। খুব দ্রুত স্কিনে অ্যাবসর্ব হয়। সম্পূর্ণ অরিজিনাল কোরিয়ান হানবাং প্রোডাক্ট।",
+    "images": [
+      "/uploads/file-1791830876714-429462367.jpg"
+    ],
+    "createdAt": "2026-10-16T21:42:38.029Z",
+    "isVerifiedBuyer": true,
+    "helpfulCount": 31
+  },
+  {
+    "id": "REV-1004",
+    "productId": "product_385231",
+    "productTitle": "Rapid Acne Treatment Series Toner",
+    "productImage": "/authentic/pod_triple_chamber_main.png",
+    "customerName": "কামরুল হাসান",
+    "customerPhone": "01644556677",
+    "rating": 5,
+    "comment": "অয়েলি স্কিনের জন্য বেস্ট টোনার। পোরস ক্লিন রাখে এবং একনে ব্রেকআউট একদম নিয়ন্ত্রণে এনেছে। ধন্যবাদ ডেলিভারি টিমকে।",
+    "images": [],
+    "createdAt": "2026-10-13T21:42:38.029Z",
+    "isVerifiedBuyer": true,
+    "helpfulCount": 14
+  }
+]

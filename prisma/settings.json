@@ -1,0 +1,202 @@
+{
+  "headerSettings": {
+    "showTopBar": true,
+    "phone": "+86 18027300683",
+    "email": "authentic.factory@outlook.com",
+    "socialLinks": {
+      "facebook": "https://facebook.com",
+      "youtube": "https://youtube.com",
+      "instagram": "https://instagram.com",
+      "linkedin": "https://linkedin.com",
+      "tiktok": "https://tiktok.com",
+      "whatsapp": "+86 18027300683"
+    },
+    "logoUrl": "/livewellfresh_logo.png",
+    "brandName": "livewellfresh",
+    "menuItems": [
+      {
+        "id": "menu-1",
+        "label": "About livewellfresh",
+        "link": "/about",
+        "hasDropdown": true,
+        "dropdownItems": [
+          {
+            "label": "Company Overview",
+            "link": "/about"
+          },
+          {
+            "label": "Manufacturing Facility",
+            "link": "/about"
+          },
+          {
+            "label": "Certifications & QC",
+            "link": "/about"
+          },
+          {
+            "label": "R&D Fragrance Lab",
+            "link": "/about"
+          }
+        ]
+      },
+      {
+        "id": "menu-2",
+        "label": "Products",
+        "link": "/shop",
+        "hasDropdown": true,
+        "dropdownItems": [
+          {
+            "label": "3-in-1 Laundry Pods",
+            "link": "/product/3-in-1-laundry-detergent-pods"
+          },
+          {
+            "label": "Scent Booster Beads",
+            "link": "/shop"
+          },
+          {
+            "label": "Dishwasher Pods",
+            "link": "/shop"
+          },
+          {
+            "label": "Concentrated Laundry Sheets",
+            "link": "/shop"
+          }
+        ]
+      },
+      {
+        "id": "menu-3",
+        "label": "OEM/ODM Solutions",
+        "link": "/shop",
+        "hasDropdown": false
+      },
+      {
+        "id": "menu-4",
+        "label": "Blog",
+        "link": "/about",
+        "hasDropdown": false
+      },
+      {
+        "id": "menu-5",
+        "label": "Contact",
+        "link": "/contact",
+        "hasDropdown": false
+      }
+    ],
+    "ctaButtonText": "Get A Quote",
+    "ctaButtonLink": "#quote",
+    "ctaActionType": "quote_modal",
+    "showCtaButton": true
+  },
+  "storeName": "livewellfresh",
+  "companyName": "livewellfresh Ltd.",
+  "storeLogo": "/livewellfresh_logo.png",
+  "storeTagline": "FRESH CLOTHES. BETTER LIFE",
+  "topAnnouncementText": "WELCOME TO LIVEWELLFRESH • FRESH CLOTHES. BETTER LIFE",
+  "contactEmail": "authentic.factory@outlook.com",
+  "contactPhone": "+86 18027300683",
+  "storeAddress": "No. 88 Industrial Avenue, High-Tech Manufacturing Zone",
+  "footerDescription": "livewellfresh • Innovative 3-in-1 Triple Chamber Laundry Pods & Eco Detergent Care. Fresh Clothes. Better Life.",
+  "gtmId": "",
+  "deliveryChargeInsideDhaka": 70,
+  "deliveryChargeOutsideDhaka": 130,
+  "bkashNumber": "",
+  "nagadNumber": "",
+  "categories": [
+    "Laundry Detergent Pods",
+    "3-in-1 Detergent Pods",
+    "Scent Booster Beads",
+    "Dishwasher Pods",
+    "Ultra Clean Series"
+  ],
+  "primaryColor": "#0284c7",
+  "deliveryMethods": [
+    {
+      "id": "dm-inside-dhaka",
+      "title": "ঢাকা মেট্রো সিটি হোম ডেলিভারি",
+      "subtitle": "২৪-৪৮ ঘণ্টার মধ্যে দ্রুত হোম ডেলিভারি",
+      "status": "Active",
+      "mode": "Weight based",
+      "type": "Weight based",
+      "pricingModel": "weight_based",
+      "areaScope": "inside_dhaka",
+      "customDistricts": [],
+      "baseWeightKg": 1,
+      "baseCharge": 70,
+      "deliveryCharge": 70,
+      "additionalChargePerKg": 20,
+      "freeDeliveryThreshold": 2000,
+      "estimatedDays": "24-48 Hours",
+      "courierPartner": "Steadfast",
+      "minimumCharge": 0,
+      "maximumCharge": 0,
+      "updatedAt": "Oct 21, 2026"
+    },
+    {
+      "id": "dm-dhaka-suburbs",
+      "title": "ঢাকা উপশহর হোম ডেলিভারি",
+      "subtitle": "গাজীপুর, নারায়ণগঞ্জ, সাভার, কেরানীগঞ্জ, মুন্সিগঞ্জ, নরসিংদী",
+      "status": "Active",
+      "mode": "Weight based",
+      "type": "Weight based",
+      "pricingModel": "weight_based",
+      "areaScope": "dhaka_suburbs",
+      "customDistricts": [
+        "Gazipur",
+        "Narayanganj",
+        "Munshiganj",
+        "Narsingdi"
+      ],
+      "baseWeightKg": 1,
+      "baseCharge": 100,
+      "deliveryCharge": 100,
+      "additionalChargePerKg": 25,
+      "freeDeliveryThreshold": 2500,
+      "estimatedDays": "24-48 Hours",
+      "courierPartner": "Steadfast",
+      "minimumCharge": 0,
+      "maximumCharge": 0,
+      "updatedAt": "Oct 21, 2026"
+    },
+    {
+      "id": "dm-outside-dhaka",
+      "title": "সারাদেশে কুরিয়ার হোম ডেলিভারি",
+      "subtitle": "সমগ্র বাংলাদেশ (জেলা ও উপজেলা পর্যায় পর্যন্ত)",
+      "status": "Active",
+      "mode": "Weight based",
+      "type": "Weight based",
+      "pricingModel": "weight_based",
+      "areaScope": "outside_dhaka",
+      "customDistricts": [],
+      "baseWeightKg": 1,
+      "baseCharge": 130,
+      "deliveryCharge": 130,
+      "additionalChargePerKg": 30,
+      "freeDeliveryThreshold": 3000,
+      "estimatedDays": "48-72 Hours",
+      "courierPartner": "Steadfast",
+      "minimumCharge": 0,
+      "maximumCharge": 0,
+      "updatedAt": "Oct 21, 2026"
+    },
+    {
+      "id": "dm-express-dhaka",
+      "title": "জরুরি সেম-ডে ডেলিভারি (ঢাকা সিটি)",
+      "subtitle": "অর্ডার করার ৬-১২ ঘণ্টার মধ্যে সুপারফাস্ট ডেলিভারি",
+      "status": "Active",
+      "mode": "Fixed",
+      "type": "Fixed",
+      "pricingModel": "flat",
+      "areaScope": "inside_dhaka",
+      "customDistricts": [],
+      "baseWeightKg": 2,
+      "baseCharge": 140,
+      "deliveryCharge": 140,
+      "additionalChargePerKg": 0,
+      "freeDeliveryThreshold": 0,
+      "estimatedDays": "Same Day (6-12h)",
+      "courierPartner": "Pathao",
+      "minimumCharge": 0,
+      "maximumCharge": 0,
+      "updatedAt": "Oct 21, 2026"
+    }
+  ]
+}

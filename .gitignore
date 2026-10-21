@@ -1,0 +1,41 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Production build outputs
+dist/
+dist-ssr/
+build/
+*.local
+
+# Android build outputs & caches
+android/app/build/
+android/build/
+android/.gradle/
+android/.idea/
+android/.kotlin/
+android/*.iml
+android/local.properties
+android/captures/
+android/.externalNativeBuild/
+android/.cxx/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Logs and databases
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# OS & Editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
