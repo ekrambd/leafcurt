@@ -9,7 +9,7 @@ const AdminDashboard = lazy(() => import('./components/AdminDashboard'));
 
 const loadBookLandingPage = () => import('./components/BookLandingPage');
 const BookLandingPage = lazy(loadBookLandingPage);
-const FantineStorePage = lazy(() => import('./components/FantineStorePage'));
+const StorefrontPage = lazy(() => import('./components/StorefrontPage'));
 
 // Fix: Only preload landing page chunk if visiting a known landing path
 if (typeof window !== 'undefined') {
@@ -21,50 +21,6 @@ if (typeof window !== 'undefined') {
 
 
 function GlobalBrandingFix() {
-  useEffect(() => {
-    let pending = false;
-    const replaceFantine = () => {
-      pending = false;
-      const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null, false);
-      let node;
-      const nodesToUpdate = [];
-      while (node = walker.nextNode()) {
-        if (node.nodeValue && (node.nodeValue.includes('FANTINE') || node.nodeValue.includes('Fantine'))) {
-          nodesToUpdate.push(node);
-        }
-      }
-      nodesToUpdate.forEach(n => {
-        n.nodeValue = n.nodeValue.replace(/FANTINE/g, 'FAИTIИE').replace(/Fantine/g, 'FAИTIИE');
-      });
-    };
-    
-    replaceFantine();
-    
-    const observer = new MutationObserver((mutations) => {
-      let shouldReplace = false;
-      for (const m of mutations) {
-        if (m.type === 'characterData' && m.target.nodeValue && (m.target.nodeValue.includes('FANTINE') || m.target.nodeValue.includes('Fantine'))) {
-          shouldReplace = true; break;
-        }
-        if (m.type === 'childList' && m.addedNodes.length > 0) {
-          shouldReplace = true; break;
-        }
-      }
-      if (shouldReplace && !pending) {
-        pending = true;
-        requestAnimationFrame(() => {
-          observer.disconnect();
-          replaceFantine();
-          observer.observe(document.body, { childList: true, subtree: true, characterData: true });
-        });
-      }
-    });
-    
-    observer.observe(document.body, { childList: true, subtree: true, characterData: true });
-    
-    return () => observer.disconnect();
-  }, []);
-  
   return null;
 }
 
@@ -224,25 +180,32 @@ function AppRoutes() {
         <main className="flex-1 w-full">
           <Routes>
             <Route path="/" element={
-              <FantineStorePage
+              <StorefrontPage
                 onGoToLogin={() => navigate('/login')}
                 onGoToLanding={() => navigate('/book')}
               />
             } />
             
             {/* Proper SEO setup: Core app sections continue rendering the app */}
-            <Route path="/shop" element={<FantineStorePage onGoToLogin={() => navigate('/login')} onGoToLanding={() => navigate('/book')} />} />
-            <Route path="/contact" element={<FantineStorePage onGoToLogin={() => navigate('/login')} onGoToLanding={() => navigate('/book')} />} />
-            <Route path="/about" element={<FantineStorePage onGoToLogin={() => navigate('/login')} onGoToLanding={() => navigate('/book')} />} />
-            <Route path="/quiz" element={<FantineStorePage onGoToLogin={() => navigate('/login')} onGoToLanding={() => navigate('/book')} />} />
-            <Route path="/checkout" element={<FantineStorePage onGoToLogin={() => navigate('/login')} onGoToLanding={() => navigate('/book')} />} />
-            <Route path="/product/:id" element={<FantineStorePage onGoToLogin={() => navigate('/login')} onGoToLanding={() => navigate('/book')} />} />
-            <Route path="/product/:slug/:id" element={<FantineStorePage onGoToLogin={() => navigate('/login')} onGoToLanding={() => navigate('/book')} />} />
+            <Route path="/shop" element={<StorefrontPage onGoToLogin={() => navigate('/login')} onGoToLanding={() => navigate('/book')} />} />
+            <Route path="/contact" element={<StorefrontPage onGoToLogin={() => navigate('/login')} onGoToLanding={() => navigate('/book')} />} />
+            <Route path="/about" element={<StorefrontPage onGoToLogin={() => navigate('/login')} onGoToLanding={() => navigate('/book')} />} />
+            <Route path="/quiz" element={<StorefrontPage onGoToLogin={() => navigate('/login')} onGoToLanding={() => navigate('/book')} />} />
+            <Route path="/checkout" element={<StorefrontPage onGoToLogin={() => navigate('/login')} onGoToLanding={() => navigate('/book')} />} />
+            <Route path="/blog" element={<StorefrontPage onGoToLogin={() => navigate('/login')} onGoToLanding={() => navigate('/book')} />} />
+            <Route path="/blog/:slug" element={<StorefrontPage onGoToLogin={() => navigate('/login')} onGoToLanding={() => navigate('/book')} />} />
+            <Route path="/blogs" element={<StorefrontPage onGoToLogin={() => navigate('/login')} onGoToLanding={() => navigate('/book')} />} />
+            <Route path="/blogs/news" element={<StorefrontPage onGoToLogin={() => navigate('/login')} onGoToLanding={() => navigate('/book')} />} />
+            <Route path="/blogs/news/:slug" element={<StorefrontPage onGoToLogin={() => navigate('/login')} onGoToLanding={() => navigate('/book')} />} />
+            <Route path="/blogs/blog/:slug" element={<StorefrontPage onGoToLogin={() => navigate('/login')} onGoToLanding={() => navigate('/book')} />} />
+            <Route path="/blogs/:slug" element={<StorefrontPage onGoToLogin={() => navigate('/login')} onGoToLanding={() => navigate('/book')} />} />
+            <Route path="/product/:id" element={<StorefrontPage onGoToLogin={() => navigate('/login')} onGoToLanding={() => navigate('/book')} />} />
+            <Route path="/product/:slug/:id" element={<StorefrontPage onGoToLogin={() => navigate('/login')} onGoToLanding={() => navigate('/book')} />} />
             <Route path="/fantine" element={<Navigate to="/" replace />} />
             
             {/* Fix Duplicate Content: Canonical Redirects for legacy .html routes */}
             <Route path="/store" element={<Navigate to="/shop" replace />} />
-            <Route path="/news" element={<Navigate to="/" replace />} />
+            <Route path="/news" element={<Navigate to="/blogs/news" replace />} />
             <Route path="/shop.html" element={<Navigate to="/shop" replace />} />
             <Route path="/contact.html" element={<Navigate to="/contact" replace />} />
             <Route path="/product_385231.html" element={<Navigate to="/product/rapid-acne-treatment-toner/product_385231" replace />} />

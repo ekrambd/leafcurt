@@ -1,10 +1,11 @@
 {
-  "name": "zinniamart",
+  "name": "store-platform",
   "private": true,
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "tsx server.ts",
+    "dev": "prisma generate && tsx server.ts",
+    "postinstall": "prisma generate",
     "dev:cluster": "tsx src/server/clusterServer.ts",
     "start:cluster": "node dist/clusterServer.cjs",
     "backup:create": "node --import tsx scripts/disasterRecovery.ts create",

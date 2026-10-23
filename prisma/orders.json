@@ -1,0 +1,106 @@
+[
+  {
+    "id": "ORD-2026-1030",
+    "createdAt": "2026-10-23T10:32:02.935Z",
+    "status": "Pending",
+    "_shardMeta": {
+      "shardIndex": 4,
+      "partition": "orders_2026_10"
+    },
+    "customerName": "Roxy",
+    "phone": "01315861003",
+    "address": "Adabor",
+    "deliveryZone": "Inside Dhaka",
+    "deliveryFee": 110,
+    "deliveryCharge": 110,
+    "items": [
+      {
+        "product": {
+          "id": "prod-1792730892217",
+          "title": "5-in-1 Laundry Pods",
+          "price": 1000,
+          "regularPrice": 1200,
+          "image": "/uploads/file-1792732044713-605530659.jpg",
+          "category": "Laundry Pods",
+          "stock": 100,
+          "isAvailable": true
+        },
+        "quantity": 1
+      },
+      {
+        "product": {
+          "id": "prod-1792732597296",
+          "title": "4 in 1 Laundry pods poison",
+          "price": 1000,
+          "regularPrice": 1200,
+          "image": "/uploads/file-1792732574240-906933853.jpg",
+          "category": "Laundry Pods",
+          "stock": 100,
+          "isAvailable": true
+        },
+        "quantity": 1
+      }
+    ],
+    "quantity": 2,
+    "totalPrice": 2110,
+    "totalAmount": 2110,
+    "productName": "5-in-1 Laundry Pods (x1), 4 in 1 Laundry pods poison (x1)",
+    "productTitle": "5-in-1 Laundry Pods (x1), 4 in 1 Laundry pods poison (x1)",
+    "orderType": "storefront",
+    "paymentMethod": "Cash on Delivery",
+    "paymentGateway": "Cash on Delivery",
+    "orderDate": "2026-10-23T10:32:02.935Z"
+  },
+  {
+    "id": "ORD-2026-1030",
+    "customerName": "Roxy",
+    "phone": "01315861003",
+    "address": "Adabor",
+    "deliveryZone": "Inside Dhaka",
+    "deliveryFee": 110,
+    "deliveryCharge": 110,
+    "items": [
+      {
+        "product": {
+          "id": "prod-1792730892217",
+          "title": "5-in-1 Laundry Pods",
+          "price": 1000,
+          "regularPrice": 1200,
+          "image": "/uploads/file-1792732044713-605530659.jpg",
+          "category": "Laundry Pods",
+          "stock": 100,
+          "isAvailable": true
+        },
+        "quantity": 1
+      },
+      {
+        "product": {
+          "id": "prod-1792732597296",
+          "title": "4 in 1 Laundry pods poison",
+          "price": 1000,
+          "regularPrice": 1200,
+          "image": "/uploads/file-1792732574240-906933853.jpg",
+          "category": "Laundry Pods",
+          "stock": 100,
+          "isAvailable": true
+        },
+        "quantity": 1
+      }
+    ],
+    "quantity": 2,
+    "totalPrice": 2110,
+    "totalAmount": 2110,
+    "productName": "5-in-1 Laundry Pods (x1), 4 in 1 Laundry pods poison (x1)",
+    "productTitle": "5-in-1 Laundry Pods (x1), 4 in 1 Laundry pods poison (x1)",
+    "status": "Pending",
+    "orderType": "storefront",
+    "paymentMethod": "Cash on Delivery",
+    "paymentGateway": "Cash on Delivery",
+    "createdAt": "2026-10-23T10:32:02.935Z",
+    "orderDate": "2026-10-23T10:32:02.935Z",
+    "_shardMeta": {
+      "shardIndex": 4,
+      "partition": "orders_2026_10"
+    }
+  }
+]

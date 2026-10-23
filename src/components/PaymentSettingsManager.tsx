@@ -188,60 +188,6 @@ export default function PaymentSettingsManager() {
   return (
     <div className="space-y-6 font-sans max-w-5xl mx-auto text-slate-800 pb-16">
 
-      {/* Top Header Card */}
-      <div className="bg-white border border-slate-200/80 p-5 sm:p-6 rounded-3xl shadow-xs flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div className="space-y-1">
-          <div className="flex items-center space-x-2.5">
-            <div className="p-2.5 bg-teal-50 text-teal-600 rounded-2xl">
-              <CreditCard className="h-5 w-5" />
-            </div>
-            <div>
-              <h2 className="text-lg sm:text-xl font-extrabold text-slate-900 tracking-tight">
-                Payment Gateway and method seTNs
-              </h2>
-              <p className="text-xs text-slate-500 mt-0.5">
-                For customer checkout Payment options (Cash on delivery, development, cash etc) confeegar
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Global Save / Refresh Buttons */}
-        <div className="flex items-center space-x-2.5 w-full sm:w-auto">
-          <button
-            onClick={loadSettings}
-            className="p-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-all border border-slate-200 text-xs font-semibold flex items-center gap-1.5 cursor-pointer shadow-2xs"
-            title="Refresh"
-          >
-            <RefreshCw className="h-4 w-4" />
-            <span className="hidden sm:inline">refresh</span>
-          </button>
-
-          <button
-            onClick={handleSaveAll}
-            disabled={isSaving}
-            className="flex-1 sm:flex-none inline-flex items-center justify-center px-6 py-2.5 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-extrabold shadow-md transition-all disabled:opacity-50 cursor-pointer"
-          >
-            {isSaving ? (
-              <span className="flex items-center gap-2">
-                <RefreshCw className="h-4 w-4 animate-spin" />
-                Saving...
-              </span>
-            ) : saveSuccess ? (
-              <span className="flex items-center gap-1.5 text-emerald-200">
-                <Check className="h-4 w-4 text-emerald-300" />
-                saved!
-              </span>
-            ) : (
-              <span className="flex items-center gap-2">
-                <Save className="h-4 w-4" />
-                save
-              </span>
-            )}
-          </button>
-        </div>
-      </div>
-
       {/* Editor Modal for Payment Gateway */}
       {editingGateway && (
         <form onSubmit={handleSaveGatewayForm} className="bg-white border-2 border-teal-200 p-6 rounded-3xl shadow-xl space-y-6 animate-in fade-in duration-200">
@@ -380,23 +326,50 @@ export default function PaymentSettingsManager() {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <div className="flex items-center space-x-2.5">
-              <h3 className="text-base font-extrabold text-slate-900">List of payment methods</h3>
+              <h3 className="text-base sm:text-lg font-extrabold text-slate-900">পেমেন্ট মেথড ও গেটওয়ে তালিকা</h3>
               <span className="px-2.5 py-0.5 bg-teal-50 text-teal-700 border border-teal-200 text-[11px] font-bold rounded-lg">
-                {gateways.length} T method
+                {gateways.length > 0 ? `${gateways.length}টি মেথড` : 'কোনো মেথড নেই'}
               </span>
             </div>
             <p className="text-xs text-slate-500 mt-0.5">
-              customerTo order active Payment MethodManage the
+              চেকআউটে কাস্টমারদের অর্ডারের জন্য সক্রিয় পেমেন্ট মেথড ও গেটওয়ে পরিচালনা করুন
             </p>
           </div>
 
-          <button
-            onClick={handleOpenAddGateway}
-            className="w-full sm:w-auto px-4 py-2.5 bg-teal-600 hover:bg-teal-700 text-white text-xs font-extrabold rounded-xl transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer"
-          >
-            <Plus className="h-4 w-4" />
-            <span>Add new payment method</span>
-          </button>
+          <div className="flex items-center gap-2.5 w-full sm:w-auto">
+            <button
+              onClick={loadSettings}
+              className="p-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-all border border-slate-200 text-xs font-semibold flex items-center gap-1.5 cursor-pointer shadow-2xs"
+              title="রিফ্রেশ করুন"
+            >
+              <RefreshCw className="h-4 w-4" />
+              <span className="hidden sm:inline">Refresh</span>
+            </button>
+
+            <button
+              onClick={handleSaveAll}
+              disabled={isSaving}
+              className="p-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs disabled:opacity-50"
+              title="সব পরিবর্তন সংরক্ষণ করুন"
+            >
+              {isSaving ? (
+                <RefreshCw className="h-4 w-4 animate-spin" />
+              ) : saveSuccess ? (
+                <Check className="h-4 w-4 text-white" />
+              ) : (
+                <Save className="h-4 w-4" />
+              )}
+              <span>{saveSuccess ? 'সংরক্ষিত!' : 'Save'}</span>
+            </button>
+
+            <button
+              onClick={handleOpenAddGateway}
+              className="flex-1 sm:flex-none px-4 py-2.5 bg-teal-600 hover:bg-teal-700 text-white text-xs font-extrabold rounded-xl transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              <Plus className="h-4 w-4" />
+              <span>নতুন পেমেন্ট মেথড যোগ করুন</span>
+            </button>
+          </div>
         </div>
 
         {/* Filter Pills */}
@@ -411,7 +384,11 @@ export default function PaymentSettingsManager() {
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               }`}
             >
-              {f === 'all' ? `${gateways.length}` : f === 'active' ? `active (${gateways.filter(g => g.status === 'Active').length})` : `inactive (${gateways.filter(g => g.status === 'Inactive').length})`}
+              {f === 'all' 
+                ? `সবগুলো (${gateways.length})` 
+                : f === 'active' 
+                ? `সক্রিয় (${gateways.filter(g => g.status === 'Active').length})` 
+                : `নিষ্ক্রিয় (${gateways.filter(g => g.status === 'Inactive').length})`}
             </button>
           ))}
         </div>
@@ -493,8 +470,32 @@ export default function PaymentSettingsManager() {
 
               {filteredGateways.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-12 text-center text-slate-500">
-                    any Payment Gateway not found। New Gateway add।
+                  <td colSpan={6} className="px-4 py-16 text-center">
+                    <div className="flex flex-col items-center justify-center max-w-md mx-auto space-y-3">
+                      <div className="p-4 bg-teal-50 text-teal-600 rounded-2xl border border-teal-100">
+                        <CreditCard className="h-8 w-8 text-teal-600" />
+                      </div>
+                      <div className="space-y-1">
+                        <h4 className="text-sm font-bold text-slate-800">
+                          {gatewayFilter !== 'all' 
+                            ? 'এই ফিল্টারে কোনো পেমেন্ট মেথড নেই'
+                            : 'এখনও কোনো পেমেন্ট মেথড যোগ করা হয়নি (Not added yet)'}
+                        </h4>
+                        <p className="text-xs text-slate-500 max-w-sm">
+                          {gatewayFilter !== 'all'
+                            ? 'অন্য ফিল্টার নির্বাচন করুন অথবা নতুন পেমেন্ট মেথড তৈরি করুন।'
+                            : 'চেকআউটে ক্যাশ অন ডেলিভারি বা অনলাইন পেমেন্ট অপশন দিতে নতুন মেথড যোগ করুন।'}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleOpenAddGateway}
+                        className="inline-flex items-center gap-2 px-5 py-2.5 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer mt-1"
+                      >
+                        <Plus className="h-4 w-4" />
+                        <span>নতুন মেথড যোগ করুন (Add one)</span>
+                      </button>
+                    </div>
                   </td>
                 </tr>
               )}

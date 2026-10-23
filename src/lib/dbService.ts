@@ -1,7 +1,21 @@
-const db = null;
+const db: any = null;
 const isFirebaseEnabled = false;
-const auth = null;
-import { BookOrder, Product, EcomSettings, Customer, PaymentGatewayItem, DeliveryMethodItem, Coupon, LandingPageData, InstituteInfo, Review, Brand, ContactMessage, AbandonedCart, AbandonedCartItem, AbandonedCartMetrics } from '../types';
+const auth: any = null;
+const doc: any = () => null;
+const setDoc: any = async () => {};
+const updateDoc: any = async () => {};
+const deleteDoc: any = async () => {};
+const getDoc: any = async () => ({ exists: () => false, data: () => null });
+const getDocs: any = async () => ({ empty: true, forEach: () => {} });
+const collection: any = () => null;
+const query: any = () => null;
+const orderBy: any = () => null;
+const where: any = () => null;
+const limit: any = () => null;
+const startAfter: any = () => null;
+const deleteField: any = () => null;
+const onSnapshot: any = () => () => {};
+import { BookOrder, Product, EcomSettings, Customer, PaymentGatewayItem, DeliveryMethodItem, Coupon, LandingPageData, InstituteInfo, Review, Brand, ContactMessage, AbandonedCart, AbandonedCartItem, AbandonedCartMetrics, VideoReviewsSettings, VideoReviewItem } from '../types';
 import { ApiClient } from '../services/apiClient';
 
 function stripIntegrationSecrets(settings: EcomSettings): EcomSettings {
@@ -20,7 +34,8 @@ import {
   DEFAULT_HERO_BANNERS,
   DEFAULT_PROMO_CARDS,
   DEFAULT_ECOM_SETTINGS,
-  DEFAULT_INSTITUTE_INFO
+  DEFAULT_INSTITUTE_INFO,
+  DEFAULT_HEADER_SETTINGS
 } from './constants';
 
 export {
@@ -32,7 +47,8 @@ export {
   DEFAULT_HERO_BANNERS,
   DEFAULT_PROMO_CARDS,
   DEFAULT_ECOM_SETTINGS,
-  DEFAULT_INSTITUTE_INFO
+  DEFAULT_INSTITUTE_INFO,
+  DEFAULT_HEADER_SETTINGS
 };
 
 function migrateBusinessPhone(info: InstituteInfo): InstituteInfo {
@@ -147,14 +163,14 @@ export const DEFAULT_LANDING_PAGE_SETTINGS: LandingPageData = {
   id: 'landing-default',
   slug: 'vb5-repair-serum',
   templateTheme: 'luxury_dark',
-  bookTitle: 'FAИTIИE VB5 REPAIR SERUM',
-  bookSubtitle: 'Provitamin B5 (D-Panthenol) Intensive Calming Essence',
-  authorName: 'FANTINE Korea (Brandini Co., Ltd.)',
-  authorDesignation: 'Dermatologically Tested • 100% Authentic Korean Hanbang Formulation',
-  authorPhoto: '/uploads/file-1791830876714-429462367.jpg',
-  mainBookImage: '/uploads/file-1791830876714-429462367.jpg',
-  heroBookImage: '/uploads/file-1791830876714-429462367.jpg',
-  logoUrl: '/logo_transparent.webp',
+  bookTitle: 'Premium Featured Product',
+  bookSubtitle: 'High Performance & Verified Quality Assurance',
+  authorName: 'Official Store',
+  authorDesignation: 'Verified Quality Assurance',
+  authorPhoto: '',
+  mainBookImage: '',
+  heroBookImage: '',
+  logoUrl: '',
   pageCount: '30ml Full Size',
   paperQuality: 'Korea FDA Certified',
   regularPrice: 1800,
@@ -168,79 +184,80 @@ export const DEFAULT_LANDING_PAGE_SETTINGS: LandingPageData = {
   heroDescription: 'উচ্চ ঘনত্বের প্রো-ভিটামিন বি৫ (ডি-প্যান্থেনল) ও কোরিয়ান ভেষজ হানবাং ফর্মুলা। ত্বকের চুলকানি, লালচে ভাব ও র‍্যাশ দূর করে স্কিন ব্যারিয়ারকে করে তোলে শক্তিশালী ও উজ্জ্বল।',
   videoUrl: '',
   campaignBadgeText: 'স্পেশাল ডিসকাউন্ট অফার',
-  campaignBannerTitle: 'আজই অর্ডার করুন এবং সম্পূর্ণ ক্যাশ অন ডেলিভারিতে আসল কোরিয়ান স্কিনকেয়ার বুঝে নিন!',
+  campaignBannerTitle: 'আজই অর্ডার করুন এবং সম্পূর্ণ ক্যাশ অন ডেলিভারিতে Leaf Curt লন্ড্রি পড বুঝে নিন!',
   campaignCouponNote: 'পার্সেল রিসিভ করার সময় পণ্য চেক করে মূল্য পরিশোধের সুযোগ',
-  campaignTickerText: '১০০% অরিজিনাল কোরিয়ান প্রোডাক্ট • সারাদেশে ক্যাশ অন ডেলিভারি',
+  campaignTickerText: '১০০% অরিজিনাল Leaf Curt লন্ড্রি পড • সারাদেশে ক্যাশ অন ডেলিভারি',
   prizes: [
-    { rank: 'গ্যারান্টি', title: '১০০% অরিজিনাল কোরিয়ান ফর্মুলেশন' }
+    { rank: 'গ্যারান্টি', title: '১০০% অরিজিনাল ইউরোপিয়ান ফর্মুলেশন' }
   ],
   variantSectionTitle: 'আপনার পছন্দের প্যাকেজ বেছে নিন',
-  variantSectionSubtitle: 'একক বোতল অথবা কম্বো সেটে আকর্ষণীয় সাশ্রয়ী অফার',
+  variantSectionSubtitle: 'একক বক্স অথবা কম্বো ফ্যামিলি টাব প্যাকের আকর্ষণীয় সাশ্রয়ী অফার',
   customVariants: [
     {
       id: 'var-single',
-      name: 'VB5 Repair Serum — ১ বোতল (৩০ মিলি)',
-      image: '/uploads/file-1791830876714-429462367.jpg',
-      price: 1550,
-      regularPrice: 1800,
-      tag: 'Best seller'
+      name: 'Leaf Curt ৩-ইন-১ লন্ড্রি পড — ১ বক্স (৩০ পিস)',
+      image: '/authentic/cart_upsell_box.png',
+      price: 450,
+      regularPrice: 550,
+      tag: 'Best Seller'
     },
     {
       id: 'var-duo',
-      name: 'VB5 Repair Serum — ২ বোতল কম্বো প্যাক',
-      image: '/uploads/file-1791830880605-206422960.jpeg',
-      price: 2900,
-      regularPrice: 3600,
-      tag: 'Save Tk.700'
+      name: 'Leaf Curt ৫-ইন-১ লন্ড্রি পড — ১ ফ্যামিলি টাব (৬০ পিস)',
+      image: '/authentic/cart_upsell_tub.png',
+      price: 790,
+      regularPrice: 990,
+      tag: 'Save Tk.200'
     }
   ],
   watchSpecs: [
-    { label: 'ফর্মুলেশন', value: 'কোরিয়ান হানবাং বোটানিক্যাল এক্সট্র্যাক্ট' },
-    { label: 'প্রধান উপাদান', value: 'প্রো-ভিটামিন বি৫ (ডি-প্যান্থেনল)' },
-    { label: 'ত্বকের ধরন', value: 'সংবেদনশীল, শুষ্ক ও ব্রণপ্রবণ সব ত্বকে উপযোগী' },
-    { label: 'কার্যকারিতা', value: 'ব্যারিয়ার রিপেয়ার ও ৪৮ ঘণ্টা ময়েশ্চার লক' },
-    { label: 'সার্টিফিকেশন', value: 'ডার্মাটোলজিক্যালি টেস্টেড ও নিরাপদ' },
-    { label: 'উৎপাদন', value: 'সিউল, দক্ষিণ কোরিয়া' }
+    { label: 'ফর্মুলেশন', value: '৫ বিশেষায়িত বায়ো-এনজাইম ও ফ্যাব্রিক সফটেনার' },
+    { label: 'প্রধান সুবিধা', value: 'ডিটারজেন্ট + ব্যাকটেরিয়া অপসারণ + সুবাস + সফটেনার' },
+    { label: 'কাপড়ের ধরন', value: 'সাদা, রঙিন ও সব ধরনের পোশাকে নিরাপদ' },
+    { label: 'কার্যকারিতা', value: 'কঠিন দাগ দূর করে ও দীর্ঘস্থায়ী মনোমুগ্ধকর সুবাস রাখে' },
+    { label: 'নিরাপত্তা', value: 'Fluorescent Brightener, ফসফরাস ও ব্লিচ মুক্ত' },
+    { label: 'স্থায়িত্ব', value: '৬০০N পর্যন্ত চাপ সহনশীল ও ১০০% ওয়াটার সলিউবল' }
   ],
   features: [
-    '১০০% খাঁটি ও আসল কোরিয়ান হানবাং ফর্মুলেশন',
-    'ত্বকের লালচে ভাব, চুলকানি ও অ্যালার্জি দ্রুত উপশম করে',
-    'ক্ষতিগ্রস্ত স্কিন ব্যারিয়ারকে ভেতর থেকে পুনর্গঠন করে',
-    'নন-স্টিকি ও দ্রুত ত্বকে শোষিত হওয়ার হালকা টেক্সচার',
-    'পণ্য হাতে পেয়ে চেক করে সম্পূর্ণ মূল্য পরিশোধের সুবিধা'
+    '১টি পডেই ৫টি শক্তিশালী সুবিধা (ক্লিনিং, সফটেনার, ফ্র্যাগ্রেন্স, স্টেইন রিমুভাল, হাইজিন)',
+    '৯৯.৯% ব্যাকটেরিয়া ও জীবাণু দূর করে কাপড় রাখে সম্পূর্ণ পরিষ্কার ও নিরাপদ',
+    'Neutral pH ফর্মুলা—ত্বকের জন্য কোমল এবং অ্যালার্জি সৃষ্টি করে না',
+    'কম পানিতে বেশি পরিষ্কার—কাপড়ে কোনো বাড়তি সাবানের আস্তরণ থাকে না',
+    'পণ্য হাতে পেয়ে চেক করে সম্পূর্ণ মূল্য পরিশোধের সুবিধা (Cash on Delivery)'
   ],
   reviews: [
-    { name: 'ফারহানা চৌধুরী', comment: 'সিরামটা ব্যবহার করে আমার ত্বকের রেডনেস একদম কমে গেছে। খুবই হালকা এবং দ্রুত স্কিনে মিশে যায়। ১০০% রেকমেন্ডেড!', rating: 5 },
-    { name: 'নুসরাত জাহান', comment: 'অরিজিনাল কোরিয়ান প্রোডাক্ট পেয়ে খুবই সন্তুষ্ট। ডেলিভারিও খুব দ্রুত ছিল।', rating: 5 },
-    { name: 'তাসনিম কবির', comment: 'আমার সেনসিটিভ স্কিনের জন্য একদম পারফেক্ট। কোনো জ্বালাপোড়া নেই, ত্বক একদম হাইড্রেটেড থাকে।', rating: 5 }
+    { name: 'তানভীর আহমেদ', comment: 'অসাধারণ কোয়ালিটি! ট্রিপল চেম্বার পড হওয়ায় কাপড় চমৎকার পরিষ্কার হয় এবং পারফিউমের মতো মিষ্টি সুবাস অনেকদিন থাকে।', rating: 5 },
+    { name: 'সানজিদা ইসলাম', comment: 'ওয়াশিং মেশিনে ব্যবহার করা খুব সহজ। কাপড়ের রঙ নষ্ট হয় না এবং স্প্যাগেটি ও ঘামের কঠিন দাগ সহজেই উঠে যায়।', rating: 5 },
+    { name: 'ফারহানা জামান', comment: 'কম পানিতে সুন্দর ফেনা ও দ্রুত ওয়াশ হয়ে যায়। কাপড় নরম ও চমৎকার সুবাসিত থাকে।', rating: 5 }
   ],
   relatedProductIds: [],
   galleryImages: [
-    '/uploads/file-1791830876714-429462367.jpg',
-    '/uploads/file-1791830880605-206422960.jpeg',
-    '/uploads/file-1791830885183-155996593.jpeg'
+    '/authentic/pod_triple_chamber_main.png',
+    '/authentic/pod_packaging_boxes.png',
+    '/authentic/thumb_1_overview.png',
+    '/authentic/thumb_2_style1_red.png'
   ],
   paymentMethodDefault: 'COD',
   onlyCashOnDelivery: true,
 
-  vintageTag: 'কোরিয়ান বিউটি কেয়ার',
-  vintageTitle: 'ঐতিহ্যবাহী সিউল হানবাং হারবাল রহস্য',
-  vintageDescription: 'কোরিয়ান আধুনিক বিজ্ঞান ও হাজার বছরের ভেষজ ফর্মুলার অপূর্ব সমন্বয়ে তৈরি।',
+  vintageTag: 'Leaf Curt লন্ড্রি কেয়ার',
+  vintageTitle: 'স্মার্ট লন্ড্রি, সতেজ জীবন',
+  vintageDescription: 'আধুনিক ৫ বায়ো-এনজাইম টেকনোলজি ও ইউরোপিয়ান কোয়ালিটির মেলবন্ধন।',
   vintageFeatures: [
-    { id: 'vf-1', title: 'ব্যারিয়ার রিস্টোরেশন', subtitle: 'ত্বকের প্রাকৃতিক সুরক্ষা কবচ', icon: 'ShieldCheck' },
-    { id: 'vf-2', title: 'গ্লাস স্কিন গ্লো', subtitle: 'প্রাকৃতিক উজ্জ্বলতা ও স্নিগ্ধতা', icon: 'Sparkles' },
-    { id: 'vf-3', title: '৪৮ ঘণ্টা হাইড্রেশন', subtitle: 'গভীর থেকে আর্দ্রতা ধরে রাখে', icon: 'Zap' },
-    { id: 'vf-4', title: 'সকল ত্বকে নিরাপদ', subtitle: 'কোনো ক্ষতিকর কেমিক্যাল নেই', icon: 'CheckCircle2' }
+    { id: 'vf-1', title: '৫-ইন-১ ফর্মুলা', subtitle: 'ক্লিনিং, সফটেনার ও হাইজিন একসাথে', icon: 'ShieldCheck' },
+    { id: 'vf-2', title: 'দীর্ঘস্থায়ী সুবাস', subtitle: 'কাপড়ে মনোমুগ্ধকর সতেজ অনুভূতি', icon: 'Sparkles' },
+    { id: 'vf-3', title: 'গভীর পরিষ্কার', subtitle: 'তন্তুর ভেতর থেকে কঠিন দাগ অপসারণ', icon: 'Zap' },
+    { id: 'vf-4', title: 'ত্বকবান্ধব', subtitle: 'ফসফরাস ও ব্লিচিং এজেন্ট মুক্ত', icon: 'CheckCircle2' }
   ],
 
   gallerySectionTag: 'গ্যালারি',
-  gallerySectionTitle: 'আসল কোরিয়ান কোয়ালিটি ও প্যাকেজিং',
+  gallerySectionTitle: 'আসল Leaf Curt কোয়ালিটি ও ডিজাইন',
 
-  qualitySectionTag: 'কেন ফ্যান্টিন?',
-  qualitySectionTitle: 'প্রিমিয়াম কোরিয়ান কোয়ালিটি, সাশ্রয়ী দাম',
+  qualitySectionTag: 'কেন Leaf Curt?',
+  qualitySectionTitle: 'প্রিমিয়াম কোয়ালিটি, সাশ্রয়ী দাম ও উন্নত হাইজিন',
   qualityItems: [
-    { id: 'qi-1', title: 'ক্লিনিক্যালি পরীক্ষিত', subtitle: 'ল্যাবরেটরি গ্রেড বিশুদ্ধতা', icon: 'Settings' },
-    { id: 'qi-2', title: 'আন্তর্জাতিক মান', subtitle: 'কোরিয়া সরকারের মাননিয়ন্ত্রণ সনদপ্রাপ্ত', icon: 'Trophy' }
+    { id: 'qi-1', title: 'ল্যাবরেটরি টেস্টেড', subtitle: '৯৯.৯% ব্যাকটেরিয়া দূর করার সক্ষমতা', icon: 'Settings' },
+    { id: 'qi-2', title: 'ইকো-ফ্রেন্ডলি', subtitle: 'কম পানিতে বেশি কার্যকর ও পরিবেশবান্ধব', icon: 'Trophy' }
   ],
 
   luckyDrawTag: 'স্পেশাল গ্যারান্টি',
@@ -260,7 +277,7 @@ export const DEFAULT_LANDING_PAGE_SETTINGS: LandingPageData = {
 
 export const createDefaultLandingForProduct = (product: Product): LandingPageData => {
   const slug = product.slug || product.id;
-  const prodImg = product.coverImage || product.image || (product.images && product.images[0]) || '/uploads/file-1791830876714-429462367.jpg';
+  const prodImg = product.coverImage || product.image || (product.images && product.images[0]) || '/authentic/pod_triple_chamber_main.png';
   const additionalImgs = product.additionalImages || product.images || [prodImg];
 
   return {
@@ -272,13 +289,13 @@ export const createDefaultLandingForProduct = (product: Product): LandingPageDat
     templateTheme: 'luxury_dark',
     relatedProductIds: [],
     bookTitle: product.title,
-    bookSubtitle: product.subtitle || product.shortSummary || `${product.title} — 100% Authentic Korean Skincare`,
-    authorName: product.authorName || product.author || 'FANTINE Korea',
-    authorDesignation: '100% Original Korean Hanbang Formulation',
+    bookSubtitle: product.subtitle || product.shortSummary || product.title,
+    authorName: product.authorName || product.author || product.brand || 'Official Store',
+    authorDesignation: 'Verified Quality Guarantee',
     authorPhoto: prodImg,
     mainBookImage: prodImg,
     heroBookImage: prodImg,
-    logoUrl: '/logo_transparent.webp',
+    logoUrl: '',
     regularPrice: product.regularPrice || Math.round(product.price * 1.3),
     offerPrice: product.price,
     deliveryCharge: 0,
@@ -644,7 +661,7 @@ export const dbService = {
 
     // Sync with backend express server
     try {
-      await fetch('/api/settings', {
+      const res = await fetch('/api/settings', {
         method: 'POST',
         headers: getAdminAuthHeaders(),
         body: JSON.stringify({
@@ -656,8 +673,14 @@ export const dbService = {
           instituteInfo: sanitizedInfo
         })
       });
+      if (!res.ok) {
+        const text = await res.text();
+        console.error('Server rejected institute info sync:', res.status, text);
+        throw new Error(`Server failed to save institute info (${res.status})`);
+      }
     } catch (err) {
       console.warn('Error syncing institute info to server API:', err);
+      throw err;
     }
 
     window.dispatchEvent(new Event('institute-info-updated'));
@@ -691,7 +714,10 @@ export const dbService = {
     }
 
     try {
-      const res = await fetch('/api/orders', { cache: 'no-cache' });
+      const res = await fetch('/api/orders', {
+        headers: getAdminAuthHeaders(),
+        cache: 'no-cache'
+      });
       if (res.ok) {
         const serverOrders = await res.json();
         if (Array.isArray(serverOrders)) {
@@ -882,13 +908,37 @@ export const dbService = {
   },
 
   async getProducts(): Promise<Product[]> {
+    const isLegacySeed = (p: Product) => 
+      p.id === '3-in-1-laundry-detergent-pods' ||
+      p.id === 'leaf-curt-5-in-1-laundry-pods-tub' ||
+      p.id === 'leaf-curt-5-in-1-laundry-pods-box' ||
+      p.id?.startsWith('prod-book-01') || 
+      p.id?.startsWith('prod-map-holder') || 
+      p.id?.startsWith('prod-gunia') || 
+      p.id?.startsWith('prod-tape') ||
+      p.brand?.toLowerCase().includes('fantine') ||
+      p.category === 'Serums' ||
+      p.category === 'Toners' ||
+      p.category === 'Rapid Acne Treatment Series' ||
+      !p.id ||
+      p.id?.startsWith('prod-vb') ||
+      p.id?.startsWith('prod-vc') ||
+      p.id?.startsWith('prod-super-antioxidant') ||
+      p.id?.startsWith('prod-ve-') ||
+      p.id?.startsWith('prod-rapid-acne') ||
+      p.id?.startsWith('prod-aha') ||
+      p.id?.startsWith('prod-retinol') ||
+      p.id?.startsWith('prod-collagen') ||
+      p.id?.startsWith('prod-botox');
+
     try {
       const res = await fetch('/api/products');
       if (res.ok) {
         const serverProds = await res.json();
-        if (Array.isArray(serverProds) && serverProds.length > 0) {
-          setLocalData('noor_ecom_products', serverProds);
-          return serverProds;
+        if (Array.isArray(serverProds)) {
+          const cleanProds = serverProds.filter(p => !isLegacySeed(p));
+          setLocalData('noor_ecom_products', cleanProds);
+          return cleanProds;
         }
       }
     } catch (e) {
@@ -896,12 +946,7 @@ export const dbService = {
     }
 
     const local = getLocalData<Product[]>('noor_ecom_products', []);
-    const cleanLocal = local.filter(p => 
-      !p.id?.startsWith('prod-book-01') && 
-      !p.id?.startsWith('prod-map-holder') && 
-      !p.id?.startsWith('prod-gunia') && 
-      !p.id?.startsWith('prod-tape')
-    );
+    const cleanLocal = local.filter(p => !isLegacySeed(p));
     if (cleanLocal.length !== local.length) {
       setLocalData('noor_ecom_products', cleanLocal);
     }
@@ -1046,8 +1091,8 @@ export const dbService = {
     if (!result.paymentGateways || result.paymentGateways.length === 0) {
       result.paymentGateways = DEFAULT_PAYMENT_GATEWAYS;
     }
-    if (!result.deliveryMethods || result.deliveryMethods.length === 0) {
-      result.deliveryMethods = DEFAULT_DELIVERY_METHODS;
+    if (!result.deliveryMethods) {
+      result.deliveryMethods = [];
     }
 
     // Merge latest settings from backend API (server disk persistence)
@@ -1067,6 +1112,38 @@ export const dbService = {
         }
       }
     } catch {}
+
+    if (Array.isArray(result.deliveryMethods)) {
+      result.deliveryMethods = result.deliveryMethods.filter(
+        dm => !['dm-inside-dhaka', 'dm-dhaka-suburbs', 'dm-outside-dhaka', 'dm-express-dhaka'].includes(dm.id)
+      );
+    }
+
+    if (Array.isArray(result.blogPosts)) {
+      result.blogPosts = result.blogPosts.filter(
+        p => p && p.id !== 'post-care-for-clothes' && p.id !== 'post-choose-right-laundry-pods' && p.id !== 'post-remove-coffee-stains' && p.id !== 'post-remove-ink-from-shirt'
+      );
+    } else {
+      result.blogPosts = [];
+    }
+
+    // Purge legacy seed categories ('Electronics', 'Fashion', 'Beauty & Personal Care', 'Home & Living', 'Groceries')
+    const seedCategoryNames = ['Electronics', 'Fashion', 'Beauty & Personal Care', 'Home & Living', 'Groceries'];
+    const seedCategoryIds = ['cat-0', 'cat-1', 'cat-2', 'cat-3', 'cat-4'];
+
+    if (Array.isArray(result.categories)) {
+      result.categories = result.categories.filter(c => typeof c === 'string' && !seedCategoryNames.includes(c.trim()));
+    } else {
+      result.categories = [];
+    }
+
+    if (Array.isArray(result.categoryItems)) {
+      result.categoryItems = result.categoryItems.filter(
+        item => item && !seedCategoryIds.includes(item.id) && !seedCategoryNames.includes(item.name?.trim())
+      );
+    } else {
+      result.categoryItems = [];
+    }
 
     return { ...stripIntegrationSecrets(result), pixelId: (result.pixelId || META_PIXEL_ID || '').trim() };
   },
@@ -1092,16 +1169,27 @@ export const dbService = {
 
     // Sync with backend express server API to persist on disk
     try {
-      await fetch('/api/settings', {
+      const res = await fetch('/api/settings', {
         method: 'POST',
         headers: getAdminAuthHeaders(),
         body: JSON.stringify(safeSettings)
       });
+      if (!res.ok) {
+        const text = await res.text();
+        console.error('Server rejected ecom settings sync:', res.status, text);
+        throw new Error(`Server failed to save settings (${res.status})`);
+      }
     } catch (err) {
       console.warn('Error syncing ecom settings to server API:', err);
+      throw err;
     }
 
     window.dispatchEvent(new Event('ecom-settings-updated'));
+  },
+
+  async updateEcomSettings(partial: Partial<EcomSettings>): Promise<void> {
+    const current = await this.getEcomSettings();
+    await this.saveEcomSettings({ ...current, ...partial });
   },
 
   // --- Customers List (Derived from Orders) ---
@@ -2025,6 +2113,27 @@ export const dbService = {
       return { success: false, message: data.message || 'SMS send failed' };
     } catch (e: any) {
       return { success: false, message: e.message || 'Network error sending SMS' };
+    }
+  },
+
+  async getVideoReviews(): Promise<VideoReviewsSettings> {
+    try {
+      const res = await ApiClient.getVideoReviews();
+      return {
+        enabled: res.enabled,
+        items: res.items || []
+      };
+    } catch {
+      const s = await this.getEcomSettings();
+      return s.videoReviews || { enabled: true, items: [] };
+    }
+  },
+
+  async saveVideoReviews(settings: VideoReviewsSettings): Promise<void> {
+    try {
+      await ApiClient.saveVideoReviews(settings);
+    } catch {
+      await this.saveEcomSettings({ videoReviews: settings });
     }
   }
 };

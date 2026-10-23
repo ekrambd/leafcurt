@@ -1,0 +1,64 @@
+[
+  {
+    "id": "ac-1792752248404-0dbwa",
+    "customerPhone": "01315861003",
+    "customerName": "Roxy",
+    "customerAddress": "",
+    "customerDistrict": "Dhaka",
+    "customerEmail": "",
+    "items": [
+      {
+        "productId": "prod-1792732597296",
+        "productTitle": "4 in 1 Laundry pods poison",
+        "productImage": "/uploads/file-1792732574240-906933853.jpg",
+        "quantity": 1,
+        "unitPrice": 1000,
+        "totalPrice": 1000
+      }
+    ],
+    "subtotal": 1000,
+    "deliveryCharge": 70,
+    "totalAmount": 1020,
+    "status": "abandoned",
+    "source": "storefront_checkout",
+    "lastActivityAt": "2026-10-23T10:44:08.404Z",
+    "createdAt": "2026-10-23T10:44:08.404Z",
+    "updatedAt": "2026-10-23T10:44:08.404Z"
+  },
+  {
+    "id": "ac-1792751490464-jf6hi",
+    "customerPhone": "01315861003",
+    "customerName": "Roxy",
+    "customerAddress": "Adabor",
+    "customerDistrict": "Dhaka",
+    "customerEmail": "",
+    "items": [
+      {
+        "productId": "prod-1792730892217",
+        "productTitle": "5-in-1 Laundry Pods",
+        "productImage": "/uploads/file-1792732044713-605530659.jpg",
+        "quantity": 1,
+        "unitPrice": 1000,
+        "totalPrice": 1000
+      },
+      {
+        "productId": "prod-1792732597296",
+        "productTitle": "4 in 1 Laundry pods poison",
+        "productImage": "/uploads/file-1792732574240-906933853.jpg",
+        "quantity": 1,
+        "unitPrice": 1000,
+        "totalPrice": 1000
+      }
+    ],
+    "subtotal": 2000,
+    "deliveryCharge": 70,
+    "totalAmount": 2070,
+    "status": "self_recovered",
+    "source": "storefront_checkout",
+    "lastActivityAt": "2026-10-23T10:31:50.343Z",
+    "createdAt": "2026-10-23T10:31:30.464Z",
+    "updatedAt": "2026-10-23T10:32:02.936Z",
+    "recoveredOrderId": "ORD-2026-1030",
+    "recoveredAt": "2026-10-23T10:32:02.936Z"
+  }
+]

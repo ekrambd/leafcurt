@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { generateAdminToken, verifyAdminCredentials } from '../services/authService';
 import { requireAdmin } from '../middleware/adminAuth';
 import { authRateLimiter } from '../middleware/rateLimiter';
-import { storeSettings } from '../data/store';
+import { storeSettings, saveSettingsToDisk } from '../data/store';
 
 const authRouter = Router();
 
@@ -66,7 +66,7 @@ authRouter.post('/change-password', requireAdmin, (req, res) => {
     return;
   }
 
-  const envEmail = process.env.ADMIN_EMAIL || process.env.VITE_ADMIN_EMAIL || 'admin@fantinebd.com';
+  const envEmail = process.env.ADMIN_EMAIL || process.env.VITE_ADMIN_EMAIL || 'admin@store.com';
   const verify = verifyAdminCredentials(envEmail, currentPassword);
 
   if (!verify.valid) {
@@ -74,8 +74,9 @@ authRouter.post('/change-password', requireAdmin, (req, res) => {
     return;
   }
 
-  // Persist updated password in storeSettings
+  // Persist updated password in storeSettings and save to disk
   (storeSettings as any).adminCustomPassword = newPassword;
+  saveSettingsToDisk(storeSettings);
 
   res.json({ success: true, message: 'Admin password changed successfully' });
 });

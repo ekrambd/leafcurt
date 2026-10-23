@@ -51,21 +51,29 @@ export default function HeaderSettingsManager() {
       try {
         setIsLoading(true);
         const ecom: EcomSettings = await dbService.getEcomSettings();
-        if (ecom?.headerSettings) {
-          setSettings({
-            ...DEFAULT_HEADER_SETTINGS,
-            ...ecom.headerSettings,
-            socialLinks: {
-              ...DEFAULT_HEADER_SETTINGS.socialLinks,
-              ...(ecom.headerSettings.socialLinks || {})
-            },
-            menuItems: ecom.headerSettings.menuItems?.length
-              ? ecom.headerSettings.menuItems
-              : DEFAULT_HEADER_SETTINGS.menuItems
-          });
-        } else {
-          setSettings(DEFAULT_HEADER_SETTINGS);
-        }
+        const header = ecom?.headerSettings || DEFAULT_HEADER_SETTINGS;
+        setSettings({
+          ...DEFAULT_HEADER_SETTINGS,
+          ...header,
+          phone: header.phone || ecom?.contactPhone || '',
+          email: header.email || ecom?.contactEmail || '',
+          brandName: header.brandName || ecom?.storeName || '',
+          logoUrl: header.logoUrl || ecom?.storeLogo || '',
+          socialLinks: {
+            facebook: '',
+            instagram: '',
+            youtube: '',
+            twitter: '',
+            tiktok: '',
+            linkedin: '',
+            whatsapp: '',
+            ...(ecom?.socialLinks || {}),
+            ...(header.socialLinks || {})
+          },
+          menuItems: header.menuItems?.length
+            ? header.menuItems
+            : DEFAULT_HEADER_SETTINGS.menuItems
+        });
       } catch (err) {
         console.error('Failed to load header settings:', err);
       } finally {
@@ -79,12 +87,33 @@ export default function HeaderSettingsManager() {
   const handleSave = async () => {
     try {
       setIsSaving(true);
-      const ecom: EcomSettings = await dbService.getEcomSettings();
+      const ecom: EcomSettings = await dbService.getEcomSettings() || {} as any;
+      const cleanSocial = {
+        facebook: (settings.socialLinks?.facebook || '').trim(),
+        instagram: (settings.socialLinks?.instagram || '').trim(),
+        youtube: (settings.socialLinks?.youtube || '').trim(),
+        twitter: (settings.socialLinks?.twitter || '').trim(),
+        tiktok: (settings.socialLinks?.tiktok || '').trim(),
+        linkedin: (settings.socialLinks?.linkedin || '').trim(),
+        whatsapp: (settings.socialLinks?.whatsapp || '').trim()
+      };
+
+      const updatedSettings: HeaderSettings = {
+        ...settings,
+        phone: (settings.phone || '').trim(),
+        email: (settings.email || '').trim(),
+        brandName: (settings.brandName || '').trim(),
+        socialLinks: cleanSocial
+      };
+
       const updatedEcom: EcomSettings = {
         ...ecom,
-        headerSettings: settings,
-        storeLogo: settings.logoUrl || ecom.storeLogo,
-        storeName: settings.brandName || ecom.storeName
+        headerSettings: updatedSettings,
+        storeLogo: updatedSettings.logoUrl || ecom.storeLogo,
+        storeName: updatedSettings.brandName || ecom.storeName,
+        contactPhone: updatedSettings.phone || ecom.contactPhone,
+        contactEmail: updatedSettings.email || ecom.contactEmail,
+        socialLinks: cleanSocial
       };
       await dbService.saveEcomSettings(updatedEcom);
 
@@ -93,8 +122,10 @@ export default function HeaderSettingsManager() {
         if (inst) {
           await dbService.saveInstituteInfo({
             ...inst,
-            logo: settings.logoUrl || inst.logo,
-            name: settings.brandName || inst.name
+            logo: updatedSettings.logoUrl || inst.logo,
+            name: updatedSettings.brandName || inst.name,
+            phone: updatedSettings.phone || inst.phone,
+            email: updatedSettings.email || inst.email
           });
         }
       } catch {}
@@ -384,7 +415,7 @@ export default function HeaderSettingsManager() {
                   type="text"
                   value={settings.phone}
                   onChange={e => setSettings(prev => ({ ...prev, phone: e.target.value }))}
-                  placeholder="+86 18027300683"
+                  placeholder="e.g. +880 1700-000000"
                   className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:bg-white focus:border-teal-500 focus:outline-hidden"
                 />
                 <p className="text-[10px] text-slate-400 mt-1">Displayed with telephone icon on the left of top bar.</p>
@@ -399,7 +430,7 @@ export default function HeaderSettingsManager() {
                   type="text"
                   value={settings.email}
                   onChange={e => setSettings(prev => ({ ...prev, email: e.target.value }))}
-                  placeholder="authentic.factory@outlook.com"
+                  placeholder="e.g. support@yourbrand.com"
                   className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:bg-white focus:border-teal-500 focus:outline-hidden"
                 />
                 <p className="text-[10px] text-slate-400 mt-1">Displayed with envelope icon next to phone number.</p>
@@ -463,6 +494,20 @@ export default function HeaderSettingsManager() {
               </div>
 
               <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Twitter / X URL</label>
+                <input
+                  type="text"
+                  value={settings.socialLinks?.twitter || ''}
+                  onChange={e => setSettings(prev => ({
+                    ...prev,
+                    socialLinks: { ...prev.socialLinks, twitter: e.target.value }
+                  }))}
+                  placeholder="https://x.com/..."
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:bg-white focus:border-teal-500 focus:outline-hidden"
+                />
+              </div>
+
+              <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">LinkedIn URL</label>
                 <input
                   type="text"
@@ -499,7 +544,7 @@ export default function HeaderSettingsManager() {
                     ...prev,
                     socialLinks: { ...prev.socialLinks, whatsapp: e.target.value }
                   }))}
-                  placeholder="+86 18027300683"
+                  placeholder="e.g. +880 1700-000000"
                   className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:bg-white focus:border-teal-500 focus:outline-hidden"
                 />
               </div>
@@ -824,7 +869,7 @@ export default function HeaderSettingsManager() {
               <p className="text-xs text-slate-400">Previewing how the header renders on high-resolution displays.</p>
             </div>
             <a
-              href="/product/3-in-1-laundry-detergent-pods"
+              href="/"
               target="_blank"
               rel="noreferrer"
               className="inline-flex items-center text-xs font-bold text-teal-400 hover:text-teal-300"
@@ -853,11 +898,13 @@ export default function HeaderSettingsManager() {
                 </div>
 
                 <div className="flex items-center gap-3">
-                  {settings.socialLinks?.facebook && <span className="opacity-80 hover:opacity-100 text-[11px] font-bold">FB</span>}
-                  {settings.socialLinks?.youtube && <span className="opacity-80 hover:opacity-100 text-[11px] font-bold">YT</span>}
-                  {settings.socialLinks?.instagram && <span className="opacity-80 hover:opacity-100 text-[11px] font-bold">IG</span>}
-                  {settings.socialLinks?.linkedin && <span className="opacity-80 hover:opacity-100 text-[11px] font-bold">IN</span>}
-                  {settings.socialLinks?.tiktok && <span className="opacity-80 hover:opacity-100 text-[11px] font-bold">TT</span>}
+                  {settings.socialLinks?.facebook?.trim() && <span className="opacity-80 hover:opacity-100 text-[11px] font-bold">FB</span>}
+                  {settings.socialLinks?.instagram?.trim() && <span className="opacity-80 hover:opacity-100 text-[11px] font-bold">IG</span>}
+                  {settings.socialLinks?.youtube?.trim() && <span className="opacity-80 hover:opacity-100 text-[11px] font-bold">YT</span>}
+                  {settings.socialLinks?.twitter?.trim() && <span className="opacity-80 hover:opacity-100 text-[11px] font-bold">X</span>}
+                  {settings.socialLinks?.linkedin?.trim() && <span className="opacity-80 hover:opacity-100 text-[11px] font-bold">IN</span>}
+                  {settings.socialLinks?.tiktok?.trim() && <span className="opacity-80 hover:opacity-100 text-[11px] font-bold">TT</span>}
+                  {settings.socialLinks?.whatsapp?.trim() && <span className="opacity-80 hover:opacity-100 text-[11px] font-bold">WA</span>}
                 </div>
               </div>
             )}

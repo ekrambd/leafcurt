@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import { storeSettings } from '../data/store';
 
-const JWT_SECRET = process.env.JWT_SECRET || process.env.SESSION_SECRET || 'fantine-store-secure-vps-admin-key-2026';
+const JWT_SECRET = process.env.JWT_SECRET || process.env.SESSION_SECRET || 'store-secure-vps-admin-key-2026';
 
 export interface AdminUserPayload {
   uid: string;
@@ -82,8 +82,8 @@ export function verifyAdminCredentials(identifier: string, passwordInput: string
   const cleanInput = (identifier || '').trim();
   const digitsInput = cleanInput.replace(/\D/g, '');
 
-  const envEmail = (process.env.ADMIN_EMAIL || process.env.VITE_ADMIN_EMAIL || 'admin@fantinebd.com').trim().toLowerCase();
-  const envPhone = (process.env.ADMIN_PHONE || process.env.VITE_ADMIN_PHONE || '01329458568').trim();
+  const envEmail = (process.env.ADMIN_EMAIL || process.env.VITE_ADMIN_EMAIL || 'admin@store.com').trim().toLowerCase();
+  const envPhone = (process.env.ADMIN_PHONE || process.env.VITE_ADMIN_PHONE || '01700000000').trim();
   const digitsEnvPhone = envPhone.replace(/\D/g, '');
 
   // Master password fallback from environment variables
@@ -95,8 +95,7 @@ export function verifyAdminCredentials(identifier: string, passwordInput: string
   const isEmailMatch = cleanInput.toLowerCase() === envEmail;
   const isPhoneMatch = Boolean(
     (cleanInput === envPhone) ||
-    (digitsInput && digitsEnvPhone && digitsInput === digitsEnvPhone) ||
-    (cleanInput.endsWith('fantinebd.com') && digitsInput && digitsInput === digitsEnvPhone)
+    (digitsInput && digitsEnvPhone && digitsInput === digitsEnvPhone)
   );
 
   if (!isEmailMatch && !isPhoneMatch) {

@@ -84,7 +84,7 @@ assert.equal(capiResult.success, true);
 const metaRequest = requests.find(request => request.url.includes('graph.facebook.com'))!;
 const metaBody = JSON.parse(String(metaRequest.init?.body));
 assert.equal(metaBody.data[0].event_id, 'purchase-test-1');
-assert.equal(metaBody.data[0].user_data.ph, createHash('sha256').update('8801700000000').digest('hex'));
+assert.equal(Array.isArray(metaBody.data[0].user_data.ph) ? metaBody.data[0].user_data.ph[0] : metaBody.data[0].user_data.ph, createHash('sha256').update('8801700000000').digest('hex'));
 assert.equal(metaBody.access_token, 'meta-test-token');
 assert.equal(metaBody.test_event_code, 'TEST00000');
 

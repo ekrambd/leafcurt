@@ -4,7 +4,8 @@ import {
   Phone, Mail, Globe, Clock, Package, ClipboardCheck, ShieldCheck, 
   ChevronLeft, ChevronRight, Play, Pause, Volume2, VolumeX, Maximize, 
   Share2, Send, Check, X, ZoomIn, ArrowUp, ExternalLink, Sparkles, 
-  Layers, MessageCircle, ChevronDown, Menu, CheckCircle2, Copy, Star
+  Layers, MessageCircle, ChevronDown, Menu, CheckCircle2, Copy, Star,
+  ShoppingBag, Zap
 } from 'lucide-react';
 import { Product, ProductSpecRow, ProductFeatureCard, HeaderSettings } from '../types';
 import { DEFAULT_HEADER_SETTINGS } from '../lib/constants';
@@ -17,6 +18,9 @@ interface AuthenticProductDetailPageProps {
   onNavigateHome?: () => void;
   onNavigateCategory?: (category: string) => void;
   onRequestQuote?: (product: Product) => void;
+  onAddToCart?: (product: Product, quantity?: number) => void;
+  onBuyNow?: (product: Product, quantity?: number) => void;
+  formatPrice?: (price: number) => string;
 }
 
 export default function AuthenticProductDetailPage({
@@ -24,7 +28,10 @@ export default function AuthenticProductDetailPage({
   headerSettings,
   onNavigateHome,
   onNavigateCategory,
-  onRequestQuote
+  onRequestQuote,
+  onAddToCart,
+  onBuyNow,
+  formatPrice
 }: AuthenticProductDetailPageProps) {
   // Combine all product images (cover image + additional images)
   const allImages = useMemo(() => {
@@ -58,6 +65,16 @@ export default function AuthenticProductDetailPage({
   
   // Tab Navigation State
   const [activeTab, setActiveTab] = useState<'specification' | 'features' | 'video' | 'reviews'>('specification');
+
+  // Quantity Stepper State for E-Commerce Actions
+  const [quantity, setQuantity] = useState<number>(1);
+
+  const formatPriceText = (priceVal?: number) => {
+    if (typeof priceVal !== 'number') return 'Tk.0';
+    if (formatPrice) return formatPrice(priceVal);
+    const bdt = priceVal < 100 ? Math.round(priceVal * 120) : Math.round(priceVal);
+    return `Tk.${bdt.toLocaleString('en-US')}`;
+  };
 
   // Modals & Floating Drawer State
   const [isQuoteModalOpen, setIsQuoteModalOpen] = useState<boolean>(false);
@@ -193,65 +210,15 @@ export default function AuthenticProductDetailPage({
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Default Specification Table Data (Matching Screenshot 3)
-  const defaultSpecTable: ProductSpecRow[] = [
-    { 
-      feature: 'Recommended Laundry Load', 
-      details: '8g: Approx. 2–4 kg\n10g: Approx. 3–5 kg\n25g: Approx. 8–12 kg' 
-    },
-    { 
-      feature: 'Function', 
-      details: 'Deep Cleaning / Stain Removal / Antibacterial / Anti-Mite / Fabric Softening / Color Protection / Long-Lasting Fragrance / Odor Control / Hypoallergenic / Customized Functions' 
-    },
-    { 
-      feature: 'Fragrance', 
-      details: 'Sweet Peach / green fruit / Sandhill / Rose Feast / Customized' 
-    },
-    { 
-      feature: 'MOQ', 
-      details: 'OEM/ODM Starting from 100,000 Pcs' 
-    },
-    { 
-      feature: 'Sample Service', 
-      details: 'Stock Samples Available; Custom Samples Developed Based on Project Requirements' 
-    },
-    { 
-      feature: 'OEM Service', 
-      details: 'Formula + Fragrance + Pod Structure + Shape + Weight + Color + Packaging + Label' 
-    }
-  ];
-
-  const currentSpecTable = (product.specTable && product.specTable.length > 0)
+    const currentSpecTable = (product.specTable && product.specTable.length > 0)
     ? product.specTable
-    : defaultSpecTable;
-
-  // Default Numbered Specification List (Matching Screenshot 2)
-  const defaultSpecList = [
-    {
-      title: '1.Flexible 3-In-1 Laundry Solution',
-      description: 'Three-Chamber Laundry Pods For Brands, Importers, Distributors And Private-Label Customers. Custom Options Support Everyday Laundry, Baby Care, Pet Care, Sportswear And Commercial Use.'
-    },
-    {
-      title: '2.Multiple Pod Weights & Dosage',
-      description: 'Available In 8g, 10g And 25g Sizes. One 10g Pod Is Recommended For Approximately 3–5 Kg Of Laundry, With Dosage Varying By Formula, Soil Level And Washing Conditions.'
-    },
-    {
-      title: '3.Customizable Formulas & Functions',
-      description: 'Core Functions Include Deep Cleaning, Anti-Mite Care And Long-Lasting Fragrance. Combine Liquid, Powder Or Fragrance Beads, With Customized Additives Available For Specific Projects.'
-    },
-    {
-      title: '4.Fragrance Options',
-      description: 'Choose From Sweet Peach, Green Fruity, Sandhill, Rose Feast Or Custom Scents. Fragrance Direction And Intensity Can Be Tailored To Regional Preferences And Brand Positioning.'
-    },
-    {
-      title: '5.Custom Packaging & Design',
-      description: 'Available In Boxes, Pouches, Tubs, Jars Or Buckets, Including Child-Resistant, Recyclable And Plastic-Free Options. In-House Design Support Covers Multilingual Labels And Brand Visuals.'
-    },
-    {
-      title: '6.OEM/ODM Support & Production',
-      description: 'Customize Pod Structure, Shape, Weight, Color, Formula, Fragrance, Packaging And Labels. Standard Starting Quantity: 100,000 Pieces. Stock And Custom Samples Are Available; Production Takes Approximately 20–30 Days After Sample Approval And Deposit, Depending On Order Requirements.'
-    }
-  ];
+    : [
+        { feature: 'Product Type', details: '5-in-1 Laundry Detergent Pods' },
+        { feature: 'Formula', details: 'Concentrated Bio-Enzyme + Fabric Softener' },
+        { feature: 'Machine Safety', details: 'HE, Front-Load, Top-Load Compatible' },
+        { feature: 'Skin Safety', details: 'Neutral pH, Phosphorus & Bleach Free' },
+        { feature: 'Packaging', details: 'Pressure Resistant (600N), Easy-Rinse' }
+      ];
 
   const currentSpecList = useMemo(() => {
     if (product.specificationsList && product.specificationsList.length > 0) {
@@ -263,40 +230,12 @@ export default function AuthenticProductDetailPage({
       }
       return product.specificationsList as { title: string; description: string }[];
     }
-    return defaultSpecList;
+    return [];
   }, [product.specificationsList]);
-
-  // Default Key Features Cards (Matching Screenshot 1)
-  const defaultKeyFeatures: ProductFeatureCard[] = [
-    {
-      icon: 'globe',
-      title: 'Global Fragrance Partnerships & Custom Development',
-      subtitle: 'Co-Developed Fragrances with Leading Global Suppliers',
-      description: 'Co-Developed Fragrances with Leading Global Suppliers Through long-term collaboration with leading global fragrance suppliers, including Givaudan and Firmenich, our team has jointly developed a wide range of popular fragrance solutions for laundry products. From floral and fruity to fresh and sophisticated perfume-inspired profiles, fragrance type and intensity can be customized to meet different brand positioning and market preferences.'
-    },
-    {
-      icon: 'clock',
-      title: '72 Hours To 1 Week Fragrance Retention',
-      subtitle: 'Multi-Stage Testing for Long-Lasting Fragrance',
-      description: 'Multi-Stage Testing for Long-Lasting Fragrance Our laboratory team conducts multiple fragrance performance and retention tests to evaluate and optimize scent performance on fabrics. Depending on the fragrance system, formula and usage conditions, fragrance retention on fabrics can reach approximately 72 hours to 1 week, supporting the development of long-lasting fragrance laundry pods for different market requirements.'
-    },
-    {
-      icon: 'box',
-      title: '3 Billion Pods Annual Production Capacity',
-      subtitle: 'Automated Manufacturing Built for High-Volume Orders',
-      description: 'Automated Manufacturing Built for High-Volume Orders With an annual laundry pod production capacity of up to 3 billion pieces, Authentic is equipped with fully automated production lines and automated manufacturing equipment covering key production processes. Our scalable production system supports customized OEM/ODM projects and high-volume orders for global brands, importers and distributors.'
-    },
-    {
-      icon: 'check',
-      title: '5-Stage Quality Control',
-      subtitle: 'Quality Control Throughout the Manufacturing Process',
-      description: 'Quality Control Throughout the Manufacturing Process Our 5-stage quality control process covers key stages from raw materials and production to finished product inspection. Supported by laboratory testing and 100% batch inspection, our QC system helps maintain consistent product quality across OEM/ODM production.'
-    }
-  ];
 
   const currentKeyFeatures = (product.keyFeatureCards && product.keyFeatureCards.length > 0)
     ? product.keyFeatureCards
-    : defaultKeyFeatures;
+    : [];
 
   const renderFeatureIcon = (iconName: string) => {
     switch (iconName.toLowerCase()) {
@@ -318,20 +257,20 @@ export default function AuthenticProductDetailPage({
     }
   };
 
-  const whatsappPhone = liveHeaderSettings.phone || product.whatsappNumber || '+8618027300683';
+  const whatsappPhone = liveHeaderSettings.phone || product.whatsappNumber || '';
   const cleanPhone = whatsappPhone.replace(/\D/g, '');
   const encodedWhatsappMsg = encodeURIComponent(
-    product.whatsappMessage || `Hello Authentic Factory! I am interested in getting a quote for ${product.title}.`
+    product.whatsappMessage || `Hello ${liveHeaderSettings.brandName || 'Store'}! I am interested in getting more information about ${product.title}.`
   );
-  const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodedWhatsappMsg}`;
+  const whatsappUrl = cleanPhone ? `https://wa.me/${cleanPhone}?text=${encodedWhatsappMsg}` : '';
 
-  const facebookUrl = liveHeaderSettings.socialLinks?.facebook || product.facebookUrl || 'https://www.facebook.com';
-  const linkedinUrl = liveHeaderSettings.socialLinks?.linkedin || product.linkedinUrl || 'https://www.linkedin.com';
-  const youtubeUrl = liveHeaderSettings.socialLinks?.youtube || 'https://youtube.com';
-  const instagramUrl = liveHeaderSettings.socialLinks?.instagram || 'https://instagram.com';
-  const tiktokUrl = liveHeaderSettings.socialLinks?.tiktok || 'https://tiktok.com';
-  const displayEmail = liveHeaderSettings.email || product.contactEmail || 'authentic.factory@outlook.com';
-  const displayPhone = liveHeaderSettings.phone || '+86 18027300683';
+  const facebookUrl = liveHeaderSettings.socialLinks?.facebook || product.facebookUrl || '';
+  const linkedinUrl = liveHeaderSettings.socialLinks?.linkedin || product.linkedinUrl || '';
+  const youtubeUrl = liveHeaderSettings.socialLinks?.youtube || '';
+  const instagramUrl = liveHeaderSettings.socialLinks?.instagram || '';
+  const tiktokUrl = liveHeaderSettings.socialLinks?.tiktok || '';
+  const displayEmail = liveHeaderSettings.email || product.contactEmail || '';
+  const displayPhone = liveHeaderSettings.phone || '';
 
   const handleQuoteSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -452,14 +391,20 @@ export default function AuthenticProductDetailPage({
             onClick={onNavigateHome}
             className="flex items-center gap-3 cursor-pointer group"
           >
-            <img 
-              src={liveHeaderSettings.logoUrl || '/livewellfresh_logo.png'} 
-              alt={liveHeaderSettings.brandName || "livewellfresh"}
-              className="h-10 sm:h-12 w-auto object-contain transition-transform group-hover:scale-105"
-              onError={(e) => {
-                (e.currentTarget as HTMLImageElement).src = '/livewellfresh_logo.png';
-              }}
-            />
+            {liveHeaderSettings.logoUrl ? (
+              <img 
+                src={liveHeaderSettings.logoUrl} 
+                alt={liveHeaderSettings.brandName || "Store"}
+                className="h-10 sm:h-12 w-auto object-contain transition-transform group-hover:scale-105"
+                onError={(e) => {
+                  (e.currentTarget as HTMLElement).style.display = 'none';
+                }}
+              />
+            ) : (
+              <span className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+                {liveHeaderSettings.brandName || "Store"}
+              </span>
+            )}
           </div>
 
           {/* Desktop Navigation Links */}
@@ -776,28 +721,6 @@ export default function AuthenticProductDetailPage({
                     </button>
                   );
                 })}
-
-                {/* If product has video option, display Video Thumbnail */}
-                {product.hasVideo && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsShowingVideoInMain(true);
-                      setActiveTab('video');
-                    }}
-                    className={`relative w-16 h-16 sm:w-20 sm:h-20 rounded-md border-2 overflow-hidden shrink-0 transition-all cursor-pointer bg-slate-900 flex flex-col items-center justify-center text-white ${
-                      isShowingVideoInMain 
-                        ? 'border-[#162963] ring-2 ring-[#162963]/30' 
-                        : 'border-slate-300 hover:border-[#162963]'
-                    }`}
-                    title="Watch Product Video"
-                  >
-                    <div className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center mb-1">
-                      <Play className="w-3.5 h-3.5 fill-current text-white translate-x-0.5" />
-                    </div>
-                    <span className="text-[10px] font-bold uppercase tracking-wider">Video</span>
-                  </button>
-                )}
               </div>
 
               {/* Next Thumbnail Arrow */}
@@ -814,37 +737,120 @@ export default function AuthenticProductDetailPage({
 
             </div>
 
-            {/* Gallery Control Bar: Auto-Play toggle & Thumbnail counter */}
-            <div className="flex items-center justify-between text-xs text-slate-500 px-1 pt-1">
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setIsAutoScrolling(!isAutoScrolling)}
-                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium transition cursor-pointer ${
-                    isAutoScrolling 
-                      ? 'bg-blue-50 text-[#162963] font-semibold' 
-                      : 'bg-slate-100 text-slate-600'
-                  }`}
-                >
-                  {isAutoScrolling ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3" />}
-                  <span>{isAutoScrolling ? 'Auto-slide On' : 'Auto-slide Paused'}</span>
-                </button>
-                <span className="text-[11px] text-slate-400">
-                  {allImages.length} images available
-                </span>
-              </div>
 
-              <span className="text-xs font-semibold text-slate-700">
-                {activeImageIndex + 1} / {allImages.length}
-              </span>
-            </div>
 
           </div>
 
           {/* ============================================================
-              RIGHT COLUMN: SPECIFICATION TABLE & CTAS (Exact Screenshot 3)
+              RIGHT COLUMN: PRODUCT DETAILS & PURCHASE ACTIONS
               ============================================================ */}
-          <div className="lg:col-span-6 flex flex-col space-y-6">
+          <div className="lg:col-span-6 flex flex-col space-y-5">
             
+            {/* 1. Product Title */}
+            <div>
+              <h1 className="font-sans text-2xl sm:text-3xl lg:text-4xl font-extrabold text-[#033b75] tracking-tight leading-snug">
+                {product.title}
+              </h1>
+              {product.series && (
+                <p className="text-xs sm:text-sm font-medium text-slate-500 mt-1">
+                  সিরিজ: <span className="text-[#0279c7] font-semibold">{product.series}</span>
+                </p>
+              )}
+            </div>
+
+            {/* 2. Rating & Stock Indicator */}
+            <div className="flex flex-wrap items-center gap-3 text-xs sm:text-sm">
+              <div className="flex items-center gap-1 text-amber-500">
+                {[...Array(5)].map((_, i) => (
+                  <Star key={i} className="w-4 h-4 fill-amber-400 text-amber-400" />
+                ))}
+                <span className="font-bold text-slate-800 ml-1">5.0</span>
+                <span className="text-slate-500">(100% ইতিবাচক রিভিউ)</span>
+              </div>
+              <span className="text-slate-300">|</span>
+              <span className="inline-flex items-center gap-1 font-semibold text-emerald-600 bg-emerald-50 px-2.5 py-0.5 rounded-full text-xs">
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                ইন স্টক (Ready to Ship)
+              </span>
+            </div>
+
+            {/* 3. Price Display */}
+            <div className="p-4 rounded-2xl bg-[#f8fafc] border border-slate-200 flex flex-wrap items-baseline gap-3 shadow-2xs">
+              <span className="text-2xl sm:text-3xl font-extrabold text-[#033b75]">
+                {formatPriceText(product.price)}
+              </span>
+              {(product.regularPrice || product.price > 0) && (
+                <span className="text-base sm:text-lg text-slate-400 line-through">
+                  {formatPriceText(product.regularPrice || Math.round(product.price * 1.25))}
+                </span>
+              )}
+              <span className="text-xs bg-emerald-100 text-emerald-800 font-bold px-2.5 py-1 rounded-md">
+                {product.discountPercentage ? `SAVE ${product.discountPercentage}%` : 'বিশেষ মূল্যছাড়'}
+              </span>
+            </div>
+
+            {/* 4. Quantity Stepper + ADD TO CART & BUY NOW Buttons */}
+            <div className="space-y-3.5 pt-1">
+              <div className="flex items-center gap-3">
+                <span className="text-xs sm:text-sm font-bold text-slate-700">পরিমাণ:</span>
+                <div className="inline-flex items-center border-2 border-slate-300 rounded-xl bg-white overflow-hidden shadow-2xs">
+                  <button
+                    type="button"
+                    onClick={() => setQuantity(prev => Math.max(1, prev - 1))}
+                    className="w-10 h-10 flex items-center justify-center text-slate-600 hover:bg-slate-100 transition-colors font-bold text-base cursor-pointer"
+                  >
+                    -
+                  </button>
+                  <span className="w-12 text-center font-bold text-sm text-slate-900 select-none">
+                    {quantity}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setQuantity(prev => prev + 1)}
+                    className="w-10 h-10 flex items-center justify-center text-slate-600 hover:bg-slate-100 transition-colors font-bold text-base cursor-pointer"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+
+              {/* Action Buttons: ADD TO CART & BUY NOW */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                {/* ADD TO CART */}
+                <button
+                  type="button"
+                  onClick={() => onAddToCart && onAddToCart(product, quantity)}
+                  className="w-full bg-[#033b75] hover:bg-[#022a54] text-white py-3.5 px-6 rounded-xl font-bold uppercase tracking-wider text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition-all active:scale-95 cursor-pointer"
+                >
+                  <ShoppingBag className="w-4 h-4" />
+                  <span>ADD TO CART</span>
+                </button>
+
+                {/* BUY NOW */}
+                <button
+                  type="button"
+                  onClick={() => onBuyNow && onBuyNow(product, quantity)}
+                  className="w-full bg-gradient-to-r from-[#0284c7] to-[#16a34a] hover:from-[#0369a1] hover:to-[#15803d] text-white py-3.5 px-6 rounded-xl font-bold uppercase tracking-wider text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition-all active:scale-95 cursor-pointer"
+                >
+                  <Zap className="w-4 h-4 fill-current" />
+                  <span>BUY NOW</span>
+                </button>
+              </div>
+            </div>
+
+            {/* 5. Trust Assurances */}
+            <div className="grid grid-cols-3 gap-2 p-3 bg-sky-50/60 rounded-xl border border-sky-100 text-center text-[11px] sm:text-xs text-slate-700 font-medium">
+              <div className="flex flex-col items-center gap-0.5">
+                <span>🚚 সারা দেশে ক্যাশ অন ডেলিভারি</span>
+              </div>
+              <div className="flex flex-col items-center gap-0.5 border-x border-sky-200/60 px-1">
+                <span>🛡️ ১০০% আসল ও মানসম্মত</span>
+              </div>
+              <div className="flex flex-col items-center gap-0.5">
+                <span>⚡ দ্রুততম হোম ডেলিভারি</span>
+              </div>
+            </div>
+
             {/* Structured Specifications Table (Screenshot 3 & 4) */}
             <div className="border border-slate-300 rounded-md overflow-hidden bg-white shadow-2xs">
               <div className="grid grid-cols-12 bg-slate-50 border-b border-slate-300 py-3 px-4 text-xs font-bold text-slate-800">
@@ -866,8 +872,8 @@ export default function AuthenticProductDetailPage({
               </div>
             </div>
 
-            {/* Quick Contact & Social Share Buttons (Screenshot 3 & 4) */}
-            <div className="grid grid-cols-3 gap-2.5 sm:gap-3">
+            {/* Quick Contact & Social Share Buttons */}
+            <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
               {/* WhatsApp Button */}
               <a
                 href={whatsappUrl}
@@ -893,30 +899,6 @@ export default function AuthenticProductDetailPage({
                 </svg>
                 <span className="truncate">Facebook</span>
               </a>
-
-              {/* LinkedIn Button */}
-              <a
-                href={linkedinUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-center gap-2 bg-[#0A66C2] hover:bg-[#095196] text-white py-2.5 px-3 rounded-md text-xs sm:text-sm font-semibold transition shadow-xs active:scale-95"
-              >
-                <svg className="w-4 h-4 fill-current shrink-0" viewBox="0 0 24 24">
-                  <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/>
-                </svg>
-                <span className="truncate">Linkedin</span>
-              </a>
-            </div>
-
-            {/* Big Get A Quote CTA (Exact match to Screenshot 3) */}
-            <div>
-              <button
-                onClick={() => setIsQuoteModalOpen(true)}
-                className="w-full sm:w-auto min-w-[200px] inline-flex items-center justify-center gap-3 bg-gradient-to-r from-[#0284c7] to-[#16a34a] hover:from-[#0369a1] hover:to-[#15803d] text-white font-semibold text-sm sm:text-base py-3.5 px-8 rounded-full transition-all shadow-md hover:shadow-lg active:scale-98 cursor-pointer"
-              >
-                <span>Get A Quote</span>
-                <span className="text-lg">→</span>
-              </button>
             </div>
 
           </div>
@@ -1136,40 +1118,6 @@ export default function AuthenticProductDetailPage({
                   </>
                 )}
               </div>
-
-              {/* Video Title & Explanation Card */}
-              <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 sm:p-6 space-y-3">
-                <div className="flex items-center gap-2 text-xs font-bold text-[#162963] uppercase tracking-wider">
-                  <Sparkles className="w-4 h-4" />
-                  <span>Factory Manufacturing & Quality Control Video</span>
-                </div>
-                <h4 className="text-base sm:text-lg font-bold text-slate-900">
-                  {product.videoTitle || 'Authentic 3-in-1 Triple Chamber Laundry Pods Manufacturing & Quality Demonstration'}
-                </h4>
-                <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-                  {product.videoDescription || 'Watch how Authentic manufactures 3-in-1 triple-chamber laundry pods with high-speed automated PVA film sealing, multi-stage fragrance microencapsulation, and strict 5-stage quality testing.'}
-                </p>
-
-                {/* Video Chapters / Key Milestones */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-3 border-t border-slate-200 text-xs">
-                  <div className="p-2.5 bg-white rounded-lg border border-slate-200">
-                    <span className="font-bold text-[#162963] block">00:15</span>
-                    <span className="text-slate-600 text-[11px]">Triple Chamber Filling</span>
-                  </div>
-                  <div className="p-2.5 bg-white rounded-lg border border-slate-200">
-                    <span className="font-bold text-[#162963] block">00:45</span>
-                    <span className="text-slate-600 text-[11px]">PVA Dissolution Test</span>
-                  </div>
-                  <div className="p-2.5 bg-white rounded-lg border border-slate-200">
-                    <span className="font-bold text-[#162963] block">01:10</span>
-                    <span className="text-slate-600 text-[11px]">Burst & Pressure Test</span>
-                  </div>
-                  <div className="p-2.5 bg-white rounded-lg border border-slate-200">
-                    <span className="font-bold text-[#162963] block">01:35</span>
-                    <span className="text-slate-600 text-[11px]">Automated Packaging</span>
-                  </div>
-                </div>
-              </div>
             </motion.div>
           )}
 
@@ -1192,66 +1140,7 @@ export default function AuthenticProductDetailPage({
 
       </main>
 
-      {/* ============================================================
-          5. STICKY RIGHT EDGE CONTACT BAR (Screenshots 3 & 4)
-          ============================================================ */}
-      <aside className="fixed right-0 top-1/3 -translate-y-1/2 z-30 flex flex-col items-end shadow-2xl">
-        {/* Toggle Arrow */}
-        <button
-          onClick={() => setIsSideBarExpanded(!isSideBarExpanded)}
-          className="bg-black text-white p-1 rounded-l text-xs flex items-center justify-center hover:bg-slate-800 transition cursor-pointer"
-          title={isSideBarExpanded ? 'Collapse Menu' : 'Expand Menu'}
-        >
-          {isSideBarExpanded ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronLeft className="w-3.5 h-3.5" />}
-        </button>
 
-        {isSideBarExpanded && (
-          <div className="flex flex-col rounded-l-md overflow-hidden bg-white border border-slate-200 shadow-xl divide-y divide-slate-100">
-            
-            {/* Vertical "Contact Us" Button (Dark Blue in Screenshot 3 & 4) */}
-            <button
-              onClick={() => setIsQuoteModalOpen(true)}
-              className="bg-[#162963] hover:bg-[#101e4a] text-white py-4 px-2.5 text-xs font-semibold flex flex-col items-center gap-1.5 tracking-wider transition cursor-pointer"
-              style={{ writingMode: 'vertical-rl' }}
-            >
-              <Mail className="w-3.5 h-3.5 rotate-90" />
-              <span>Contact Us</span>
-            </button>
-
-            {/* WhatsApp Green Icon */}
-            <a
-              href={whatsappUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="p-3 bg-[#25D366] hover:bg-[#20ba59] text-white flex items-center justify-center transition cursor-pointer"
-              title="Chat on WhatsApp"
-            >
-              <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
-                <path d="M17.472 14.382c-.301-.15-1.78-.878-2.056-.978-.276-.1-.477-.15-.678.15-.2.301-.778.978-.953 1.179-.176.201-.351.226-.652.075-.301-.15-1.272-.469-2.424-1.496-.897-.798-1.503-1.784-1.679-2.085-.176-.301-.019-.464.132-.614.135-.135.301-.351.451-.527.151-.176.201-.301.302-.502.1-.201.05-.377-.025-.527-.075-.15-.678-1.633-.929-2.235-.244-.587-.492-.507-.678-.517-.176-.01-.377-.01-.578-.01s-.527.075-.803.377c-.276.301-1.054 1.03-1.054 2.512 0 1.482 1.079 2.912 1.23 3.113.151.201 2.124 3.243 5.146 4.55.719.311 1.28.497 1.718.636.722.23 1.378.197 1.898.12.579-.087 1.78-.727 2.031-1.429.251-.702.251-1.304.176-1.429-.075-.125-.276-.201-.577-.351zM12.042 21.928c-1.789 0-3.541-.482-5.074-1.393l-.364-.216-3.771.989 1.006-3.676-.237-.377a9.88 9.88 0 0 1-1.517-5.263c0-5.46 4.44-9.902 9.905-9.902 2.646 0 5.132 1.031 7.001 2.902a9.843 9.843 0 0 1 2.897 7.001c0 5.462-4.441 9.904-9.906 9.904zM12.042 0C5.39 0 0 5.39 0 12.042c0 2.123.555 4.197 1.609 6.023L0 24l6.108-1.603a11.982 11.982 0 0 0 5.934 1.564c6.652 0 12.042-5.39 12.042-12.042C24.084 5.39 18.694 0 12.042 0z"/>
-              </svg>
-            </a>
-
-            {/* Email Red Icon */}
-            <a
-              href={`mailto:${displayEmail}?subject=Inquiry for ${encodeURIComponent(product.title)}`}
-              className="p-3 bg-[#E53935] hover:bg-[#d32f2f] text-white flex items-center justify-center transition cursor-pointer"
-              title="Send Email"
-            >
-              <Mail className="w-5 h-5 fill-current" />
-            </a>
-
-            {/* WeChat Green Icon */}
-            <button
-              onClick={() => setIsWeChatModalOpen(true)}
-              className="p-3 bg-[#07C160] hover:bg-[#06ad56] text-white flex items-center justify-center transition cursor-pointer"
-              title="WeChat Contact"
-            >
-              <MessageCircle className="w-5 h-5 fill-current" />
-            </button>
-
-          </div>
-        )}
-      </aside>
 
       {/* ============================================================
           6. SCROLL TO TOP BUTTON (Screenshot 3 & 4 bottom right)
@@ -1334,8 +1223,8 @@ export default function AuthenticProductDetailPage({
               {/* Modal Header */}
               <div className="bg-[#162963] text-white px-6 py-5 flex items-center justify-between">
                 <div>
-                  <h3 className="text-lg font-bold">Request Factory Direct Quote</h3>
-                  <p className="text-xs text-blue-200 mt-0.5">OEM/ODM Customization & High Volume Order Inquiry</p>
+                  <h3 className="text-lg font-bold">Request Product Inquiry & Quote</h3>
+                  <p className="text-xs text-blue-200 mt-0.5">Direct Customer Assistance & Order Support</p>
                 </div>
                 <button
                   onClick={() => setIsQuoteModalOpen(false)}

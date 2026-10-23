@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { ClubMember, VipTier } from '../types';
 import { loyaltyClubService } from '../lib/loyaltyClubService';
+import { dbService } from '../lib/dbService';
 import { CircularProgress } from './LoadingSkeleton';
 import { 
   Users, Plus, Trash2, Edit3, X, Check, Save, Search, 
@@ -42,6 +43,7 @@ export default function MemberDirectoryManager() {
     title: '',
     message: ''
   });
+  const [brandName, setBrandName] = useState('VIP Club');
 
   useEffect(() => {
     loadData();
@@ -50,14 +52,18 @@ export default function MemberDirectoryManager() {
   async function loadData() {
     setIsLoading(true);
     try {
-      const [membersData, tiersData] = await Promise.all([
+      const [membersData, tiersData, ecom] = await Promise.all([
         loyaltyClubService.getClubMembers(),
-        loyaltyClubService.getVipTiers()
+        loyaltyClubService.getVipTiers(),
+        dbService.getEcomSettings().catch(() => null)
       ]);
       setMembers(membersData);
       setTiers(tiersData);
       if (tiersData.length > 0) {
         setNewTierId(tiersData[0].id);
+      }
+      if (ecom?.storeName || ecom?.headerSettings?.brandName) {
+        setBrandName(ecom.storeName || ecom.headerSettings.brandName);
       }
     } catch (err) {
       console.error('Failed to load member directory data:', err);
@@ -286,7 +292,7 @@ export default function MemberDirectoryManager() {
                 const tierInfo = tiers.find(t => t.id === member.tierId) || tiers[0];
                 const cleanPhone = (member.phone || '').replace(/\D/g, '');
                 const waMessage = encodeURIComponent(
-                  `Hello ${member.name}! Thank you for being a valued ${member.tierName} of livewellfresh Super Club (Card: ${member.memberNumber}). You have ${member.pointsBalance} reward points available!`
+                  `Hello ${member.name}! Thank you for being a valued ${member.tierName} of ${brandName} VIP Club (Card: ${member.memberNumber}). You have ${member.pointsBalance} reward points available!`
                 );
 
                 return (

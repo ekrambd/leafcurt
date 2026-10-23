@@ -32,6 +32,7 @@ export interface Product {
   sku?: string;
   price: number;
   regularPrice?: number;
+  offerPrice?: number;
   costPrice?: number;
   hasVariants?: boolean;
   variants?: ProductVariant[];
@@ -160,6 +161,8 @@ export interface HeroBannerItem {
   videoUrl?: string;
   youtubeUrl?: string;
   buttonText?: string;
+  secondaryButtonText?: string;
+  secondaryButtonLink?: string;
 }
 
 export interface SubCategoryItem {
@@ -384,8 +387,8 @@ export interface LandingPageData {
 export interface FlashSaleSettings {
   enabled: boolean;
   productId?: string;
-  badgeTag?: string; // e.g. 'BRIGHTENING AND WHITENING SERIES'
-  title?: string; // e.g. 'FANTINE Whitening and Brightening Series'
+  badgeTag?: string; // e.g. 'FEATURED PROMOTION'
+  title?: string; // e.g. 'Seasonal Collection'
   subtitle?: string; // description
   customImage?: string; // optional image override
   flashPrice?: number; // special promotional price
@@ -405,9 +408,9 @@ export interface HighlightSpotlightSettings {
   targetType: 'product' | 'category'; // Whether highlighting a product or category
   productId?: string;
   categoryName?: string;
-  badgeTag?: string; // e.g. 'FANTINE INNOVATION HUB'
-  title?: string; // e.g. 'Welcome to FANTINE Laboratory'
-  subtitle?: string; // e.g. 'Discover our advanced dermal solutions...'
+  badgeTag?: string; // e.g. 'EXCLUSIVE SPOTLIGHT'
+  title?: string; // e.g. 'Featured Innovation'
+  subtitle?: string; // e.g. 'Discover our premier collection...'
   customImage?: string; // optional custom image or auto from product/category
   buttonText?: string; // e.g. 'EXPLORE NOW'
   buttonLink?: string;
@@ -429,6 +432,7 @@ export interface HeaderSettings {
     facebook?: string;
     youtube?: string;
     instagram?: string;
+    twitter?: string;
     linkedin?: string;
     tiktok?: string;
     whatsapp?: string;
@@ -440,6 +444,10 @@ export interface HeaderSettings {
   ctaButtonLink?: string;
   ctaActionType?: 'quote_modal' | 'whatsapp' | 'link' | 'custom_link';
   showCtaButton?: boolean;
+  vipClubText?: string;
+  vipClubBadge?: string;
+  showVipButton?: boolean;
+  searchPlaceholder?: string;
 }
 
 export interface AbandonedCartItem {
@@ -493,6 +501,7 @@ export interface AbandonedCartMetrics {
 export interface EcomSettings {
   headerSettings?: HeaderSettings;
   storeName?: string;
+  storeDomain?: string;
   storeLogo?: string;
   storeTagline?: string;
   topAnnouncementText?: string;
@@ -567,6 +576,178 @@ export interface EcomSettings {
   vipTiers?: VipTier[];
   digitalLoyaltyCards?: DigitalLoyaltyCard[];
   clubMembers?: ClubMember[];
+
+  // Storefront Section Customization
+  featuredSectionTitle?: string;
+  featuredSectionSubtitle?: string;
+  bundlesSectionTitle?: string;
+  bundlesSectionSubtitle?: string;
+  bestSellersSectionTitle?: string;
+  bestSellersSectionSubtitle?: string;
+
+  // Customer Reviews & Testimonials Carousel ("What our customers say")
+  testimonials?: TestimonialSectionSettings;
+
+  // Interactive Before/After Comparison
+  beforeAfter?: BeforeAfterSettings;
+
+  // "Brands That Love Us" Logo Bar
+  clientLogos?: ClientLogosSettings;
+
+  // "See What Customers Are Saying" Photo Reviews Carousel
+  photoReviews?: PhotoReviewsSettings;
+
+  // "Hear it from the people who wash" Video Reviews Section
+  videoReviews?: VideoReviewsSettings;
+
+  // "Frequently asked questions" Accordion Section
+  faqs?: FaqSectionSettings;
+
+  // Cart Drawer Embedded Review Settings
+  cartReview?: CartReviewSettings;
+
+  // Blog Posts
+  blogPosts?: BlogPost[];
+}
+
+export interface TestimonialItem {
+  id: string;
+  name: string;
+  designation?: string; // Company, location, or customer title
+  avatarOrLogo?: string;
+  rating: number; // 1 to 5
+  quote: string;
+  active?: boolean;
+}
+
+export interface TestimonialSectionSettings {
+  enabled: boolean;
+  title: string; // e.g. "What our customers say"
+  subtitle?: string;
+  autoScroll?: boolean;
+  scrollInterval?: number; // in seconds, e.g. 5
+  showReviewsBadge?: boolean; // floating side tab "★ Reviews"
+  items: TestimonialItem[];
+}
+
+export interface BeforeAfterBullet {
+  id: string;
+  title: string;
+  description: string;
+}
+
+export interface BeforeAfterSettings {
+  enabled: boolean;
+  title: string;
+  description: string;
+  beforeImage: string;
+  afterImage: string;
+  beforeBadge?: string; // default "BEFORE"
+  afterBadge?: string;  // default "AFTER"
+  initialSliderPosition?: number; // 0 to 100, default 50
+  buttonText?: string;  // e.g. "Shop PowerPax™"
+  buttonLink?: string;  // e.g. "/shop"
+  bullets: BeforeAfterBullet[];
+}
+
+export interface ClientLogoItem {
+  id: string;
+  name: string;
+  logoUrl: string;
+  link?: string;
+  active?: boolean;
+}
+
+export interface ClientLogosSettings {
+  enabled: boolean;
+  title: string; // e.g. "Brands That Love Us"
+  bgColor?: string; // default "#0c1e30"
+  items: ClientLogoItem[];
+}
+
+export interface PhotoReviewItem {
+  id: string;
+  name: string;
+  isVerified?: boolean;
+  rating: number; // 1 to 5
+  quote: string;
+  photoUrl: string;
+  productTag?: string; // e.g. "PowerPax™ Clean..."
+  active?: boolean;
+}
+
+export interface PhotoReviewsSettings {
+  enabled: boolean;
+  title: string; // e.g. "See What Customers Are Saying"
+  overallRating?: number; // e.g. 4.76
+  totalReviewsCount?: number; // e.g. 268
+  isVerifiedBadge?: boolean;
+  items: PhotoReviewItem[];
+}
+
+export interface VideoReviewItem {
+  id: string;
+  author: string; // e.g. "Jenna H."
+  pillTag?: string; // e.g. "Benefits"
+  subtitle?: string; // e.g. "ONE POD, FIVE JOBS"
+  quote: string;
+  videoUrl?: string;
+  posterUrl: string;
+  active?: boolean;
+}
+
+export interface VideoReviewsSettings {
+  enabled: boolean;
+  badge?: string;
+  title?: string;
+  description?: string;
+  buttonText?: string;
+  buttonLink?: string;
+  items: VideoReviewItem[];
+}
+
+export interface FaqItem {
+  id: string;
+  question: string;
+  answer: string;
+  active?: boolean;
+}
+
+export interface FaqSectionSettings {
+  enabled: boolean;
+  title: string; // e.g. "Frequently asked questions"
+  subtitle?: string;
+  bgColor?: string; // default dark "#0c1e30"
+  items: FaqItem[];
+}
+
+export interface CartReviewSettings {
+  enabled: boolean;
+  reviewerName: string;
+  location?: string;
+  isVerified: boolean;
+  reviewDate: string;
+  rating: number;
+  comment: string;
+  photoUrl?: string;
+  productTitle?: string;
+  productImage?: string;
+}
+
+export interface BlogPost {
+  id: string;
+  title: string;
+  slug: string;
+  coverImage: string;
+  excerpt: string;
+  content: string; // rich HTML or markdown
+  author?: string;
+  readTime?: string;
+  isFeatured?: boolean;
+  createdAt: string;
+  updatedAt?: string;
+  isPublished?: boolean;
+  tags?: string[];
 }
 
 export interface AboutPagePillar {
@@ -584,6 +765,8 @@ export interface AboutPageStat {
 }
 
 export interface AboutPageSettings {
+  pageTitle?: string;
+  description?: string;
   title?: string;
   subtitle?: string;
   content?: string;
@@ -680,15 +863,24 @@ export interface BookOrder {
   deliveryZone?: string;
   district?: string;
   thana?: string;
-  productTitle?: string; // e.g. "Smart land surveying and management"
-  price?: number; // 490
+  productTitle?: string; // e.g. "Product Title"
+  price?: number;
   unitPrice?: number;
-  deliveryCharge: number; // 90
+  deliveryCharge: number;
   quantity: number; // 1
   items?: CartItem[] | any[];
   totalPrice?: number; // 580
   totalAmount?: number;
-  paymentMethod?: 'COD' | 'bKash' | 'Nagad';
+  total?: number;
+  orderTotal?: number;
+  subtotal?: number;
+  itemCount?: number;
+  bookTitle?: string;
+  deliveryStatus?: string;
+  updatedAt?: string;
+  customerPhone?: string;
+  customerEmail?: string;
+  paymentMethod?: 'COD' | 'bKash' | 'Nagad' | 'Cash on Delivery' | string;
   trxId?: string;
   senderPhone?: string;
   orderType?: 'landing' | 'physical' | 'store' | 'storefront';
@@ -730,7 +922,7 @@ export interface Coupon {
   usageLimit?: number;
   usageCount: number;
   endDate?: string;
-  type: 'fixed' | 'percentage';
+  type: 'fixed' | 'percentage' | 'percent';
   status: 'Active' | 'Inactive';
   visibility: 'Public' | 'Private';
   oncePerCustomer?: boolean;
@@ -762,7 +954,7 @@ export interface Brand {
   updatedAt?: string;
 }
 
-export type ActiveTab = 'dashboard' | 'products' | 'orders' | 'abandoned_carts' | 'customers' | 'coupons' | 'inventory' | 'category_management' | 'brand_management' | 'slider_management' | 'header_settings' | 'flash_sale' | 'highlight_spotlight' | 'about_settings' | 'landing_setup' | 'payment_settings' | 'delivery_settings' | 'pixel_settings' | 'courier_settings' | 'profile' | 'points' | 'contact_messages' | 'membership_tiers' | 'digital_cards' | 'member_directory';
+export type ActiveTab = 'dashboard' | 'products' | 'orders' | 'abandoned_carts' | 'customers' | 'coupons' | 'inventory' | 'category_management' | 'brand_management' | 'slider_management' | 'header_settings' | 'flash_sale' | 'highlight_spotlight' | 'about_settings' | 'landing_setup' | 'payment_settings' | 'delivery_settings' | 'pixel_settings' | 'courier_settings' | 'profile' | 'points' | 'contact_messages' | 'blog_manager' | 'video_reviews';
 
 export interface ContactMessage {
   id: string;

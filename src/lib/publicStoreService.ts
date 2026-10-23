@@ -43,6 +43,11 @@ export function readStorefrontCache<T>(key: string, fallback?: T): T | null {
     const raw = localStorage.getItem(key);
     if (raw) {
       const parsed = JSON.parse(raw);
+      if (key === 'noor_ecom_settings' && parsed && Array.isArray(parsed.blogPosts)) {
+        parsed.blogPosts = parsed.blogPosts.filter(
+          (p: any) => p && p.id !== 'post-care-for-clothes' && p.id !== 'post-choose-right-laundry-pods' && p.id !== 'post-remove-coffee-stains' && p.id !== 'post-remove-ink-from-shirt'
+        );
+      }
       memoryCache.set(key, { data: parsed, timestamp: Date.now() });
       return parsed as T;
     }
@@ -67,14 +72,38 @@ function writeCache<T>(key: string, data: T): void {
 
 export const publicStoreService = {
   async getProducts(): Promise<Product[]> {
-    const cached = readCache<Product[]>('noor_ecom_products', DEFAULT_PRODUCTS);
+    const isLegacySeed = (p: Product) => 
+      p.id === '3-in-1-laundry-detergent-pods' ||
+      p.id === 'leaf-curt-5-in-1-laundry-pods-tub' ||
+      p.id === 'leaf-curt-5-in-1-laundry-pods-box' ||
+      p.id?.startsWith('prod-book-01') || 
+      p.id?.startsWith('prod-map-holder') || 
+      p.id?.startsWith('prod-gunia') || 
+      p.id?.startsWith('prod-tape') ||
+      p.brand?.toLowerCase().includes('fantine') ||
+      p.category === 'Serums' ||
+      p.category === 'Toners' ||
+      p.category === 'Rapid Acne Treatment Series' ||
+      !p.id ||
+      p.id?.startsWith('prod-vb') ||
+      p.id?.startsWith('prod-vc') ||
+      p.id?.startsWith('prod-super-antioxidant') ||
+      p.id?.startsWith('prod-ve-') ||
+      p.id?.startsWith('prod-rapid-acne') ||
+      p.id?.startsWith('prod-aha') ||
+      p.id?.startsWith('prod-retinol') ||
+      p.id?.startsWith('prod-collagen') ||
+      p.id?.startsWith('prod-botox');
+
+    const cached = readCache<Product[]>('noor_ecom_products', DEFAULT_PRODUCTS).filter(p => !isLegacySeed(p));
     try {
       const res = await fetch('/api/products');
       if (res.ok) {
         const data = await res.json();
-        if (Array.isArray(data) && data.length > 0) {
-          writeCache('noor_ecom_products', data);
-          return data;
+        if (Array.isArray(data)) {
+          const clean = data.filter(p => !isLegacySeed(p));
+          writeCache('noor_ecom_products', clean);
+          return clean;
         }
       }
     } catch {
@@ -189,5 +218,33 @@ export const publicStoreService = {
 
   async submitContactMessage(message: Partial<ContactMessage>): Promise<ContactMessage> {
     return this.saveContactMessage(message);
+  },
+
+  async getBestSellers(): Promise<{
+    success: boolean;
+    totalSales: number;
+    data: {
+      week: (Product & { salesCount: number })[];
+      month: (Product & { salesCount: number })[];
+      all: (Product & { salesCount: number })[];
+    };
+  }> {
+    try {
+      const res = await fetch('/api/products/bestsellers');
+      if (res.ok) {
+        const json = await res.json();
+        if (json && typeof json.totalSales === 'number' && json.data) {
+          return json;
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to fetch bestsellers from server:', e);
+    }
+    return {
+      success: false,
+      totalSales: 0,
+      data: { week: [], month: [], all: [] }
+    };
   }
 };
+

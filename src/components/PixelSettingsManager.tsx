@@ -55,76 +55,58 @@ export default function PixelSettingsManager() {
   }
 
   return (
-    <form onSubmit={handleSave} className="space-y-6 font-sans max-w-5xl mx-auto">
-      {/* Top Header Card */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-5 sm:p-6 rounded-2xl border border-slate-200/80 shadow-xs">
-        <div>
-          <div className="flex items-center space-x-2.5">
-            <div className="p-2 bg-blue-50 text-blue-600 rounded-xl">
-              <Code className="h-5 w-5" />
-            </div>
-            <h2 className="text-lg sm:text-xl font-bold text-slate-900">
-              GTM
-            </h2>
-          </div>
-          <p className="text-xs text-slate-500 mt-1">
-            Google AnalyticsTXx and ad tracking confeeGarration
-          </p>
-        </div>
-
-        <div className="flex items-center space-x-2 w-full sm:w-auto">
-          <button
-            type="submit"
-            disabled={isSaving}
-            className="w-full sm:w-auto inline-flex items-center justify-center px-6 py-2.5 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold shadow-md transition-all hover:shadow-lg disabled:opacity-50 cursor-pointer"
-          >
-            {isSaving ? (
-              <span className="flex items-center gap-1.5">
-                <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                Saving...
-              </span>
-            ) : saveSuccess ? (
-              <>
-                <Check className="h-4 w-4 mr-1.5 text-emerald-300" />
-                Saved successfully!
-              </>
-            ) : (
-              <>
-                <Save className="h-4 w-4 mr-1.5" />
-                heTSave all
-              </>
-            )}
-          </button>
-        </div>
-      </div>
-
+    <form onSubmit={handleSave} className="space-y-6 font-sans max-w-4xl">
       <div className="grid grid-cols-1 gap-6">
         {/* Google Tag Manager & Web Analytics */}
         <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs space-y-4">
           <div className="flex items-center space-x-3 pb-3 border-b border-slate-100">
-            <div className="p-2.5 bg-amber-50 text-amber-600 rounded-xl">
-              <Eye className="h-5 w-5" />
+            <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl">
+              <Code className="h-5 w-5" />
             </div>
             <div>
-              <h3 className="font-bold text-slate-900 text-sm">GTM</h3>
-              <p className="text-[11px] text-slate-500">Google Analytics 4 and GADS Tracking</p>
+              <h3 className="font-bold text-slate-900 text-sm">Google Tag Manager (GTM)</h3>
+              <p className="text-[11px] text-slate-500">Google Analytics 4 and Google Ads Conversion Tracking</p>
             </div>
           </div>
 
           <div className="space-y-4 text-xs">
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">
+              <label className="block font-semibold text-slate-700 mb-1.5">
                 GTM Container ID
               </label>
-              <input
-                type="text"
-                placeholder="Ex: GTM-XXXXXXX"
-                value={settings.gtmId || ''}
-                onChange={(e) => setSettings({ ...settings, gtmId: e.target.value })}
-                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-teal-500 focus:bg-white focus:outline-none font-mono text-slate-900"
-              />
-              <p className="text-[10px] text-slate-400 mt-1">
-                your GTM All tracking tags will be automatically loaded into Headex when the container ID is set।
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  placeholder="Ex: GTM-XXXXXXX"
+                  value={settings.gtmId || ''}
+                  onChange={(e) => setSettings({ ...settings, gtmId: e.target.value })}
+                  className="flex-1 px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:bg-white focus:outline-none font-mono text-xs text-slate-900"
+                />
+                <button
+                  type="submit"
+                  disabled={isSaving}
+                  className="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold shadow-xs transition-all disabled:opacity-50 inline-flex items-center gap-1.5 cursor-pointer shrink-0"
+                >
+                  {isSaving ? (
+                    <>
+                      <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                      <span>Saving...</span>
+                    </>
+                  ) : saveSuccess ? (
+                    <>
+                      <Check className="h-3.5 w-3.5 text-emerald-400" />
+                      <span>Saved!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Save className="h-3.5 w-3.5" />
+                      <span>Save</span>
+                    </>
+                  )}
+                </button>
+              </div>
+              <p className="text-[11px] text-slate-500 mt-1.5">
+                All GTM tracking tags and dataLayer events will automatically load into the storefront header once your container ID is set.
               </p>
             </div>
 
@@ -135,8 +117,8 @@ export default function PixelSettingsManager() {
               </div>
               <ul className="list-disc list-inside text-[10px] space-y-0.5 text-blue-800">
                 <li><code>purchase</code> - Triggered upon order confirmation</li>
-                <li><code>begin_checkout</code> - Checkout opening time</li>
-                <li><code>view_item</code> - While browsing product details</li>
+                <li><code>begin_checkout</code> - Triggered when checkout drawer or page opens</li>
+                <li><code>view_item</code> - Triggered while browsing product details</li>
               </ul>
             </div>
           </div>

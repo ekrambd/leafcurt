@@ -982,9 +982,9 @@ export default function CategoryManager() {
         ) : (
           <div className="p-8 text-center bg-slate-50 rounded-xl border border-dashed border-slate-300 space-y-2">
             <Tag className="h-8 w-8 text-slate-400 mx-auto" />
-            <p className="text-xs font-bold text-slate-600">No custom categories have been created</p>
-            <p className="text-[11px] text-slate-400">
-              above categoryR name by writing 'Add category' First by clicking the button category add।
+            <p className="text-xs font-bold text-slate-700">No categories created yet</p>
+            <p className="text-[11px] text-slate-500">
+              Enter a category name above and click "Add category" to create your first category.
             </p>
           </div>
         )}

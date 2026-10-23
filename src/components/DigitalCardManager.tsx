@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { DigitalLoyaltyCard } from '../types';
 import { loyaltyClubService } from '../lib/loyaltyClubService';
+import { dbService } from '../lib/dbService';
 import { CircularProgress } from './LoadingSkeleton';
 import { 
   CreditCard, Plus, Trash2, Edit3, X, Check, Save, Share2, 
@@ -38,6 +39,7 @@ export default function DigitalCardManager() {
     title: '',
     message: ''
   });
+  const [brandName, setBrandName] = useState('VIP Club');
 
   useEffect(() => {
     loadData();
@@ -46,12 +48,16 @@ export default function DigitalCardManager() {
   async function loadData() {
     setIsLoading(true);
     try {
-      const [cardsData, membersData] = await Promise.all([
+      const [cardsData, membersData, ecom] = await Promise.all([
         loyaltyClubService.getDigitalLoyaltyCards(),
-        loyaltyClubService.getClubMembers()
+        loyaltyClubService.getClubMembers(),
+        dbService.getEcomSettings().catch(() => null)
       ]);
       setCards(cardsData);
       setMemberCount(membersData.length);
+      if (ecom?.storeName || ecom?.headerSettings?.brandName) {
+        setBrandName(ecom.storeName || ecom.headerSettings.brandName);
+      }
     } catch (err) {
       console.error('Failed to load digital cards:', err);
     } finally {
@@ -237,7 +243,7 @@ export default function DigitalCardManager() {
           const cashbackPct = (((pts * ptVal) / spend) * 100).toFixed(1);
 
           const whatsappText = encodeURIComponent(
-            `Hello! Join the livewellfresh VIP Club to get ${cashbackPct}% Cashback on every order and exclusive member discounts!\nClick here to get your free digital card: ${window.location.origin}/shop`
+            `Hello! Join the ${brandName} VIP Club to get ${cashbackPct}% Cashback on every order and exclusive member discounts!\nClick here to get your free digital card: ${window.location.origin}/shop`
           );
 
           return (
@@ -257,7 +263,7 @@ export default function DigitalCardManager() {
                 <div className="flex items-start justify-between relative z-10">
                   <div>
                     <span className="text-[11px] font-medium text-white/80 uppercase tracking-wider block">
-                      livewellfresh
+                      {brandName}
                     </span>
                     <h4 className="text-lg font-black tracking-tight mt-0.5">
                       {card.title}

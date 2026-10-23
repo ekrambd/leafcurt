@@ -350,7 +350,7 @@ export const SkincareDoctorModal: React.FC<SkincareDoctorModalProps> = ({
         setMessages([]);
         handleSendMessage(initialUserPrompt);
       } else if (focusedProduct) {
-        const productGreetingText = `👋 **Hello! I am the Fantine AI Skincare Doctor.**
+        const productGreetingText = `👋 **Hello! I am your AI Skincare & Beauty Specialist.**
 
 I see you are viewing **"${focusedProduct.title}"**.
 
@@ -430,7 +430,7 @@ ${productTitles}
           {
             id: 'clean_welcome',
             role: 'assistant',
-            text: `👋 **Hello! I am the Fantine AI Skincare Doctor.**
+            text: `👋 **Hello! I am your AI Skincare & Beauty Specialist.**
 
 I can help you build the right Korean skincare routine and select personalized products for your skin type. 
 
@@ -611,7 +611,7 @@ I can help you build the right Korean skincare routine and select personalized p
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="font-bold text-sm sm:text-base text-white tracking-tight">
-                  Fantine Skincare Specialist
+                  AI Skincare Specialist
                 </h3>
                 {cartProducts.length > 0 && (
                   <span className="px-2 py-0.5 rounded-full bg-rose-600 text-white text-[10px] font-bold flex items-center gap-1 shadow-xs">

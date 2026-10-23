@@ -1,4 +1,5 @@
 import express from "express";
+import http from "http";
 import path from "path";
 import fs from "fs";
 import crypto from "crypto";
@@ -6,42 +7,137 @@ import zlib from "zlib";
 import dotenv from "dotenv";
 import { createServer as createViteServer } from "vite";
 import { app } from "./src/server/app";
-import { storeProducts } from "./src/server/data/store";
+import { storeProducts, loadSettingsFromDisk } from "./src/server/data/store";
+
+const httpServer = http.createServer(app);
 
 function injectServerMeta(html: string, reqPath: string, host: string, proto: string): string {
-  let title = "FAИTIИE (F A И T I И E) - Luxury Korean Hanbang Skincare";
-  let description = "Premium Korean Hanbang Skincare & Botanical Whitening Solutions by Brandini Co., Ltd. Order authentic Korean skincare with Cash on Delivery in Bangladesh.";
-  let image = "https://fantinebd.com/logo_transparent.webp";
+  const settings = loadSettingsFromDisk();
+  const storeName = settings?.storeName || settings?.headerSettings?.brandName || "Store";
+  const defaultDesc = settings?.footerDescription || settings?.storeTagline || `Welcome to ${storeName} - Authentic online shopping with Cash on Delivery across Bangladesh.`;
+  const defaultLogo = settings?.storeLogo || settings?.headerSettings?.logoUrl || "";
+  let title = `${storeName} - Official Online Store`;
+  let description = defaultDesc;
+  let image = defaultLogo ? (defaultLogo.startsWith('http') ? defaultLogo : `https://${host}${defaultLogo}`) : `https://${host}/favicon.ico`;
   const fullUrl = `${proto}://${host}${reqPath}`;
+
+  const schemas: any[] = [];
+  let matchedProduct: any = null;
 
   if (reqPath.startsWith('/product')) {
     const pathLower = reqPath.toLowerCase();
-    const matched = storeProducts.find(p => {
+    matchedProduct = storeProducts.find(p => {
       const pId = p.id.toLowerCase();
       const pSlug = (p.title || '').toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
       return pathLower.includes(pId) || (pSlug.length > 3 && pathLower.includes(pSlug));
     });
 
-    if (matched) {
-      title = `${matched.title} | FAИTIИE`;
-      description = matched.description || (matched as any).subtitle || description;
-      image = (matched as any).coverImage || matched.image || image;
+    if (matchedProduct) {
+      title = `${matchedProduct.title} | ${storeName}`;
+      description = matchedProduct.description || matchedProduct.subtitle || description;
+      image = matchedProduct.coverImage || matchedProduct.image || image;
+
+      // Product Schema for Google Search & AI Engines (AEO/GEO)
+      schemas.push({
+        "@context": "https://schema.org/",
+        "@type": "Product",
+        "name": matchedProduct.title,
+        "image": image.startsWith('http') ? image : `https://${host}${image}`,
+        "description": description,
+        "sku": matchedProduct.id,
+        "brand": {
+          "@type": "Brand",
+          "name": matchedProduct.brand || storeName
+        },
+        "offers": {
+          "@type": "Offer",
+          "url": fullUrl,
+          "priceCurrency": "BDT",
+          "price": matchedProduct.price || matchedProduct.regularPrice || 0,
+          "availability": (matchedProduct.stockQuantity && matchedProduct.stockQuantity > 0) || matchedProduct.isAvailable !== false ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
+          "itemCondition": "https://schema.org/NewCondition",
+          "priceValidUntil": "2027-12-31",
+          "seller": {
+            "@type": "Organization",
+            "name": storeName
+          },
+          "hasMerchantReturnPolicy": {
+            "@type": "MerchantReturnPolicy",
+            "applicableCountry": "BD",
+            "returnPolicyCategory": "https://schema.org/MerchantReturnFiniteReturnWindow",
+            "merchantReturnDays": 7,
+            "returnMethod": "https://schema.org/ReturnByMail"
+          },
+          "shippingDetails": {
+            "@type": "OfferShippingDetails",
+            "shippingRate": {
+              "@type": "MonetaryAmount",
+              "value": settings?.deliveryChargeInsideDhaka ?? 60,
+              "currency": "BDT"
+            },
+            "shippingDestination": {
+              "@type": "DefinedRegion",
+              "addressCountry": "BD"
+            },
+            "deliveryTime": {
+              "@type": "ShippingDeliveryTime",
+              "handlingTime": { "@type": "QuantitativeValue", "minValue": 0, "maxValue": 1, "unitCode": "DAY" },
+              "transitTime": { "@type": "QuantitativeValue", "minValue": 1, "maxValue": 3, "unitCode": "DAY" }
+            }
+          }
+        }
+      });
     }
   } else if (reqPath.startsWith('/shop')) {
-    title = "Shop All Korean Skincare Formulations | FAИTIИE";
-    description = "Explore our complete catalog of Korean Hanbang botanical skincare, creams, toners, and cleansers.";
+    title = `Shop Catalog | ${storeName}`;
+    description = `Explore our complete collection and products on ${storeName}.`;
   } else if (reqPath.startsWith('/about')) {
-    title = "About Us & Hanbang Story | FAИTIИE";
-    description = "Learn about our Seoul heritage, brand story, and traditional Korean herbal skincare philosophy.";
+    title = `About Us | ${storeName}`;
+    description = `Learn about ${storeName}, our story, values, and commitment to quality.`;
   } else if (reqPath.startsWith('/contact')) {
-    title = "Contact Us & Customer Support | FAИTIИE";
-    description = "Reach out to the FAИTIИE team via WhatsApp, phone, or email for customer support and order inquiries.";
+    title = `Contact Us & Customer Support | ${storeName}`;
+    description = `Reach out to the ${storeName} team via WhatsApp, phone, or email for customer support and order inquiries.`;
   } else if (reqPath.startsWith('/quiz')) {
-    title = "Personalized Skin Routine Quiz | FAИTIИE";
-    description = "Take the 1-minute Korean skincare quiz to find your personalized daily routine.";
+    title = `Personalized Product Quiz | ${storeName}`;
+    description = `Take the 1-minute quiz to find your personalized recommendations on ${storeName}.`;
   } else {
     return html;
   }
+
+  // BreadcrumbList Structured Data
+  schemas.push({
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "Home", "item": `https://${host}/` },
+      { "@type": "ListItem", "position": 2, "name": "Shop", "item": `https://${host}/shop` },
+      ...(matchedProduct ? [{ "@type": "ListItem", "position": 3, "name": matchedProduct.title, "item": fullUrl }] : [])
+    ]
+  });
+
+  // Direct Q&A FAQPage Schema for AI Answer Engine Optimization (AEO/GEO)
+  schemas.push({
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "Is Cash on Delivery available for this in Bangladesh?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Yes, Cash on Delivery (COD) is available across all 64 districts in Bangladesh with 24-48 hour delivery inside Dhaka and 48-72 hours outside Dhaka via Steadfast and Pathao couriers."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": `Are products on ${storeName} 100% authentic?`,
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": `Yes, all items sold on ${storeName} are 100% authentic, verified for quality, and backed by our customer satisfaction guarantee.`
+        }
+      }
+    ]
+  });
 
   let modified = html;
   // Replace Title
@@ -60,6 +156,14 @@ function injectServerMeta(html: string, reqPath: string, host: string, proto: st
   modified = modified.replace(/<meta name="twitter:title" content=".*?"\s*\/?>/i, `<meta name="twitter:title" content="${title}" />`);
   modified = modified.replace(/<meta name="twitter:description" content=".*?"\s*\/?>/i, `<meta name="twitter:description" content="${description}" />`);
   modified = modified.replace(/<meta name="twitter:image" content=".*?"\s*\/?>/i, `<meta name="twitter:image" content="${image}" />`);
+
+  // Canonical link tag injection
+  const canonicalTag = `<link rel="canonical" href="${fullUrl}" />`;
+  const schemaScript = `<script type="application/ld+json" id="server-seo-schemas">${JSON.stringify(schemas)}</script>`;
+
+  if (modified.includes('</head>')) {
+    modified = modified.replace('</head>', `  ${canonicalTag}\n  ${schemaScript}\n</head>`);
+  }
 
   return modified;
 }
@@ -132,12 +236,50 @@ app.use((req, res, next) => {
 
 // ==================== VITE / STATIC SERVER ====================
 async function startServer() {
-  if (process.env.NODE_ENV !== "production") {
+  const isDev = 
+    process.env.npm_lifecycle_event === 'dev' || 
+    process.argv.includes('--dev') || 
+    process.env.NODE_ENV === 'development' || 
+    !fs.existsSync(path.join(process.cwd(), 'dist', 'index.html'));
+
+  if (isDev) {
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      server: {
+        middlewareMode: true,
+        hmr: { server: httpServer },
+        watch: {
+          ignored: [
+            '**/prisma/**',
+            '**/*.db',
+            '**/*.db-*',
+            '**/*.sqlite*',
+            '**/*.json',
+            '**/.backups/**',
+            '**/.agents/**',
+            '**/dist/**',
+            '**/public/uploads/**',
+            '**/.git/**',
+            '**/node_modules/**'
+          ]
+        }
+      },
       appType: "spa",
     });
     app.use(vite.middlewares);
+    app.use('*', async (req, res, next) => {
+      const url = req.originalUrl;
+      if (url.startsWith('/api') || url.startsWith('/cdn') || url.startsWith('/uploads')) {
+        return next();
+      }
+      try {
+        let template = fs.readFileSync(path.resolve(process.cwd(), 'index.html'), 'utf-8');
+        template = await vite.transformIndexHtml(url, template);
+        res.status(200).set({ 'Content-Type': 'text/html' }).end(template);
+      } catch (e) {
+        vite.ssrFixStacktrace(e as Error);
+        next(e);
+      }
+    });
   } else {
     const distPath = path.join(process.cwd(), 'dist');
 
@@ -175,12 +317,17 @@ async function startServer() {
         return res.status(404).json({ error: 'Endpoint not found' });
       }
 
+      // Never serve index.html for static script/asset requests to avoid MIME type errors
+      if (/\.(js|mjs|cjs|ts|tsx|css|map|wasm|png|jpg|jpeg|gif|webp|svg|ico|woff|woff2|ttf|eot)$/i.test(req.path)) {
+        return res.status(404).type('text/plain').send('Asset not found');
+      }
+
       const { html } = getIndexHtml();
       if (!html) {
         return res.sendFile(path.join(process.cwd(), 'index.html'));
       }
 
-      const host = req.headers.host || 'fantinebd.com';
+      const host = req.headers.host || 'store.com';
       const proto = (req.headers['x-forwarded-proto'] as string) || req.protocol || 'https';
       const isDynamicRoute = req.path.startsWith('/product') || req.path.startsWith('/shop') || req.path.startsWith('/about') || req.path.startsWith('/contact') || req.path.startsWith('/quiz');
 
@@ -196,7 +343,18 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
+  httpServer.on("error", (err: any) => {
+    if (err.code === "EADDRINUSE") {
+      console.error(`\n❌ Error: Port ${PORT} is already in use by another process.`);
+      console.error(`👉 Run the following command in terminal to free port ${PORT}:`);
+      console.error(`   lsof -ti :${PORT} | xargs kill -9\n`);
+    } else {
+      console.error("Server error:", err);
+    }
+    process.exit(1);
+  });
+
+  httpServer.listen(PORT, "0.0.0.0", () => {
     console.log(`🚀 Noor E-Commerce Architecture active on http://localhost:${PORT}`);
   });
 }

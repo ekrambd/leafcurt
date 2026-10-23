@@ -6,12 +6,16 @@ import {
   Coins, Truck, Smartphone, QrCode, Share2, MessageCircle, X, Download, UserCheck
 } from 'lucide-react';
 
+import { dbService } from '../lib/dbService';
+
 interface Props {
   onExploreProducts?: () => void;
   onOpenCheckout?: () => void;
+  storeName?: string;
 }
 
-export default function LoyaltyMembershipSection({ onExploreProducts, onOpenCheckout }: Props) {
+export default function LoyaltyMembershipSection({ onExploreProducts, onOpenCheckout, storeName: propStoreName }: Props) {
+  const [storeBrandName, setStoreBrandName] = useState(propStoreName || 'VIP Club');
   const [tiers, setTiers] = useState<VipTier[]>([]);
   const [digitalCard, setDigitalCard] = useState<DigitalLoyaltyCard | null>(null);
   const [activeMember, setActiveMember] = useState<ClubMember | null>(null);
@@ -27,13 +31,17 @@ export default function LoyaltyMembershipSection({ onExploreProducts, onOpenChec
   useEffect(() => {
     async function loadData() {
       try {
-        const [tiersData, cardsData] = await Promise.all([
+        const [tiersData, cardsData, ecom] = await Promise.all([
           loyaltyClubService.getVipTiers(),
-          loyaltyClubService.getDigitalLoyaltyCards()
+          loyaltyClubService.getDigitalLoyaltyCards(),
+          propStoreName ? Promise.resolve(null) : dbService.getEcomSettings().catch(() => null)
         ]);
         setTiers(tiersData.filter(t => t.status === 'Active'));
         if (cardsData.length > 0) {
           setDigitalCard(cardsData[0]);
+        }
+        if (ecom?.storeName || ecom?.headerSettings?.brandName) {
+          setStoreBrandName(ecom.storeName || ecom.headerSettings.brandName);
         }
         const session = loyaltyClubService.getActiveMemberSession();
         if (session) {
@@ -44,7 +52,7 @@ export default function LoyaltyMembershipSection({ onExploreProducts, onOpenChec
       }
     }
     loadData();
-  }, []);
+  }, [propStoreName]);
 
   const handleOpenJoin = (presetTier?: VipTier) => {
     const session = loyaltyClubService.getActiveMemberSession();
@@ -100,7 +108,7 @@ export default function LoyaltyMembershipSection({ onExploreProducts, onOpenChec
         <div className="text-center max-w-3xl mx-auto space-y-3.5 mb-12 sm:mb-16">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-sky-100 text-[#0284c7] font-extrabold text-xs tracking-wide shadow-2xs border border-sky-200">
             <Award className="h-4 w-4" />
-            <span>LIVEWELLFRESH SUPER CLUB • লয়্যালটি প্রিভিলেজ</span>
+            <span>{storeBrandName.toUpperCase()} VIP CLUB • লয়্যালটি প্রিভিলেজ</span>
           </div>
 
           <h2 className="text-2xl sm:text-4xl lg:text-5xl font-black text-slate-900 tracking-tight leading-tight">
@@ -301,7 +309,7 @@ export default function LoyaltyMembershipSection({ onExploreProducts, onOpenChec
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div>
                 <h3 className="text-base font-black text-slate-900">
-                  {joinedSuccess ? 'Your Digital VIP Pass' : 'Join livewellfresh Super Club'}
+                  {joinedSuccess ? 'Your Digital VIP Pass' : `Join ${storeBrandName} VIP Club`}
                 </h3>
                 <p className="text-[11px] text-slate-500">
                   {joinedSuccess ? 'আপনার পার্সোনালাইজড মেম্বারশিপ কার্ড প্রস্তুত' : '১ ক্লিকে মেম্বারশিপ নিয়ে আকর্ষণীয় ছাড় পান'}
@@ -333,7 +341,7 @@ export default function LoyaltyMembershipSection({ onExploreProducts, onOpenChec
                       <div className="flex items-center gap-1.5">
                         <Sparkles className="h-4 w-4 text-amber-300" />
                         <span className="text-xs font-black tracking-wider uppercase text-white/90">
-                          LIVEWELLFRESH
+                          {storeBrandName.toUpperCase()}
                         </span>
                       </div>
                       <h4 className="text-lg font-black tracking-tight mt-0.5">
@@ -378,7 +386,7 @@ export default function LoyaltyMembershipSection({ onExploreProducts, onOpenChec
                 <div className="space-y-2.5">
                   <a
                     href={`https://wa.me/?text=${encodeURIComponent(
-                      `Here is my livewellfresh Super Club Membership Card!\nName: ${generatedMember.name}\nCard No: ${generatedMember.memberNumber}\nTier: ${generatedMember.tierName}\nPoints: ${generatedMember.pointsBalance} PTS\nJoin here: ${window.location.origin}/shop`
+                      `Here is my ${storeBrandName} VIP Club Membership Card!\nName: ${generatedMember.name}\nCard No: ${generatedMember.memberNumber}\nTier: ${generatedMember.tierName}\nPoints: ${generatedMember.pointsBalance} PTS\nJoin here: ${window.location.origin}/shop`
                     )}`}
                     target="_blank"
                     rel="noopener noreferrer"

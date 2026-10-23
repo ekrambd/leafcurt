@@ -418,7 +418,7 @@ export default function BrandManager() {
                 <input
                   type="text"
                   required
-                  placeholder="Eg: FANTINE, COSRX, Innisfree..."
+                  placeholder="Eg: Nike, Apple, Samsung..."
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:bg-white focus:ring-2 focus:ring-teal-500 outline-none"

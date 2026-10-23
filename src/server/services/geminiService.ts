@@ -25,42 +25,42 @@ export interface SkincareAnalysisRequest {
   language?: 'bn' | 'en';
 }
 
-const SYSTEM_INSTRUCTION = `You are "Dr. Fantine (AI Korean Skincare Specialist & Serum Consultant)" for Fantine Laboratory / Fantine BD (a premium Korean Skincare brand).
+export function getSystemInstruction(storeName: string = 'Store'): string {
+  return `You are the "AI Care Specialist & Product Consultant" for ${storeName}.
 
 STRICT SCOPE & TOPIC GUARDRAILS (CRITICAL & MANDATORY):
-1. You are STRICTLY AND EXCLUSIVELY an AI Korean Skincare & Serum Specialist for this website.
-2. You are ONLY ALLOWED to answer questions related to:
-   - Skin types (Dry, Oily, Sensitive, Combination, Acne-prone, Normal)
-   - Skin concerns & treatments (Acne, dark spots, hyperpigmentation, melasma, barrier repair, sun damage, wrinkles, pores, redness, dullness)
-   - Korean serums, essences, toners, creams, cleansers, sunscreens, and skincare formulations
-   - Skincare active ingredients (Peptides, Vitamin C/Ascorbic Acid, Niacinamide, Tranexamic Acid, Salicylic Acid/BHA, Centella Asiatica, Hyaluronic Acid, Ceramides, Retinol, Panthenol, Glutathione, Ferulic Acid, Hanbang botanicals, etc.)
-   - AM/PM application sequence, layering order, formulation compatibility, routine builder, safety precautions, and Fantine website products/orders.
+1. You are an AI Assistant and Product Specialist for this website.
+2. You are helpful, polite, and assist customers with:
+   - Skin types, concerns & product recommendations
+   - Ingredients, formulations, active ingredients, and benefits
+   - AM/PM application sequence, layering order, and safety precautions
+   - Order assistance, store inquiries, and ${storeName} products.
 
 3. PRODUCT CONTEXT ACCURACY & AWARENESS (HIGH PRIORITY):
-   - When [CURRENTLY VIEWED / SELECTED PRODUCT CONTEXT] is provided, this represents the EXACT product the customer is viewing or consulting about on the website (e.g. Botox anti-wrinkle essence, Vitamin C Serum, Hanbang Cream, etc.).
+   - When [CURRENTLY VIEWED / SELECTED PRODUCT CONTEXT] is provided, this represents the EXACT product the customer is viewing or consulting about on the website.
    - ALWAYS leverage the provided product details (Title, Category, Price, Description, Benefits Highlights, Ingredients, How To Use) to provide precise, accurate, and tailored answers.
-   - Accurately explain its key actives, how it targets specific skin issues (e.g. anti-wrinkle peptides for lifting/elasticity, Niacinamide for dark spots), the best AM/PM layering order, and whether it pairs well with other serums or sunscreens.
+   - Accurately explain its key actives, how it works, and the best way to use it.
 
-4. STRICT REFUSAL POLICY FOR OFF-TOPIC QUERIES:
-   - If the user asks about ANY topic outside of skincare, beauty routines, and Fantine products (such as coding, general knowledge, politics, maths, news, history, sports, recipes, non-dermal medical advice, jokes, essays, random conversations):
-   - You MUST REFUSE politely and immediately redirect them to skincare.
-   - Example Bengali refusal:
-     "দুঃখিত, আমি শুধুমাত্র Fantine কোরিয়ান স্কিনকেয়ার, সিরাম ও ত্বকের যত্ন সম্পর্কিত পরামর্শ দিতে পারি। আপনার ত্বক, দাগ, ব্রণ বা স্কিনকেয়ার রুTন নিয়ে কোনো প্রশ্ন থাকলে আমাকে জানাতে পারেন! 🧴✨"
-   - Example English refusal:
-     "I specialize exclusively in Korean skincare, active serums, and personalized dermal routines. Please feel free to ask about your skin type, concerns, or our product formulations!"
+4. POLITE SCOPE FOCUS:
+   - If the user asks about topics completely outside ecommerce, beauty, routines, or store products (such as coding, politics, exams):
+   - Politely redirect them to ${storeName} products and customer assistance.
+   - Example Bengali reply:
+     "দুঃখিত, আমি শুধুমাত্র ${storeName} পণ্য ও সেবা সম্পর্কিত বিষয়ে সাহায্য করতে পারি। আমাদের প্রোডাক্ট বা অর্ডার নিয়ে কোনো প্রশ্ন থাকলে আমাকে জানাতে পারেন! ✨"
+   - Example English reply:
+     "I specialize in ${storeName} products and personalized shopping assistance. Please feel free to ask about our catalog or recommendations!"
 
-CORE SKINCARE EXPERTISE:
-- When analyzing serums or skincare products (especially when 1, 2, 3, or 4 products are selected), always provide:
+CORE EXPERTISE:
+- When analyzing products (especially when 1, 2, 3, or 4 products are selected), always provide:
   - **Formula Breakdown & Key Ingredients**
-  - **Comparison Matrix & Star Ratings (⭐⭐⭐⭐⭐)**
-  - **Ranking (🥇, 🥈, 🥉)** for specific goals (e.g., Pigmentation, Barrier, Glow, Anti-aging)
-  - **Step-by-Step AM (Morning) & PM (Night) Routine** (Cleanser -> Toner -> Actives -> Hydrating Serum -> Cream -> SPF)
-  - **Doctor's Note / Safety Warnings (⚠️)** (e.g., Daytime SPF 50 sunscreen requirement when using Vitamin C / Salicylic Acid / Retinol)
+  - **Star Ratings (⭐⭐⭐⭐⭐)**
+  - **Step-by-Step AM & PM Routine**
+  - **Special Tips / Safety Warnings (⚠️)**
 
 LANGUAGE & TONE:
-- Default to clear, natural, and medically sound Bengali (Bangla) if the user speaks Bengali or Banglish. If the user asks in English, respond in polished English.
-- GREETING RULE (STRICT): ALWAYS use "👋 হ্যালো! আমি Fantine AI Skincare Doctor." or "হ্যালো!". NEVER use "নমস্কার", "নমস্কার!", or any religious/traditional salutations. ALWAYS greet with "হ্যালো!".
-- Be empathetic, respectful, and authoritative like an experienced dermatologist.`;
+- Default to clear, natural Bengali (Bangla) if the user speaks Bengali or Banglish. If the user asks in English, respond in polished English.
+- GREETING RULE (STRICT): ALWAYS use "👋 হ্যালো! আমি ${storeName} AI Assistant." or "হ্যালো!". NEVER use "নমস্কার" or religious/traditional salutations. ALWAYS greet with "হ্যালো!".
+- Be empathetic, respectful, and authoritative.`;
+}
 
 export class GeminiSkincareService {
   private getApiKey(): string {
@@ -76,7 +76,7 @@ export class GeminiSkincareService {
   /**
    * Main consultation endpoint utilizing Gemini 2.0 / 1.5 Flash
    */
-  public async consultSkincareDoctor(req: SkincareAnalysisRequest): Promise<{ reply: string; model: string }> {
+  public async consultSkincareDoctor(req: SkincareAnalysisRequest, storeName: string = 'Store'): Promise<{ reply: string; model: string }> {
     return circuitBreakerRegistry.geminiAI.execute(
       async () => {
         const apiKey = this.getApiKey();
@@ -86,7 +86,7 @@ export class GeminiSkincareService {
         if (req.selectedProducts && req.selectedProducts.length > 0) {
           productContextText = `\n\n[CURRENTLY VIEWED / SELECTED PRODUCT CONTEXT]:\n` +
             req.selectedProducts.map((p, idx) => 
-              `Product ${idx + 1}: ${p.title}\nCategory: ${p.category || 'Skincare'}\nPrice: ৳${p.price || ''}\nDescription: ${p.description || ''}\nBenefits Highlights: ${p.benefitsHighlights || (Array.isArray(p.benefits) ? p.benefits.join(', ') : '') || ''}\nHow To Use: ${p.howToUseIt || ''}\nIngredients/Actives: ${p.ingredients || ''}`
+              `Product ${idx + 1}: ${p.title}\nCategory: ${p.category || 'Product'}\nPrice: ৳${p.price || ''}\nDescription: ${p.description || ''}\nBenefits Highlights: ${p.benefitsHighlights || (Array.isArray(p.benefits) ? p.benefits.join(', ') : '') || ''}\nHow To Use: ${p.howToUseIt || ''}\nIngredients/Actives: ${p.ingredients || ''}`
             ).join('\n---\n');
         }
 
@@ -97,10 +97,10 @@ export class GeminiSkincareService {
           productContextText += `\n[Customer Primary Skin Concern]: ${req.skinConcern}`;
         }
 
-        // If API key is not present, use our advanced local skincare engine
+        // If API key is not present, use our advanced local assistant engine
         if (!apiKey) {
-          const fallbackReply = this.generateDeterministicConsultation(req);
-          return { reply: fallbackReply, model: 'fantine-expert-skincare-engine' };
+          const fallbackReply = this.generateDeterministicConsultation(req, storeName);
+          return { reply: fallbackReply, model: 'local-ai-assistant-engine' };
         }
 
         // Format conversation for Gemini API
@@ -137,7 +137,7 @@ export class GeminiSkincareService {
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 systemInstruction: {
-                  parts: [{ text: SYSTEM_INSTRUCTION }]
+                  parts: [{ text: getSystemInstruction(storeName) }]
                 },
                 contents,
                 generationConfig: {
@@ -166,12 +166,12 @@ export class GeminiSkincareService {
 
         // If network/rate limit failed all models, fallback gracefully
         const fallbackReply = this.generateDeterministicConsultation(req);
-        return { reply: fallbackReply, model: 'fantine-fallback-engine' };
+        return { reply: fallbackReply, model: 'store-fallback-engine' };
       },
       () => {
         // Fallback when circuit is OPEN
         const fallbackReply = this.generateDeterministicConsultation(req);
-        return { reply: fallbackReply, model: 'fantine-circuit-fallback' };
+        return { reply: fallbackReply, model: 'store-circuit-fallback' };
       }
     );
   }
@@ -179,11 +179,11 @@ export class GeminiSkincareService {
   /**
    * Deterministic Dermatologist Knowledge Engine for Korean Serums & Actives
    */
-  private generateDeterministicConsultation(req: SkincareAnalysisRequest): string {
+  private generateDeterministicConsultation(req: SkincareAnalysisRequest, storeName: string = 'Store'): string {
     const lastUserMessage = (req.messages[req.messages.length - 1]?.content || '').toLowerCase();
     const products = req.selectedProducts || [];
 
-    // Skincare domain keywords
+    // Domain keywords
     const skincareKeywords = [
       'skin', 'serum', 'cream', 'toner', 'cleanser', 'face', 'routine', 'am', 'pm',
       'vitamin', 'niacinamide', 'acne', 'spot', 'pigment', 'barrier', 'dry', 'oily',
@@ -199,9 +199,9 @@ export class GeminiSkincareService {
 
     // Strict refusal for unrelated off-topic queries
     if (!isSkincareRelated) {
-      return `দুঃখিত, আমি শুধুমাত্র **Fantine কোরিয়ান স্কিনকেয়ার, সিরাম ও ত্বকের যত্ন সম্পর্কিত** বিষয়ে সাহায্য করতে পারি। 
+      return `দুঃখিত, আমি শুধুমাত্র **${storeName}** পণ্য ও গ্রাহক সেবা সম্পর্কিত বিষয়ে সাহায্য করতে পারি। 
 
-আপনার ত্বক, মেছতার দাগ, ব্রণ বা সকাল ও রাতের স্কিনকেয়ার রুTন নিয়ে কোনো প্রশ্ন থাকলে আমাকে জানাতে পারেন! 🧴✨`;
+আমাদের প্রোডাক্ট বা অর্ডার নিয়ে কোনো প্রশ্ন থাকলে আমাকে জানাতে পারেন! ✨`;
     }
 
     if (products.length === 1) {
@@ -238,7 +238,7 @@ ${p.howToUseIt ? `- **ব্যবহারবিধি:** ${p.howToUseIt}` : '-
     }
 
     if (products.length >= 2 || lastUserMessage.includes('formula') || lastUserMessage.includes('সিরাম') || lastUserMessage.includes('রুTন') || lastUserMessage.includes('তুলনা')) {
-      return `✨ **Fantine Skincare Routine & Formula Analysis:**
+      return `✨ **${storeName} Routine & Formula Analysis:**
 
 ---
 
@@ -295,13 +295,13 @@ ${p.howToUseIt ? `- **ব্যবহারবিধি:** ${p.howToUseIt}` : '-
 - সকাল ও রাতে ক্লিনজিংয়ের পর টোনার দিয়ে ভেজা মুখে এই সিরামT লাগান And ওপরে ময়েশ্চারাইজার দিয়ে লক করুন।`;
     }
 
-    return `👋 **হ্যালো! আমি Fantine AI Skincare Doctor.**
+    return `👋 **হ্যালো! আমি ${storeName} AI Assistant.**
 
-আপনার ত্বকের সঠিক যত্ন ও কোরিয়ান সিরাম ব্যবহারের নিয়ম জানতে আমি সাহায্য করতে পারি। 
+আমাদের পণ্যের সঠিক ব্যবহার ও অর্ডার সংক্রান্ত যেকোনো বিষয়ে আমি সাহায্য করতে পারি। 
 
 আপনি চাইলে:
-1. above থাকা **১ from ৪T সিরাম সিলেক্ট করতে পারেন**—আমি সাথে সাথে সকাল ও রাতের সঠিক ব্যবহারবিধি (AM/PM Routine) তৈরি করে দেব।
-2. আপনার স্কিন Type (Dry, Oily, Sensitive বা Combination) And সমস্যা (দাগ, ব্রণ, সানট্যান ইত্যাদি) লিখে বা মাইকে মুখে বলে জানাতে পারেন।
+1. উপরে থাকা পণ্য সিলেক্ট করতে পারেন—আমি সাথে সাথে সকাল ও রাতের সঠিক ব্যবহারবিধি তৈরি করে দেব।
+2. আপনার চাহিদা ও কোনো নির্দিষ্ট পণ্য সম্পর্কে লিখে বা মুখে বলে জানতে পারেন।
 
 আমি আপনাকে কীভাবে সাহায্য করতে পারি?`;
   }
@@ -338,7 +338,7 @@ ${p.howToUseIt ? `- **ব্যবহারবিধি:** ${p.howToUseIt}` : '-
 
     try {
       const prompt = params.product 
-        ? `You are an elite luxury Korean skincare copywriter for brand FANTINE (Brandini Co., Ltd. Seoul).
+        ? `You are an elite e-commerce brand copywriter.
 Create an irresistible, sophisticated homepage spotlight copy for this product:
 Product Title: ${params.product.title}
 Category: ${params.product.category || 'Skincare'}
@@ -348,19 +348,19 @@ Benefits: ${params.product.benefitsHighlights || ''}
 
 Return ONLY valid JSON in this exact structure:
 {
-  "title": "Punchy luxury headline (max 8 words, e.g. Clinical Pure Vitamin C Antioxidant Powerhouse)",
-  "subtitle": "Compelling 1-2 sentence marketing pitch emphasizing clinical results and radiance (max 35 words)",
-  "badgeTag": "Short uppercase badge tag (e.g. CELLULAR REPAIR • CLINICAL FORMULA)",
+  "title": "Punchy headline (max 8 words)",
+  "subtitle": "Compelling 1-2 sentence marketing pitch (max 35 words)",
+  "badgeTag": "Short uppercase badge tag",
   "buttonText": "BUY NOW"
 }`
-        : `You are an elite luxury Korean skincare copywriter for brand FANTINE (Brandini Co., Ltd. Seoul).
-Create an irresistible homepage spotlight copy for our skincare category: ${params.categoryName || 'Skincare'}.
+        : `You are an elite e-commerce brand copywriter.
+Create an irresistible homepage spotlight copy for our collection: ${params.categoryName || 'Featured'}.
 
 Return ONLY valid JSON in this exact structure:
 {
-  "title": "Inspiring luxury category headline (max 8 words)",
-  "subtitle": "Compelling 1-2 sentence pitch describing why this collection elevates daily skincare (max 35 words)",
-  "badgeTag": "${(params.categoryName || 'LUXURY').toUpperCase()} • COLLECTION",
+  "title": "Inspiring category headline (max 8 words)",
+  "subtitle": "Compelling 1-2 sentence pitch (max 35 words)",
+  "badgeTag": "${(params.categoryName || 'FEATURED').toUpperCase()} • COLLECTION",
   "buttonText": "EXPLORE COLLECTION"
 }`;
 
@@ -386,8 +386,8 @@ Return ONLY valid JSON in this exact structure:
             if (text) {
               const parsed = JSON.parse(text);
               return {
-                title: parsed.title || params.product?.title || 'FANTINE Skincare Spotlight',
-                subtitle: parsed.subtitle || params.product?.description || 'Clinical Korean formulation for daily skin transformation.',
+                title: parsed.title || params.product?.title || 'Featured Spotlight',
+                subtitle: parsed.subtitle || params.product?.description || 'Discover premium curated products designed for everyday excellence.',
                 badgeTag: parsed.badgeTag || 'FEATURED SPOTLIGHT',
                 buttonText: parsed.buttonText || 'BUY NOW'
               };

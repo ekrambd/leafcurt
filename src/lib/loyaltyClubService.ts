@@ -2,10 +2,10 @@ import { VipTier, DigitalLoyaltyCard, ClubMember, EcomSettings } from '../types'
 import { dbService } from './dbService';
 import { DEFAULT_VIP_TIERS, DEFAULT_DIGITAL_LOYALTY_CARDS } from './constants';
 
-const TIERS_STORAGE_KEY = 'noor_survey_vip_tiers';
-const CARDS_STORAGE_KEY = 'noor_survey_digital_cards';
-const MEMBERS_STORAGE_KEY = 'noor_survey_club_members';
-const ACTIVE_MEMBER_SESSION_KEY = 'livewellfresh_active_club_member';
+const TIERS_STORAGE_KEY = 'store_vip_tiers';
+const CARDS_STORAGE_KEY = 'store_digital_cards';
+const MEMBERS_STORAGE_KEY = 'store_club_members';
+const ACTIVE_MEMBER_SESSION_KEY = 'ecom_active_club_member';
 
 export const loyaltyClubService = {
   // --- VIP Tiers ---

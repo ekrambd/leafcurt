@@ -9,6 +9,14 @@ import {
 } from 'lucide-react';
 import { BookOrder } from '../types';
 import { OrderDetailsView } from './OrderDetailsView';
+import { InvoicePreview } from './InvoicePreview';
+import { useAppStore } from '../store/useAppStore';
+import { 
+  buildWhatsAppInvoiceUrl, 
+  formatRelativeTime, 
+  normalizeBdPhone, 
+  copyElementAsImage 
+} from '../lib/orderInvoiceUtils';
 import { dbService } from '../lib/dbService';
 import { ApiClient } from '../services/apiClient';
 import { motion, AnimatePresence } from 'motion/react';
@@ -224,11 +232,11 @@ export default function OrderManager({
   const [deleteConfirmOrder, setDeleteConfirmOrder] = useState<BookOrder | null>(null);
   const [bulkStatusConfirm, setBulkStatusConfirm] = useState<{ newStatus: string; count: number } | null>(null);
   const [invoiceBrand, setInvoiceBrand] = useState({
-    name: 'Your Store Name',
-    tagline: 'Your Store Description',
-    phone: '01329458568',
-    email: 'support@nursurveysolution.com',
-    website: 'www.nursurveysolution.com',
+    name: 'Store',
+    tagline: 'Premium Quality Online Shopping',
+    phone: '',
+    email: 'support@store.com',
+    website: 'www.store.com',
     logo: ''
   });
 
@@ -277,16 +285,42 @@ export default function OrderManager({
     customerName: '',
     phone: '',
     address: '',
-    productTitle: 'Smart land surveying and management',
-    price: 490,
-    deliveryCharge: 90,
+    productTitle: '',
+    price: 0,
+    deliveryCharge: 0,
     quantity: 1,
     orderType: 'physical' as 'physical' | 'landing' | 'store',
     status: 'Confirmed' as BookOrder['status'],
     notes: ''
   });
+  const { ecomSettings, instituteInfo } = useAppStore();
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [viewingOrder, setViewingOrder] = useState<BookOrder | null>(null);
+  const [invoiceModalOrder, setInvoiceModalOrder] = useState<BookOrder | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [toastMsg, setToastMsg] = useState<string | null>(null);
+
+  const showToast = (msg: string) => {
+    setToastMsg(msg);
+    setTimeout(() => setToastMsg(null), 3000);
+  };
+
+  const handleCopyText = (text: string, id: string, label: string = 'text') => {
+    navigator.clipboard.writeText(text);
+    setCopiedId(id);
+    showToast(`Copied ${label} to clipboard!`);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  const handleQuickConfirmOrder = async (order: BookOrder) => {
+    try {
+      await onUpdateOrder({ ...order, status: 'Confirmed' });
+      showToast(`Order #${order.id.replace('ORD-', '')} confirmed! ✓`);
+    } catch (e: any) {
+      showToast('Failed to confirm order');
+    }
+  };
+
   const [editingOrder, setEditingOrder] = useState<BookOrder | null>(null);
   const [editFormData, setEditFormData] = useState({
     customerName: '',
@@ -330,11 +364,11 @@ export default function OrderManager({
         if (!mounted) return;
 
         setInvoiceBrand({
-          name: ecomSettings.storeName || instituteInfo?.name || 'Your Store Name',
-          tagline: ecomSettings.storeTagline || instituteInfo?.description || 'Your Store Description',
-          phone: instituteInfo?.phone || '01329458568',
-          email: instituteInfo?.email || 'support@nursurveysolution.com',
-          website: 'www.nursurveysolution.com',
+          name: ecomSettings.storeName || instituteInfo?.name || 'Store',
+          tagline: ecomSettings.storeTagline || instituteInfo?.description || 'Premium Quality Online Shopping',
+          phone: instituteInfo?.phone || '',
+          email: instituteInfo?.email || 'support@store.com',
+          website: (typeof window !== 'undefined' ? window.location.hostname : 'www.store.com'),
           logo: ecomSettings.storeLogo || ''
         });
       } catch (err) {
@@ -858,9 +892,9 @@ export default function OrderManager({
         customerName: '',
         phone: '',
         address: '',
-        productTitle: 'Smart land surveying and management',
-        price: 490,
-        deliveryCharge: 90,
+        productTitle: '',
+        price: 0,
+        deliveryCharge: 0,
         quantity: 1,
         orderType: 'physical',
         status: 'Confirmed',
@@ -1270,6 +1304,23 @@ export default function OrderManager({
   return (
     <div className="space-y-6 font-sans">
       
+      {/* Toast Notification Banner */}
+      {toastMsg && (
+        <div className="bg-slate-900 text-white px-4 py-2.5 rounded-xl shadow-lg text-xs font-bold flex items-center justify-between border border-slate-800 animate-in fade-in slide-in-from-top-1 duration-200">
+          <div className="flex items-center gap-2">
+            <CheckCircle className="w-4 h-4 text-emerald-400 shrink-0" />
+            <span>{toastMsg}</span>
+          </div>
+          <button 
+            type="button"
+            onClick={() => setToastMsg(null)}
+            className="text-slate-400 hover:text-white text-xs px-2 py-0.5 rounded cursor-pointer"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       {/* Header Title & Actions */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -1682,26 +1733,29 @@ export default function OrderManager({
                   />
                 </th>
                 <th className="py-3.5 px-3 text-center w-12 font-bold">SL</th>
-                <th className="py-3.5 px-4">ID & Date</th>
-                <th className="py-3.5 px-4">Type</th>
-                <th className="py-3.5 px-4">Customer information</th>
-                <th className="py-3.5 px-4">Product and quantity</th>
-                <th className="py-3.5 px-4">Total Rs</th>
-                <th className="py-3.5 px-4">Status</th>
-                <th className="py-3.5 px-4 text-right">action</th>
+                <th className="py-3.5 px-4 min-w-[210px]">ORDER & ITEMS</th>
+                <th className="py-3.5 px-4 min-w-[250px]">CUSTOMER</th>
+                <th className="py-3.5 px-4 min-w-[140px]">FULFILMENT</th>
+                <th className="py-3.5 px-4 min-w-[120px]">PAYMENT</th>
+                <th className="py-3.5 px-4 min-w-[140px]">DELIVERY</th>
+                <th className="py-3.5 px-4 text-right w-16">ACTION</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-xs font-medium text-slate-700">
               {paginatedOrders.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="py-12 text-center text-slate-400 font-semibold">
-                    No orders found।
+                  <td colSpan={8} className="py-12 text-center text-slate-400 font-semibold">
+                    No orders found.
                   </td>
                 </tr>
               ) : (
                 paginatedOrders.map((order, idx) => {
                   const isSelected = selectedOrderIds.includes(order.id);
                   const serialNo = (currentPage - 1) * itemsPerPage + idx + 1;
+                  const orderShortId = order.id.replace('ORD-', '');
+                  const total = order.totalAmount || order.totalPrice || ((order.price || 0) * (order.quantity || 1) + (order.deliveryCharge || 0));
+                  const isPaid = order.paymentMethod && order.paymentMethod !== 'COD';
+
                   return (
                     <tr 
                       key={order.id} 
@@ -1712,179 +1766,250 @@ export default function OrderManager({
                       className={`hover:bg-slate-50/80 transition-colors cursor-pointer ${isSelected ? 'bg-teal-50/40' : ''}`}
                     >
                       {/* Checkbox */}
-                      <td className="py-3.5 px-4">
+                      <td className="py-4 px-4 align-top">
                         <input
                           type="checkbox"
                           checked={isSelected}
                           onChange={() => handleToggleSelectOrder(order.id)}
-                          className="rounded border-slate-300 text-teal-600 focus:ring-teal-500 cursor-pointer h-4 w-4"
+                          className="rounded border-slate-300 text-teal-600 focus:ring-teal-500 cursor-pointer h-4 w-4 mt-1"
                         />
                       </td>
 
                       {/* SL # */}
-                      <td className="py-3.5 px-3 text-center">
-                        <span className="inline-flex items-center justify-center min-w-[24px] px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-600 font-mono font-bold text-[11px] border border-slate-200/60">
+                      <td className="py-4 px-3 text-center align-top">
+                        <span className="inline-flex items-center justify-center min-w-[24px] px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-600 font-mono font-bold text-[11px] border border-slate-200/60 mt-0.5">
                           {serialNo}
                         </span>
                       </td>
 
-                      {/* ID & Date */}
-                      <td className="py-3.5 px-4">
-                        <span className="font-bold text-slate-900 block">{order.id}</span>
-                        <span className="text-[10px] text-slate-400 block mt-0.5">
-                          {new Date(order.createdAt).toLocaleDateString('bn-BD', {
-                            day: 'numeric', month: 'short', year: 'numeric'
-                          })}
+                      {/* 1. ORDER & ITEMS (exact match Image 2) */}
+                      <td className="py-4 px-4 align-top space-y-1">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-mono font-black text-slate-900 text-sm">
+                            #{orderShortId}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleCopyText(orderShortId, `ord-${order.id}`, 'Order ID');
+                            }}
+                            title="Copy Order ID"
+                            className="text-slate-400 hover:text-slate-700 transition-colors p-0.5 cursor-pointer"
+                          >
+                            {copiedId === `ord-${order.id}` ? (
+                              <Check className="w-3.5 h-3.5 text-emerald-600" />
+                            ) : (
+                              <Copy className="w-3.5 h-3.5" />
+                            )}
+                          </button>
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-50 text-sky-700 border border-sky-200">
+                            🌐 Customer
+                          </span>
+                        </div>
+
+                        {/* Items description */}
+                        <div className="pt-0.5">
+                          {order.items && order.items.length > 0 ? (
+                            <div className="space-y-0.5">
+                              {order.items.slice(0, 2).map((it: any, i: number) => {
+                                const title = it.product?.title || it.title || order.productTitle;
+                                const qty = it.quantity || 1;
+                                return (
+                                  <p key={i} className="font-bold text-slate-800 text-xs leading-snug line-clamp-1">
+                                    {qty}× {title}
+                                  </p>
+                                );
+                              })}
+                              {order.items.length > 2 && (
+                                <span className="text-[10px] text-slate-400 font-semibold block">
+                                  +{order.items.length - 2} more items
+                                </span>
+                              )}
+                            </div>
+                          ) : (
+                            <p className="font-bold text-slate-800 text-xs leading-snug line-clamp-1">
+                              {order.quantity || 1}× {order.productTitle || 'Product'}
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Timestamps */}
+                        <div className="pt-1 text-[10px] space-y-0.5">
+                          <p className="text-emerald-700 font-bold uppercase tracking-tight">
+                            UPDATED: <span className="font-medium lowercase">{formatRelativeTime(order.updatedAt || order.createdAt)}</span>
+                          </p>
+                          <p className="text-slate-400 font-semibold uppercase tracking-tight">
+                            CREATED: {new Date(order.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                          </p>
+                        </div>
+
+                        {/* Last Note */}
+                        <div className="pt-1 text-[11px] text-slate-500 flex items-start gap-1">
+                          <span className="font-bold text-slate-600 shrink-0">💬 Last Note:</span>
+                          <span className="truncate italic max-w-[200px]">
+                            {order.notes || 'Placed this order successfully 🎉'}
+                          </span>
+                        </div>
+                      </td>
+
+                      {/* 2. CUSTOMER (with WA, TG, Call, Slip buttons - exact match Image 2 & 3) */}
+                      <td className="py-4 px-4 align-top space-y-1.5">
+                        <span className="font-extrabold text-slate-900 text-sm block">
+                          {order.customerName}
                         </span>
-                        {order.luckyCouponCode && (
-                          <span className="inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 rounded text-[10px] font-black bg-amber-50 text-amber-800 border border-amber-300 shadow-2xs">
-                            🎟️ {order.luckyCouponCode}
-                          </span>
-                        )}
-                      </td>
 
-                      {/* Order Type Badge */}
-                      <td className="py-3.5 px-4">
-                        {order.orderType === 'landing' ? (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
-                            Landing
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-teal-50 text-teal-700 border border-teal-200">
-                            feeGical
-                          </span>
-                        )}
-                      </td>
-
-                      {/* Customer Info */}
-                      <td className="py-3.5 px-4 space-y-1">
-                        <span className="font-bold text-slate-900 block">{order.customerName}</span>
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          <span className="text-slate-600 flex items-center gap-1 text-xs font-mono">
-                            <Phone className="h-3 w-3 text-slate-400 shrink-0" />
+                        {/* Phone & 4 Action buttons right next to phone */}
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-mono text-xs font-bold text-slate-700">
                             {order.phone}
                           </span>
+
+                          {/* [🟢 WA] WhatsApp Button with auto invoice message */}
+                          <a
+                            href={buildWhatsAppInvoiceUrl(order, ecomSettings?.storeName || instituteInfo?.name || 'LEAFCURT', ecomSettings?.storeDomain)}
+                            target="_blank"
+                            rel="noreferrer"
+                            title="Send automated invoice & confirmation breakdown directly to customer WhatsApp"
+                            onClick={(e) => e.stopPropagation()}
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-[#25D366] hover:bg-[#20ba59] text-white shadow-2xs transition-colors cursor-pointer"
+                          >
+                            <MessageSquare className="w-3 h-3" />
+                            <span>WA</span>
+                          </a>
+
+                          {/* [✈️ TG] Telegram button */}
+                          <a
+                            href={`https://t.me/+${normalizeBdPhone(order.phone)}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            title="Chat on Telegram"
+                            onClick={(e) => e.stopPropagation()}
+                            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[11px] font-bold bg-[#0088cc] hover:bg-[#0077b5] text-white shadow-2xs transition-colors cursor-pointer"
+                          >
+                            <Send className="w-3 h-3" />
+                            <span>TG</span>
+                          </a>
+
+                          {/* [📞 Call] Direct Call */}
+                          <a
+                            href={`tel:${order.phone}`}
+                            title="Call customer directly"
+                            onClick={(e) => e.stopPropagation()}
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 transition-colors"
+                          >
+                            <Phone className="w-3 h-3 text-slate-500" />
+                            <span>Call</span>
+                          </a>
+
+                          {/* [📄 Slip] Quick Invoice Slip Modal */}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setInvoiceModalOrder(order);
+                            }}
+                            title="Open invoice slip"
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-200 transition-colors cursor-pointer"
+                          >
+                            <FileText className="w-3 h-3 text-slate-600" />
+                            <span>Slip</span>
+                          </button>
                         </div>
-                        <span className="text-[11px] text-slate-500 block truncate max-w-xs" title={order.address}>
+
+                        {/* Customer Address */}
+                        <p className="text-[11px] text-slate-500 block truncate max-w-xs leading-relaxed" title={order.address}>
                           {order.address}
-                        </span>
+                        </p>
                       </td>
 
-                      {/* Product */}
-                      <td className="py-3.5 px-4">
-                        <div className="flex items-center gap-2.5">
-                          {(() => {
-                            const firstItem = order.items?.[0];
-                            const thumbImg = firstItem?.variant?.image || firstItem?.product?.image || firstItem?.image || firstItem?.productImage;
-                            return thumbImg ? (
-                              <img 
-                                src={thumbImg} 
-                                alt={order.productTitle || 'watch'} 
-                                className="w-10 h-10 rounded-lg object-cover border border-slate-200 bg-white shrink-0 shadow-2xs"
-                                onError={(e) => {
-                                  (e.target as HTMLElement).style.display = 'none';
-                                }}
-                              />
-                            ) : (
-                              <div className="w-10 h-10 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0 text-slate-400">
-                                <ShoppingBag className="w-4 h-4" />
-                              </div>
-                            );
-                          })()}
-                          <div className="min-w-0">
-                            <span className="font-semibold text-slate-800 block text-xs leading-snug">{order.productTitle}</span>
-                            <span className="text-[10px] text-slate-500 block mt-0.5">Quantity: {order.quantity || 1}</span>
-                          </div>
+                      {/* 3. FULFILMENT (Status badge, Quick Confirm button, relative time) */}
+                      <td className="py-4 px-4 align-top space-y-1.5">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold border ${
+                            order.status === 'Pending' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                            order.status === 'Confirmed' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                            order.status === 'Shipped' ? 'bg-purple-50 text-purple-700 border-purple-200' :
+                            order.status === 'Delivered' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                            'bg-slate-50 text-slate-700 border-slate-200'
+                          }`}>
+                            {order.status}
+                          </span>
+
+                          {/* Quick Confirm button if Pending */}
+                          {order.status === 'Pending' && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleQuickConfirmOrder(order);
+                              }}
+                              title="1-Click Confirm Order"
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-extrabold bg-teal-600 hover:bg-teal-700 text-white shadow-2xs transition-colors cursor-pointer"
+                            >
+                              <Check className="w-3 h-3" strokeWidth={3} />
+                              <span>Confirm</span>
+                            </button>
+                          )}
                         </div>
+
+                        <span className="text-[10px] text-slate-400 font-semibold block">
+                          {formatRelativeTime(order.updatedAt || order.createdAt)}
+                        </span>
                       </td>
 
-                      {/* Total Price & Payment Method */}
-                      <td className="py-3.5 px-4 space-y-0.5">
-                        <span className="font-extrabold text-slate-900 text-sm block">
-                          Tk. {order.totalPrice || (order.price * order.quantity + order.deliveryCharge)}
+                      {/* 4. PAYMENT (Total, Unpaid/Paid badge, Due) */}
+                      <td className="py-4 px-4 align-top space-y-1">
+                        <span className="font-mono font-black text-slate-900 text-sm block">
+                          ৳ {total.toFixed(2)}
                         </span>
-                        {order.paymentMethod === 'bKash' ? (
-                          <span className="inline-block text-[10px] bg-pink-50 text-pink-700 px-1.5 py-0.5 rounded font-bold border border-pink-200">
-                            Bikash (bKash)
-                          </span>
-                        ) : order.paymentMethod === 'Nagad' ? (
-                          <span className="inline-block text-[10px] bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded font-bold border border-amber-200">
-                            cash (Nagad)
-                          </span>
-                        ) : (
-                          <span className="inline-block text-[10px] bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded font-bold border border-emerald-200">
-                            Cash on delivery
-                          </span>
-                        )}
-                        {order.trxId && (
-                          <span className="text-[10px] font-mono font-bold text-slate-600 block">
-                            TrxID: {order.trxId}
-                            {order.senderPhone && ` (${order.senderPhone})`}
-                          </span>
-                        )}
+
+                        <div>
+                          {isPaid ? (
+                            <span className="inline-block text-[10px] bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded font-extrabold border border-emerald-200">
+                              Paid
+                            </span>
+                          ) : (
+                            <span className="inline-block text-[10px] bg-rose-50 text-rose-700 px-2 py-0.5 rounded font-extrabold border border-rose-200">
+                              Unpaid
+                            </span>
+                          )}
+                        </div>
+
+                        <span className="text-[10px] font-mono font-semibold text-slate-500 block">
+                          Due ৳ {total.toFixed(2)}
+                        </span>
                       </td>
 
-                      {/* Status Select Badge & Courier Code */}
-                      <td className="py-3.5 px-4 space-y-1">
-                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold border ${
-                          order.status === 'Pending' ? 'bg-amber-50 text-amber-700 border-amber-200' :
-                          order.status === 'Confirmed' ? 'bg-blue-50 text-blue-700 border-blue-200' :
-                          order.status === 'Shipped' ? 'bg-purple-50 text-purple-700 border-purple-200' :
-                          order.status === 'Delivered' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                          'bg-rose-50 text-rose-700 border-rose-200'
-                        }`}>
-                          {order.status === 'Pending' && <Clock className="w-3 h-3 mr-1" />}
-                          {order.status === 'Confirmed' && <CheckCircle className="w-3 h-3 mr-1" />}
-                          {order.status === 'Packaging' && <Package className="w-3 h-3 mr-1" />}
-                          {order.status === 'Ready for Shipment' && <Package className="w-3 h-3 mr-1" />}
-                          {order.status === 'Shipped' && <Truck className="w-3 h-3 mr-1" />}
-                          {order.status === 'Delivered' && <CheckSquare className="w-3 h-3 mr-1" />}
-                          {(order.status === 'Hold' || order.status === 'Cancelled' || order.status === 'Return' || order.status === 'Under Review' || order.status === 'Not Responding') && <AlertCircle className="w-3 h-3 mr-1" />}
-                          {order.status === 'Pending'? 'Waiting' :
-                           order.status === 'Confirmed'? 'Allowed' :
-                           order.status === 'Packaging'? 'Packaging' :
-                           order.status === 'Ready for Shipment'? 'Ready for shipment' :
-                           order.status === 'Shipped'? 'Courier' :
-                           order.status === 'Delivered'? 'Delivered' :
-                           order.status === 'Hold'? 'Suspended' :
-                           order.status === 'Under Review'? 'Verification' :
-                           order.status === 'Not Responding'? 'No answer' :
-                           order.status === 'Return'? 'Return' :
-                           order.status === 'Cancelled'? 'Canceled' :
-                           order.status}
-                        </span>
+                      {/* 5. DELIVERY (Zone, Charge, Courier) */}
+                      <td className="py-4 px-4 align-top space-y-1 text-xs">
+                        <p className="font-semibold text-slate-800">
+                          {order.district?.toLowerCase().includes('dhaka') || order.deliveryZone === 'Inside Dhaka' ? 'Inside Dhaka' : 'Outside Dhaka'}
+                        </p>
+                        <p className="text-[11px] text-slate-500 font-mono">
+                          Charge ৳ {order.deliveryCharge || 0}
+                        </p>
 
                         {order.pathaoConsignmentId && (
                           <div className="mt-1">
-                            <span 
-                              className="text-[10px] font-mono font-bold text-red-800 bg-red-50 px-2 py-0.5 rounded-md border border-red-200/60 inline-flex items-center gap-1 max-w-full overflow-hidden"
-                              title={`Pathao: ${order.pathaoConsignmentId}`}
-                            >
-                              <Truck className="h-3 w-3 text-red-600 flex-shrink-0" />
-                              <span className="truncate">
-                                Pathao: #{order.pathaoConsignmentId}
-                              </span>
+                            <span className="text-[10px] font-mono font-bold text-red-800 bg-red-50 px-2 py-0.5 rounded-md border border-red-200/60 inline-flex items-center gap-1 max-w-full">
+                              <Truck className="h-3 w-3 text-red-600 shrink-0" />
+                              <span className="truncate">Pathao: #{order.pathaoConsignmentId}</span>
                             </span>
                           </div>
                         )}
-
                         {order.steadfastTrackingCode && (
                           <div className="mt-1">
-                            <span 
-                              className="text-[10px] font-mono font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200/60 inline-flex items-center gap-1 max-w-full overflow-hidden"
-                              title={order.steadfastTrackingCode}
-                            >
-                              <Truck className="h-3 w-3 text-amber-600 flex-shrink-0" />
-                              <span className="truncate">
-                                {order.steadfastTrackingCode.startsWith('SFR') ? 'ID: ' + order.steadfastTrackingCode.slice(-8) : '#' + order.steadfastTrackingCode}
-                              </span>
+                            <span className="text-[10px] font-mono font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200/60 inline-flex items-center gap-1 max-w-full">
+                              <Truck className="h-3 w-3 text-amber-600 shrink-0" />
+                              <span className="truncate">Steadfast: #{order.steadfastTrackingCode}</span>
                             </span>
                           </div>
                         )}
                       </td>
 
-                      {/* Actions */}
-                      <td className="py-3.5 px-4 text-right">
+                      {/* 6. Actions */}
+                      <td className="py-4 px-4 text-right align-top">
                         <div className="relative flex items-center justify-end" data-order-actions>
                           <button
                             type="button"
@@ -1892,7 +2017,7 @@ export default function OrderManager({
                             title="Order actions"
                             aria-haspopup="menu"
                             aria-expanded={openActionMenuOrderId === order.id}
-                            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-sm transition-colors hover:bg-slate-50 hover:text-slate-900"
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-xs transition-colors hover:bg-slate-50 hover:text-slate-900 cursor-pointer"
                           >
                             <MoreVertical className="h-4 w-4" />
                           </button>
@@ -1904,38 +2029,63 @@ export default function OrderManager({
                                 animate={{ opacity: 1, y: 0, scale: 1 }}
                                 exit={{ opacity: 0, y: 8, scale: 0.98 }}
                                 transition={{ duration: 0.14 }}
-                                className="absolute right-0 top-12 z-50 w-56 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl"
+                                className="absolute right-0 top-11 z-50 w-56 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl py-1 text-xs font-semibold text-slate-800"
                               >
                                 <button
                                   type="button"
-                                  onClick={() => handlePathaoDispatch(order)}
-                                  disabled={dispatchingId === order.id || Boolean(order.pathaoConsignmentId)}
-                                  className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-medium text-slate-700 hover:bg-red-50 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+                                  onClick={() => {
+                                    setOpenActionMenuOrderId(null);
+                                    setViewingOrder(order);
+                                  }}
+                                  className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left hover:bg-slate-50 text-slate-700"
                                 >
-                                  <Send className="h-4 w-4 text-red-600" />
-                                  <span>{dispatchingId === order.id ? 'Booking...' : 'Send to Pathaosend'}</span>
-                                </button>
-
-                                <button
-                                  type="button"
-                                  onClick={() => handleSteadfastDispatch(order)}
-                                  disabled={dispatchingId === order.id || Boolean(order.steadfastTrackingCode)}
-                                  className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-medium text-slate-700 hover:bg-amber-50 hover:text-amber-700 disabled:cursor-not-allowed disabled:opacity-50"
-                                >
-                                  <Send className="h-4 w-4 text-amber-600" />
-                                  <span>{dispatchingId === order.id ? 'Booking...' : 'Send to Steadfast'}</span>
+                                  <ExternalLink className="h-4 w-4 text-slate-500" />
+                                  <span>View details</span>
                                 </button>
 
                                 <button
                                   type="button"
                                   onClick={() => {
                                     setOpenActionMenuOrderId(null);
-                                    handleOpenPrintView('invoice', order);
+                                    setInvoiceModalOrder(order);
                                   }}
-                                  className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-medium text-slate-700 hover:bg-slate-50 hover:text-slate-900"
+                                  className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left hover:bg-slate-50 text-slate-700"
                                 >
-                                  <Printer className="h-4 w-4" />
-                                  <span>Print invoice</span>
+                                  <FileText className="h-4 w-4 text-teal-600" />
+                                  <span>View & print invoice</span>
+                                </button>
+
+                                <a
+                                  href={buildWhatsAppInvoiceUrl(order, ecomSettings?.storeName || instituteInfo?.name || 'LEAFCURT', ecomSettings?.storeDomain)}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  onClick={() => setOpenActionMenuOrderId(null)}
+                                  className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left hover:bg-emerald-50 text-emerald-700 font-bold"
+                                >
+                                  <MessageSquare className="h-4 w-4 text-[#25D366]" />
+                                  <span>WhatsApp invoice</span>
+                                </a>
+
+                                <div className="border-t border-slate-100 my-1" />
+
+                                <button
+                                  type="button"
+                                  onClick={() => handlePathaoDispatch(order)}
+                                  disabled={dispatchingId === order.id || Boolean(order.pathaoConsignmentId)}
+                                  className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-slate-700 hover:bg-red-50 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                  <Send className="h-4 w-4 text-red-600" />
+                                  <span>{dispatchingId === order.id ? 'Booking...' : 'Send to Pathao'}</span>
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => handleSteadfastDispatch(order)}
+                                  disabled={dispatchingId === order.id || Boolean(order.steadfastTrackingCode)}
+                                  className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-slate-700 hover:bg-amber-50 hover:text-amber-700 disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                  <Truck className="h-4 w-4 text-amber-600" />
+                                  <span>{dispatchingId === order.id ? 'Booking...' : 'Send to Steadfast'}</span>
                                 </button>
 
                                 <button
@@ -1944,25 +2094,26 @@ export default function OrderManager({
                                     setOpenActionMenuOrderId(null);
                                     openEditOrder(order);
                                   }}
-                                  className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-medium text-slate-700 hover:bg-slate-50 hover:text-slate-900"
+                                  className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left hover:bg-slate-50 text-slate-700"
                                 >
-                                  <Edit3 className="h-4 w-4" />
+                                  <Edit3 className="h-4 w-4 text-slate-500" />
                                   <span>Edit</span>
                                 </button>
+
+                                <div className="border-t border-slate-100 my-1" />
 
                                 <button
                                   type="button"
                                   onClick={() => handleDeleteOrderClick(order)}
-                                  className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-medium text-rose-600 hover:bg-rose-50"
+                                  className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-rose-600 hover:bg-rose-50 font-bold"
                                 >
                                   <Trash2 className="h-4 w-4" />
-                                  <span>Delete</span>
+                                  <span>Delete order</span>
                                 </button>
                               </motion.div>
                             )}
                           </AnimatePresence>
                         </div>
-
                       </td>
                     </tr>
                   );
@@ -2683,6 +2834,32 @@ export default function OrderManager({
         onConfirm={handleExecuteBulkTransfer}
         onClose={() => setBulkCourierConfirm(prev => ({ ...prev, isOpen: false }))}
       />
+
+      {/* Quick Invoice & Packing Slip Modal (Triggered by [📄 Slip] button) */}
+      {invoiceModalOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="relative w-full max-w-4xl max-h-[92vh] bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col">
+            <div className="flex items-center justify-between px-6 py-4 bg-slate-50 border-b border-slate-200 shrink-0">
+              <div className="flex items-center gap-2.5">
+                <FileText className="w-5 h-5 text-teal-600" />
+                <h3 className="font-extrabold text-slate-900 text-base">
+                  Invoice & Slip — #{invoiceModalOrder.id.replace('ORD-', '')}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setInvoiceModalOrder(null)}
+                className="w-8 h-8 rounded-full bg-white hover:bg-slate-200 text-slate-500 hover:text-slate-900 flex items-center justify-center transition-colors cursor-pointer border border-slate-200 font-bold"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-slate-100/60">
+              <InvoicePreview order={invoiceModalOrder} />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

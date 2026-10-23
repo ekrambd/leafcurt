@@ -176,13 +176,13 @@ export const SkinQuizView: React.FC<SkinQuizViewProps> = ({ products, onAddToCar
 
         <div className="relative z-10 flex flex-col items-center">
           <h3 className="text-sm font-bold text-slate-700/80 mb-4 tracking-[0.2em] uppercase animate-[slideInUp_0.5s_ease-out_forwards]">
-            Fantine Beauty
+            Personalized Beauty Quiz
           </h3>
           <h1 className="text-5xl md:text-7xl font-medium text-slate-900 mb-6 max-w-3xl font-sans leading-tight animate-[slideInUp_0.7s_ease-out_forwards] opacity-0" style={{ animationDelay: '0.1s' }}>
             Find Your Daily <br/><span className="italic text-slate-800">Skin Routine</span>
           </h1>
           <p className="text-slate-800 text-lg md:text-xl max-w-2xl mb-12 font-normal leading-relaxed animate-[slideInUp_0.9s_ease-out_forwards] opacity-0" style={{ animationDelay: '0.2s' }}>
-            Answer a few quick questions and we will recommend a simple Fantine routine for your skin type, glow goals, and daily comfort.
+            Answer a few quick questions and we will recommend a simple, personalized routine for your skin type, glow goals, and daily comfort.
           </p>
           <button 
             onClick={() => setStarted(true)}

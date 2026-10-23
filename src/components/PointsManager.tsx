@@ -5,8 +5,11 @@ import { CircularProgress } from './LoadingSkeleton';
 import { Coins, Check, Save, Plus, Trash2, Edit, HelpCircle, Award, RefreshCw, X } from 'lucide-react';
 import { ConfirmDialog } from './ui/ConfirmDialog';
 
+import { DEFAULT_ECOM_SETTINGS } from '../lib/constants';
+
 export default function PointsManager() {
   const [settings, setSettings] = useState<EcomSettings>({
+    ...DEFAULT_ECOM_SETTINGS,
     pointsEnabled: false,
     pointsEarnRate: 10,
     pointsRewards: [],

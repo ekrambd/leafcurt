@@ -1,8 +1,19 @@
-import React, { useState } from 'react';
-import { ArrowLeft, CheckCircle, Package, RefreshCw, ShoppingBag, Truck, Calendar, MapPin, AlertCircle, Edit3, FileText, FileSpreadsheet } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { 
+  ArrowLeft, CheckCircle, Package, RefreshCw, ShoppingBag, Truck, Calendar, 
+  MapPin, AlertCircle, Edit3, FileText, FileSpreadsheet, MessageCircle, Camera, 
+  Copy, Phone, Check, Download 
+} from 'lucide-react';
 import { BookOrder } from '../types';
 import { InvoicePreview } from './InvoicePreview';
 import { motion } from 'motion/react';
+import { useAppStore } from '../store/useAppStore';
+import { 
+  buildWhatsAppInvoiceUrl, 
+  copyElementAsImage, 
+  downloadCanvasAsPng, 
+  loadHtml2Canvas 
+} from '../lib/orderInvoiceUtils';
 
 interface Props {
   order: BookOrder;
@@ -23,8 +34,67 @@ const ORDER_STATUSES = [
 ];
 
 export function OrderDetailsView({ order, onClose, onUpdateStatus, onEditOrder }: Props) {
+  const { ecomSettings, instituteInfo } = useAppStore();
   const [isUpdating, setIsUpdating] = useState(false);
   const [showInvoice, setShowInvoice] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [isCapturing, setIsCapturing] = useState(false);
+  const hiddenInvoiceRef = useRef<HTMLDivElement>(null);
+
+  const storeName = ecomSettings?.storeName || instituteInfo?.name || 'LEAFCURT';
+  const orderShortId = (order.id || '').replace(/^ORD-/, '');
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 3500);
+  };
+
+  const handleCopy = (text: string, field: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedField(field);
+    showToast(`Copied ${field} to clipboard!`);
+    setTimeout(() => setCopiedField(null), 2000);
+  };
+
+  const handleCopyAllInfo = () => {
+    const total = order.totalAmount || order.totalPrice || ((order.price || 0) * (order.quantity || 1) + (order.deliveryCharge || 0));
+    const fullText = `Order ID: #${orderShortId}\nCustomer: ${order.customerName}\nPhone: ${order.phone}\nAddress: ${order.address}${order.thana ? `, ${order.thana}` : ''}${order.district ? `, ${order.district}` : ''}\nTotal: ৳ ${total.toFixed(2)}`;
+    handleCopy(fullText, 'all');
+  };
+
+  const handleWhatsApp = () => {
+    const url = buildWhatsAppInvoiceUrl(order, storeName, ecomSettings?.storeDomain);
+    window.open(url, '_blank');
+  };
+
+  // Copy invoice slip as image even from details view
+  const handleCopyInvoiceAsImage = async () => {
+    // If invoice preview is visible, copy from it, else switch to invoice and copy
+    if (!showInvoice) {
+      setShowInvoice(true);
+      setTimeout(async () => {
+        const el = document.querySelector('[data-invoice-slip]') as HTMLElement;
+        if (el) {
+          setIsCapturing(true);
+          showToast('Rendering high-res invoice image...');
+          const res = await copyElementAsImage(el, `invoice-${orderShortId}.png`);
+          setIsCapturing(false);
+          showToast(res.message);
+        }
+      }, 300);
+      return;
+    }
+
+    const el = document.querySelector('[data-invoice-slip]') as HTMLElement;
+    if (el) {
+      setIsCapturing(true);
+      showToast('Rendering high-res invoice image...');
+      const res = await copyElementAsImage(el, `invoice-${orderShortId}.png`);
+      setIsCapturing(false);
+      showToast(res.message);
+    }
+  };
 
   const handleStatusChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     setIsUpdating(true);
@@ -49,7 +119,7 @@ export function OrderDetailsView({ order, onClose, onUpdateStatus, onEditOrder }
     { label: 'Confirm Order', icon: ShoppingBag, step: 2 },
     { label: 'Processing Order', icon: RefreshCw, step: 3 },
     { label: 'Product Dispatched', icon: Package, step: 4 },
-    { label: 'On Delivery', icon: Truck, step: 4 }, // usually shipped is same as on delivery
+    { label: 'On Delivery', icon: Truck, step: 4 },
     { label: 'Delivery Completed', icon: CheckCircle, step: 5 },
   ];
 
@@ -63,45 +133,99 @@ export function OrderDetailsView({ order, onClose, onUpdateStatus, onEditOrder }
 
   return (
     <div className="flex-1 min-h-screen bg-slate-50 font-sans p-4 sm:p-6 lg:p-8 animate-fadeIn">
+      
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div className="mb-4 bg-slate-900 text-white px-4 py-2.5 rounded-xl shadow-lg text-xs font-bold flex items-center justify-between border border-slate-800 animate-in fade-in slide-in-from-top-1 duration-200">
+          <div className="flex items-center gap-2">
+            <CheckCircle className="w-4 h-4 text-emerald-400 shrink-0" />
+            <span>{toastMessage}</span>
+          </div>
+          <button 
+            type="button"
+            onClick={() => setToastMessage(null)}
+            className="text-slate-400 hover:text-white text-xs px-2 py-0.5 rounded cursor-pointer"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       {/* Header */}
-      <div className="flex items-center justify-between bg-white px-6 py-4 rounded-xl shadow-xs border border-slate-200 mb-6">
+      <div className="flex flex-col md:flex-row md:items-center justify-between bg-white px-5 py-4 rounded-2xl shadow-xs border border-slate-200 mb-6 gap-4">
         <div className="flex items-center gap-3">
           <button 
+            type="button"
             onClick={onClose}
-            className="p-1.5 hover:bg-slate-100 text-slate-500 rounded-full transition-colors cursor-pointer"
+            title="Back to order list"
+            className="p-2 hover:bg-slate-100 text-slate-500 rounded-xl transition-colors cursor-pointer"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <h2 className="text-xl font-bold text-slate-900">Orders Details</h2>
+          <div>
+            <div className="flex items-center gap-2.5">
+              <h2 className="text-xl font-extrabold text-slate-900">Order Details</h2>
+              <span className="font-mono text-xs font-extrabold px-2.5 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200">
+                #{orderShortId}
+              </span>
+            </div>
+            <p className="text-xs text-slate-400 mt-0.5">
+              Placed on {formatDate(order.createdAt)}
+            </p>
+          </div>
         </div>
-        <div className="flex items-center gap-3">
+
+        {/* Action Buttons Toolbar */}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Copy Invoice as Image */}
           <button
+            type="button"
+            onClick={handleCopyInvoiceAsImage}
+            disabled={isCapturing}
+            title="Copy invoice slip as Image to clipboard"
+            className="flex items-center gap-1.5 px-3.5 py-2 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 text-white rounded-xl text-xs font-bold shadow-sm transition-all cursor-pointer active:scale-95 disabled:opacity-50"
+          >
+            <Camera className="w-3.5 h-3.5" />
+            <span>{isCapturing ? 'Capturing...' : 'Copy as Image'}</span>
+          </button>
+
+          {/* WhatsApp Invoice Auto-Send */}
+          <button
+            type="button"
+            onClick={handleWhatsApp}
+            title="Send automated invoice & confirmation to customer WhatsApp"
+            className="flex items-center gap-1.5 px-3.5 py-2 bg-[#25D366] hover:bg-[#20ba59] text-white rounded-xl text-xs font-bold shadow-sm transition-colors cursor-pointer"
+          >
+            <MessageCircle className="w-3.5 h-3.5" />
+            <span>WhatsApp Invoice</span>
+          </button>
+
+          {/* Toggle Invoice View */}
+          <button
+            type="button"
             onClick={() => setShowInvoice(!showInvoice)}
-            className="flex items-center gap-1.5 px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-sm font-bold border border-indigo-200 transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 px-3.5 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl text-xs font-bold border border-indigo-200 transition-colors cursor-pointer"
           >
-            <FileSpreadsheet className="w-4 h-4" />
-            {showInvoice ? 'View Details' : 'View Invoice'}
+            <FileSpreadsheet className="w-3.5 h-3.5" />
+            <span>{showInvoice ? 'View Details' : 'View Invoice'}</span>
           </button>
+
+          {/* Edit Order */}
           <button
+            type="button"
             onClick={() => onEditOrder(order)}
-            className="flex items-center gap-1.5 px-4 py-2 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-lg text-sm font-bold border border-amber-200 transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 px-3.5 py-2 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-xl text-xs font-bold border border-amber-200 transition-colors cursor-pointer"
           >
-            <Edit3 className="w-4 h-4" />
-            Edit
+            <Edit3 className="w-3.5 h-3.5" />
+            <span>Edit</span>
           </button>
-          <a 
-            href="/" 
-            target="_blank"
-            className="hidden sm:flex items-center gap-1.5 px-4 py-2 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-lg text-sm font-bold transition-colors"
-          >
-            <MapPin className="w-4 h-4 text-emerald-500" />
-            Visit Site
-          </a>
         </div>
       </div>
 
       {showInvoice ? (
-        <InvoicePreview order={order} />
+        <div data-invoice-slip>
+          <InvoicePreview order={order} />
+        </div>
       ) : (
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main Column */}
@@ -309,20 +433,95 @@ export function OrderDetailsView({ order, onClose, onUpdateStatus, onEditOrder }
             </div>
           </div>
 
-          {/* Shipping Address */}
-          <div className="bg-white rounded-xl shadow-xs border border-slate-200 p-6">
-            <h3 className="font-bold text-slate-900 flex items-center gap-2 mb-6">
-              <MapPin className="w-5 h-5 text-slate-400" />
-              Shipping Address
-            </h3>
-            <div className="space-y-2 text-sm text-slate-600">
-              <p className="font-bold text-slate-900">{order.customerName}</p>
-              <p>{order.address}</p>
-              {(order.thana || order.district) && (
-                <p>{order.thana ? `${order.thana}, ` : ''}{order.district}</p>
-              )}
-              {order.email && <p>{order.email}</p>}
-              <p className="font-mono pt-1">{order.phone}</p>
+          {/* Shipping Address & Customer Actions (matching Image 1 & 2) */}
+          <div className="bg-white rounded-2xl shadow-xs border border-slate-200 p-6">
+            <div className="flex items-center justify-between mb-4 pb-2 border-b border-slate-100">
+              <h3 className="font-extrabold text-slate-900 flex items-center gap-2 text-sm">
+                <MapPin className="w-4 h-4 text-teal-600" />
+                Customer & Shipping
+              </h3>
+              <button
+                type="button"
+                onClick={handleCopyAllInfo}
+                title="Copy all customer info"
+                className="text-[11px] font-bold text-teal-700 bg-teal-50 hover:bg-teal-100 border border-teal-200 px-2.5 py-1 rounded-lg flex items-center gap-1 cursor-pointer transition-colors"
+              >
+                {copiedField === 'all' ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                <span>{copiedField === 'all' ? 'Copied All' : 'Copy All'}</span>
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              {/* Customer Name */}
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-[10px] text-slate-400 font-bold uppercase block">Recipient</span>
+                  <p className="font-extrabold text-slate-900 text-sm mt-0.5">{order.customerName}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleCopy(order.customerName, 'Customer Name')}
+                  className="p-1 text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
+                  title="Copy Name"
+                >
+                  {copiedField === 'Customer Name' ? <CheckCircle className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
+                </button>
+              </div>
+
+              {/* Phone */}
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-[10px] text-slate-400 font-bold uppercase block">Phone</span>
+                  <p className="font-mono font-bold text-slate-800 text-sm mt-0.5">{order.phone}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleCopy(order.phone, 'Phone Number')}
+                  className="p-1 text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
+                  title="Copy Phone"
+                >
+                  {copiedField === 'Phone Number' ? <CheckCircle className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
+                </button>
+              </div>
+
+              {/* Address */}
+              <div className="flex items-start justify-between">
+                <div>
+                  <span className="text-[10px] text-slate-400 font-bold uppercase block">Delivery Address</span>
+                  <p className="text-slate-700 leading-relaxed mt-0.5">
+                    {order.address}
+                    {order.thana ? `, ${order.thana}` : ''}
+                    {order.district ? `, ${order.district}` : ''}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleCopy(`${order.address}${order.thana ? `, ${order.thana}` : ''}${order.district ? `, ${order.district}` : ''}`, 'Address')}
+                  className="p-1 text-slate-400 hover:text-slate-700 transition-colors cursor-pointer shrink-0 mt-2"
+                  title="Copy Address"
+                >
+                  {copiedField === 'Address' ? <CheckCircle className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            {/* Quick Contact Buttons */}
+            <div className="mt-5 pt-4 border-t border-slate-100 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleWhatsApp}
+                className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 bg-[#25D366] hover:bg-[#20ba59] text-white text-xs font-bold rounded-xl shadow-2xs transition-colors cursor-pointer"
+              >
+                <MessageCircle className="w-3.5 h-3.5" />
+                <span>WhatsApp</span>
+              </button>
+              <a
+                href={`tel:${order.phone}`}
+                className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold rounded-xl border border-slate-200 transition-colors"
+              >
+                <Phone className="w-3.5 h-3.5 text-slate-600" />
+                <span>Call</span>
+              </a>
             </div>
           </div>
 

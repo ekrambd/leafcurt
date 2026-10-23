@@ -735,17 +735,25 @@ export default function CheckoutPage({
           </div>
 
           {/* 1-Click WhatsApp Order Confirmation & Tracking */}
-          <a
-            href={`https://wa.me/8801329458568?text=${encodeURIComponent(
-              `Hello livewellfresh,\nI just placed order #${orderSuccess.id} (Amount: ${(orderSuccess.totalAmount || orderSuccess.totalPrice || 0).toLocaleString()} BDT).\nCustomer Name: ${orderSuccess.customerName}\nPhone: ${orderSuccess.customerPhone || orderSuccess.phone}\nPlease confirm my order & delivery updates!`
-            )}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="w-full py-4 px-6 bg-[#25D366] hover:bg-[#20bd5a] text-white font-bold text-sm rounded-xl shadow-lg shadow-emerald-500/25 transition-all flex items-center justify-center gap-2.5 cursor-pointer no-underline"
-          >
-            <MessageCircle className="w-5 h-5 fill-current" />
-            Track & Confirm on WhatsApp (1-Click)
-          </a>
+          {(() => {
+            const rawWa = ecomSettings?.socialLinks?.whatsapp || ecomSettings?.contactPhone || ecomSettings?.headerSettings?.socialLinks?.whatsapp || ecomSettings?.headerSettings?.phone || '';
+            const cleanWa = rawWa.replace(/[^0-9]/g, '');
+            const checkoutStoreName = ecomSettings?.storeName || ecomSettings?.headerSettings?.brandName || 'our team';
+            if (!cleanWa) return null;
+            return (
+              <a
+                href={`https://wa.me/${cleanWa}?text=${encodeURIComponent(
+                  `Hello ${checkoutStoreName},\nI just placed order #${orderSuccess.id} (Amount: ${(orderSuccess.totalAmount || orderSuccess.totalPrice || 0).toLocaleString()} BDT).\nCustomer Name: ${orderSuccess.customerName}\nPhone: ${orderSuccess.customerPhone || orderSuccess.phone}\nPlease confirm my order & delivery updates!`
+                )}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full py-4 px-6 bg-[#25D366] hover:bg-[#20bd5a] text-white font-bold text-sm rounded-xl shadow-lg shadow-emerald-500/25 transition-all flex items-center justify-center gap-2.5 cursor-pointer no-underline"
+              >
+                <MessageCircle className="w-5 h-5 fill-current" />
+                Track & Confirm on WhatsApp (1-Click)
+              </a>
+            );
+          })()}
 
           <div className="pt-2 flex flex-col sm:flex-row gap-3">
             <button
@@ -931,55 +939,6 @@ export default function CheckoutPage({
                         className="w-full px-4 py-3 bg-white border border-slate-200 rounded-r-xl text-xs sm:text-sm text-slate-800 placeholder:text-slate-400 font-mono focus:outline-none focus:border-[#f97316] focus:ring-1 focus:ring-[#f97316] transition-all"
                       />
                     </div>
-
-                    {/* VIP Club Membership Recognition / 1-Click Auto-Enroll */}
-                    {recognizedMember ? (
-                      <div className="mt-2.5 p-3.5 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200/90 rounded-xl flex items-center justify-between gap-3 shadow-2xs animate-fadeIn">
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 text-white flex items-center justify-center font-bold text-xs shadow-xs shrink-0">
-                            👑
-                          </div>
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className="font-bold text-xs text-slate-900 truncate">
-                                {recognizedMember.name || name || 'সম্মানিত সদস্য'}
-                              </span>
-                              <span className="text-[10px] bg-amber-500 text-white font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
-                                {recognizedMember.tierName}
-                              </span>
-                            </div>
-                            <div className="text-[11px] text-amber-900/90 mt-0.5 flex items-center gap-1.5 flex-wrap">
-                              <span className="font-mono text-[10px] text-slate-600">{recognizedMember.memberNumber}</span>
-                              <span>•</span>
-                              <span>ব্যালেন্স: <strong className="text-emerald-700">{recognizedMember.pointsBalance || 0} pts</strong> (৳{availablePointsValueTaka})</span>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="text-right shrink-0">
-                          <span className="text-xs font-black text-emerald-700 block">
-                            {memberBenefits.discountPercent}% VIP ছাড়
-                          </span>
-                          <span className="text-[10px] text-slate-500 font-medium">অটো অ্যাপ্লাইড</span>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="mt-2.5 p-2.5 bg-sky-50/80 border border-sky-100 rounded-xl flex items-center justify-between gap-2">
-                        <label className="flex items-center gap-2 cursor-pointer select-none min-w-0">
-                          <input
-                            type="checkbox"
-                            checked={autoEnrollInClub}
-                            onChange={(e) => setAutoEnrollInClub(e.target.checked)}
-                            className="rounded border-sky-300 text-[#0284c7] focus:ring-[#0284c7] cursor-pointer shrink-0"
-                          />
-                          <span className="text-xs text-slate-700 leading-tight">
-                            <strong className="text-[#0284c7]">ফ্রি VIP মেম্বারশিপ নিন</strong> — এই অর্ডারে পাবেন <strong className="text-emerald-700">+{memberBenefits.pointsToEarn || 25} পয়েন্ট</strong> ও ৫০ পয়েন্ট বোনাস!
-                          </span>
-                        </label>
-                        <span className="text-[9px] bg-[#0284c7] text-white font-bold px-2 py-0.5 rounded-full uppercase tracking-wider shrink-0 hidden sm:inline-block">
-                          ফ্রি জয়েন
-                        </span>
-                      </div>
-                    )}
                   </div>
 
                   {/* 2. Full Name */}
@@ -1363,63 +1322,7 @@ export default function CheckoutPage({
                   </div>
                 )}
 
-                {/* VIP Membership Bill Discount (Auto Applied) */}
-                {memberDiscountAmount > 0 && (
-                  <div className="flex justify-between items-center text-xs sm:text-sm text-amber-800 font-bold bg-amber-50/80 px-3 py-2 rounded-xl border border-amber-200/80">
-                    <span className="flex items-center gap-1.5">
-                      <span>👑</span>
-                      <span>VIP মেম্বার ছাড় ({recognizedMember?.tierName} {memberBenefits.discountPercent}%)</span>
-                    </span>
-                    <span>-{memberDiscountAmount.toLocaleString()} BDT</span>
-                  </div>
-                )}
 
-                {/* Interactive Points Redemption Box (1 pt = ৳1) */}
-                {recognizedMember && availablePointsValueTaka > 0 && (
-                  <div className="p-3 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200/80 rounded-xl space-y-2">
-                    <label className="flex items-center justify-between cursor-pointer select-none">
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          checked={redeemPoints}
-                          onChange={(e) => setRedeemPoints(e.target.checked)}
-                          className="rounded border-emerald-400 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
-                        />
-                        <span className="text-xs font-bold text-emerald-950">
-                          পয়েন্ট ভাঙ্গিয়ে নগদ ক্যাশ ছাড় নিন
-                        </span>
-                      </div>
-                      <span className="text-[10px] bg-emerald-600 text-white font-bold px-1.5 py-0.5 rounded">
-                        1 pt = ৳1
-                      </span>
-                    </label>
-                    <div className="flex items-center justify-between text-[11px] text-emerald-800 pl-6">
-                      <span>মোট পয়েন্ট: {recognizedMember.pointsBalance} (৳{availablePointsValueTaka})</span>
-                      {redeemPoints && (
-                        <span className="font-bold text-emerald-700">ছাড়: -৳{pointsRedeemedTaka.toLocaleString()}</span>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* Points Redeemed Cash Deduction */}
-                {pointsRedeemedTaka > 0 && (
-                  <div className="flex justify-between text-xs sm:text-sm text-emerald-600 font-bold">
-                    <span>পয়েন্টস ক্যাশব্যাক ছাড়</span>
-                    <span>-{pointsRedeemedTaka.toLocaleString()} BDT</span>
-                  </div>
-                )}
-
-                {/* Upcoming Reward Points Pill */}
-                <div className="p-2.5 bg-slate-50 border border-slate-100 rounded-xl flex items-center justify-between text-xs text-slate-600">
-                  <span className="flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                    <span>এই অর্ডারে রিওয়ার্ড পয়েন্ট পাবেন</span>
-                  </span>
-                  <span className="font-bold text-amber-600">
-                    +{memberBenefits.pointsToEarn || 25} Points
-                  </span>
-                </div>
 
                 {bogoEligible && (
                   <div className="flex justify-between text-xs sm:text-sm text-emerald-700 font-bold bg-emerald-50/70 p-2.5 rounded-xl border border-emerald-200">

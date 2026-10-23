@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { geminiSkincareService, SkincareAnalysisRequest } from '../services/geminiService';
+import { loadSettingsFromDisk } from '../data/store';
 
 export const aiRouter = Router();
 
@@ -16,13 +17,16 @@ aiRouter.post('/consult', async (req: Request, res: Response) => {
       return;
     }
 
+    const storeSettings = loadSettingsFromDisk();
+    const storeName = storeSettings?.storeName || 'Store';
+
     const result = await geminiSkincareService.consultSkincareDoctor({
       messages,
       selectedProducts,
       skinType,
       skinConcern,
       language
-    });
+    }, storeName);
 
     res.json({
       success: true,
@@ -42,11 +46,13 @@ aiRouter.post('/consult', async (req: Request, res: Response) => {
 aiRouter.post('/analyze-routine', async (req: Request, res: Response) => {
   try {
     const { products, skinType, skinConcern, language } = req.body;
+    const storeSettings = loadSettingsFromDisk();
+    const storeName = storeSettings?.storeName || 'Store';
 
     const messages = [
       {
         role: 'user' as const,
-        content: `অনুগ্রহ করে downর ${products?.length || 0} T সিরাম/প্Roডাক্টের বিস্তারিত বিশ্লেষণ ও AM/PM ব্যবহারবিধি দিন।`
+        content: `অনুগ্রহ করে নিচের ${products?.length || 0} টি প্রোডাক্টের বিস্তারিত বিশ্লেষণ ও AM/PM ব্যবহারবিধি দিন।`
       }
     ];
 
@@ -56,7 +62,7 @@ aiRouter.post('/analyze-routine', async (req: Request, res: Response) => {
       skinType,
       skinConcern,
       language: language || 'bn'
-    });
+    }, storeName);
 
     res.json({
       success: true,

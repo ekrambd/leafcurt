@@ -1,0 +1,30 @@
+{
+  "metadata": {
+    "id": "backup-1792677013088",
+    "timestamp": "2026-10-22T13:50:13.088Z",
+    "collections": {
+      "productsCount": 1,
+      "ordersCount": 1,
+      "settingsIncluded": true
+    }
+  },
+  "data": {
+    "products": [
+      {
+        "id": "prod-p1",
+        "title": "Luxury Watch",
+        "price": 12000
+      }
+    ],
+    "orders": [
+      {
+        "id": "ord-o1",
+        "totalAmount": 12000,
+        "status": "Confirmed"
+      }
+    ],
+    "settings": {
+      "storeName": "Test Noor Store"
+    }
+  }
+}

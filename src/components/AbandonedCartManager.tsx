@@ -352,7 +352,7 @@ export default function AbandonedCartManager() {
             </div>
             <div>
               <h1 className="text-xl sm:text-2xl font-black text-slate-900 flex items-center gap-2">
-                <span>পরিত্যক্ত কার্ট রিকভারি</span>
+                <span>Abandoned Cart Recovery</span>
                 <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 uppercase tracking-wider">
                   Fixo Cart
                 </span>
@@ -389,7 +389,7 @@ export default function AbandonedCartManager() {
         {/* Card 1: Total Abandoned Carts */}
         <div className="bg-white p-4 sm:p-5 rounded-2xl border border-rose-200/70 shadow-xs relative overflow-hidden group hover:border-rose-300 transition-all">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-rose-600 uppercase tracking-wider">পরিত্যক্ত কার্ট</span>
+            <span className="text-[11px] font-bold text-rose-600 uppercase tracking-wider">Abandoned Cart</span>
             <div className="p-2 bg-rose-50 rounded-xl text-rose-600">
               <ShoppingCart className="w-4 h-4" />
             </div>
@@ -593,14 +593,14 @@ export default function AbandonedCartManager() {
         {loading ? (
           <div className="p-16 text-center text-slate-400 space-y-3">
             <RefreshCw className="w-8 h-8 animate-spin mx-auto text-teal-600" />
-            <p className="text-sm font-semibold">পরিত্যক্ত কার্ট তথ্য লোড হচ্ছে...</p>
+            <p className="text-sm font-semibold">Abandoned Cart তথ্য লোড হচ্ছে...</p>
           </div>
         ) : filteredCarts.length === 0 ? (
           <div className="p-16 text-center space-y-3">
             <div className="w-14 h-14 rounded-full bg-slate-100 flex items-center justify-center mx-auto text-slate-400">
               <ShoppingCart className="w-6 h-6" />
             </div>
-            <h3 className="text-base font-bold text-slate-800">কোনো পরিত্যক্ত কার্ট পাওয়া যায়নি</h3>
+            <h3 className="text-base font-bold text-slate-800">কোনো Abandoned Cart পাওয়া যায়নি</h3>
             <p className="text-xs text-slate-500 max-w-sm mx-auto">
               {searchQuery
                 ? `"${searchQuery}" এর সাথে মিলে এমন কোনো কার্ট পাওয়া যায়নি।`
@@ -745,7 +745,7 @@ export default function AbandonedCartManager() {
                         {isPending && (
                           <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-rose-50 text-rose-700 border border-rose-200 font-bold text-[11px]">
                             <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse"></span>
-                            <span>পরিত্যক্ত (Pending)</span>
+                            <span>Abandoned (Pending)</span>
                           </div>
                         )}
 
@@ -1032,7 +1032,7 @@ export default function AbandonedCartManager() {
                 <div>
                   <h3 className="font-bold text-slate-900 text-base">১-ক্লিকে অফিশিয়াল অর্ডারে কনভার্ট</h3>
                   <p className="text-xs text-slate-500">
-                    পরিত্যক্ত কার্ট থেকে সরাসরি কনফার্মড সেলস অর্ডার তৈরি করুন
+                    Abandoned Cart থেকে সরাসরি কনফার্মড সেলস অর্ডার তৈরি করুন
                   </p>
                 </div>
               </div>
@@ -1133,7 +1133,7 @@ export default function AbandonedCartManager() {
       {/* Delete Confirmation */}
       <ConfirmDialog
         isOpen={!!deleteCartId}
-        title="পরিত্যক্ত কার্ট মুছে ফেলবেন?"
+        title="Abandoned Cart মুছে ফেলবেন?"
         message="আপনি কি নিশ্চিত যে এই কার্ট রেকর্ডটি মুছে ফেলতে চান? এটি পুনরায় ফিরিয়ে আনা সম্ভব নয়।"
         confirmText="হ্যাঁ, মুছে ফেলুন"
         cancelText="বাতিল"

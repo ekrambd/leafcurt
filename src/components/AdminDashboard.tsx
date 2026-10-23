@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { 
-  Users, LogOut, Menu, X, Check, ShoppingBag, ShoppingCart, ClipboardList, Package, LayoutDashboard, User, Code, Truck, CreditCard, Tag, Boxes, Store, Globe, Layout, Layers, Bell, Coins, Send, Sparkles, Eye, Bookmark, Camera, HeartHandshake, Zap, Mail, Compass, Award
+  Users, LogOut, Menu, X, Check, ShoppingBag, ShoppingCart, ClipboardList, Package, LayoutDashboard, User, Code, Truck, CreditCard, Tag, Boxes, Store, Globe, Layout, Layers, Bell, Coins, Send, Sparkles, Eye, Bookmark, Camera, HeartHandshake, Zap, Mail, Award, BookOpen, Video
 } from 'lucide-react';
 import { dbService, subscribeToOrders } from '../lib/dbService';
 import { ApiClient } from '../services/apiClient';
@@ -18,7 +18,6 @@ const StockInventoryManager = lazy(() => import('./StockInventoryManager'));
 const CategoryManager = lazy(() => import('./CategoryManager'));
 const BrandManager = lazy(() => import('./BrandManager'));
 const LandingPageManager = lazy(() => import('./LandingPageManager'));
-const HeaderSettingsManager = lazy(() => import('./HeaderSettingsManager'));
 const PixelSettingsManager = lazy(() => import('./PixelSettingsManager'));
 const CourierSettingsManager = lazy(() => import('./CourierSettingsManager'));
 const PaymentSettingsManager = lazy(() => import('./PaymentSettingsManager'));
@@ -26,10 +25,9 @@ const DeliverySettingsManager = lazy(() => import('./DeliverySettingsManager'));
 const AboutUsManager = lazy(() => import('./AboutUsManager'));
 const FlashSaleManager = lazy(() => import('./FlashSaleManager'));
 const HighlightSpotlightManager = lazy(() => import('./HighlightSpotlightManager'));
-const MembershipTiersManager = lazy(() => import('./MembershipTiersManager'));
-const DigitalCardManager = lazy(() => import('./DigitalCardManager'));
-const MemberDirectoryManager = lazy(() => import('./MemberDirectoryManager'));
+const BlogManager = lazy(() => import('./BlogManager'));
 const SliderManager = lazy(() => import('./SliderManager'));
+const VideoReviewsManager = lazy(() => import('./VideoReviewsManager'));
 import { TabContentSkeleton } from './LoadingSkeleton';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -307,33 +305,41 @@ export default function AdminDashboard({ adminEmail, onLogout }: AdminDashboardP
   };
 
   const menuItems = [
+    // --- Group 1: Overview & Stock ---
+    { id: 'header_overview' as any, isHeader: true, label: 'Overview' },
     { id: 'dashboard' as const, label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'header_manage' as any, isHeader: true, label: 'E-commerce Management' },
     { id: 'inventory' as const, label: 'Inventory', icon: Boxes },
-    { id: 'products' as const, label: 'Products', icon: Package },
+
+    // --- Group 2: Orders & Customers ---
+    { id: 'header_sales' as any, isHeader: true, label: 'Orders & Sales' },
     { id: 'orders' as const, label: 'Orders', icon: ShoppingBag },
-    { id: 'abandoned_carts' as const, label: 'পরিত্যক্ত কার্ট', icon: ShoppingCart },
+    { id: 'abandoned_carts' as const, label: 'Abandoned Cart', icon: ShoppingCart },
     { id: 'customers' as const, label: 'Customers', icon: Users },
     { id: 'contact_messages' as const, label: 'Messages', icon: Mail },
-    { id: 'coupons' as const, label: 'Coupons', icon: Tag },
-    { id: 'header_loyalty' as any, isHeader: true, label: 'Loyalty & Members' },
-    { id: 'membership_tiers' as const, label: 'Membership Tiers', icon: Award },
-    { id: 'digital_cards' as const, label: 'Digital Cards', icon: CreditCard },
-    { id: 'member_directory' as const, label: 'Member Directory', icon: Users },
-    { id: 'header_store' as any, isHeader: true, label: 'Store Setup' },
-    { id: 'slider_management' as const, label: 'Hero Slider', icon: Layout },
-    { id: 'header_settings' as const, label: 'Header & Top Bar', icon: Compass },
-    { id: 'flash_sale' as const, label: 'Flash Sale', icon: Zap },
-    { id: 'highlight_spotlight' as const, label: 'Highlights', icon: Sparkles },
-    { id: 'about_settings' as const, label: 'About Us', icon: HeartHandshake },
+
+    // --- Group 3: Products & Catalog ---
+    { id: 'header_catalog' as any, isHeader: true, label: 'Catalog' },
+    { id: 'products' as const, label: 'Products', icon: Package },
     { id: 'category_management' as const, label: 'Categories', icon: Layers },
     { id: 'brand_management' as const, label: 'Brands', icon: Bookmark },
+
+    // --- Group 4: Marketing & Content ---
+    { id: 'header_marketing' as any, isHeader: true, label: 'Marketing' },
+    { id: 'coupons' as const, label: 'Coupons', icon: Tag },
+    { id: 'flash_sale' as const, label: 'Flash Sale', icon: Zap },
+    { id: 'highlight_spotlight' as const, label: 'Highlights', icon: Sparkles },
+    { id: 'video_reviews' as const, label: 'Video Reviews', icon: Video },
     { id: 'landing_setup' as const, label: 'Landing Pages', icon: Globe },
-    { id: 'payment_settings' as const, label: 'Payments', icon: CreditCard },
+    { id: 'slider_management' as const, label: 'Hero Slider', icon: Layout },
+    { id: 'blog_manager' as const, label: 'Blog Articles', icon: BookOpen },
+
+    // --- Group 5: Settings & Setup ---
+    { id: 'header_settings' as any, isHeader: true, label: 'Settings' },
     { id: 'delivery_settings' as const, label: 'Delivery', icon: Truck },
     { id: 'courier_settings' as const, label: 'Courier', icon: Send },
-    { id: 'pixel_settings' as const, label: 'Google Tag/Pixel', icon: Code },
-    { id: 'profile' as const, label: 'Profile Settings', icon: User },
+    { id: 'payment_settings' as const, label: 'Payments', icon: CreditCard },
+    { id: 'pixel_settings' as const, label: 'Pixel & GTM', icon: Code },
+    { id: 'profile' as const, label: 'Profile', icon: User },
   ];
 
   return (
@@ -382,25 +388,27 @@ export default function AdminDashboard({ adminEmail, onLogout }: AdminDashboardP
         )}
       </AnimatePresence>
 
-      <aside className="hidden lg:flex lg:flex-col lg:w-48 bg-slate-900 text-slate-400 border-r border-slate-800 shrink-0 sticky top-0 h-screen">
+      <aside className="hidden lg:flex lg:flex-col lg:w-52 bg-[#0279c7] text-white/90 border-r border-[#0269ad] shrink-0 sticky top-0 h-screen shadow-lg select-none">
         {/* Title / Header */}
-        <div className="h-16 flex items-center px-4 border-b border-slate-800 space-x-2.5 text-white">
+        <div className="h-16 flex items-center px-4 border-b border-[#0269ad] space-x-2.5 text-white">
           {storeSettings?.storeLogo ? (
-            <img 
-              src={storeSettings.storeLogo} 
-              alt={storeSettings.storeName || 'Store'} 
-              className="h-8 w-8 rounded-lg object-contain bg-white/10 p-1 shrink-0 border border-slate-700" 
-            />
+            <div className="h-9 w-9 rounded-xl bg-white p-1 shrink-0 flex items-center justify-center shadow-xs border border-white/20">
+              <img 
+                src={storeSettings.storeLogo} 
+                alt={storeSettings.storeName || 'Store'} 
+                className="h-full w-full object-contain" 
+              />
+            </div>
           ) : (
-            <div className="h-8 w-8 rounded-lg bg-teal-500/20 text-teal-400 border border-teal-500/30 flex items-center justify-center font-bold shrink-0">
+            <div className="h-9 w-9 rounded-xl bg-white/20 text-white flex items-center justify-center font-bold shrink-0">
               <ShoppingBag className="h-4.5 w-4.5" />
             </div>
           )}
           <div className="min-w-0">
-            <h1 className="text-xs font-bold leading-tight text-white truncate">
+            <h1 className="text-xs font-black leading-tight text-white truncate tracking-tight">
               {storeSettings?.storeName || 'E-commerce Admin'}
             </h1>
-            <span className="text-[10px] text-teal-400 block font-medium truncate">Control Panel</span>
+            <span className="text-[10px] text-blue-100 font-semibold block truncate">Control Panel</span>
           </div>
         </div>
 
@@ -409,8 +417,8 @@ export default function AdminDashboard({ adminEmail, onLogout }: AdminDashboardP
           {menuItems.map((item) => {
             if (item.isHeader) {
               return (
-                <div key={item.id} className="pt-4 pb-1 px-3">
-                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                <div key={item.id} className="pt-3 pb-1 px-3">
+                  <span className="text-[10px] font-black text-blue-100/75 uppercase tracking-wider">
                     {item.label}
                   </span>
                 </div>
@@ -426,14 +434,16 @@ export default function AdminDashboard({ adminEmail, onLogout }: AdminDashboardP
                 onClick={() => setActiveTab(item.id)}
                 className={`w-full inline-flex items-center px-3 py-2 rounded-xl text-xs font-semibold cursor-pointer transition-all ${
                   isActive 
-                    ? 'bg-teal-600 text-white shadow-md shadow-teal-900/30 font-bold' 
-                    : 'hover:bg-slate-800 hover:text-slate-200'
+                    ? 'bg-white text-[#0279c7] shadow-sm font-bold' 
+                    : 'text-white/90 hover:bg-[#0269ad] hover:text-white'
                 }`}
               >
-                <Icon className="h-4 w-4 mr-2.5 shrink-0" />
+                <Icon className={`h-4 w-4 mr-2.5 shrink-0 ${isActive ? 'text-[#0279c7]' : 'text-blue-100'}`} />
                 <span className="truncate flex-1 text-left">{item.label}</span>
                 {item.id === 'abandoned_carts' && abandonedCount > 0 && (
-                  <span className="ml-auto px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-rose-500 text-white shrink-0">
+                  <span className={`ml-auto px-1.5 py-0.5 text-[10px] font-bold rounded-full shrink-0 ${
+                    isActive ? 'bg-[#0279c7] text-white' : 'bg-rose-500 text-white'
+                  }`}>
                     {abandonedCount}
                   </span>
                 )}
@@ -441,17 +451,6 @@ export default function AdminDashboard({ adminEmail, onLogout }: AdminDashboardP
             );
           })}
         </nav>
-
-        {/* Footer info & Logout */}
-        <div className="p-3 border-t border-slate-800 space-y-2">
-          <button
-            onClick={onLogout}
-            className="w-full inline-flex items-center justify-center px-3 py-2 bg-slate-800 hover:bg-red-950 hover:text-red-300 text-slate-300 text-xs font-semibold rounded-xl cursor-pointer transition-colors"
-          >
-            <LogOut className="h-3.5 w-3.5 mr-1.5 shrink-0" />
-            Logout
-          </button>
-        </div>
       </aside>
 
       {/* Mobile Drawer Sidebar */}
@@ -470,29 +469,31 @@ export default function AdminDashboard({ adminEmail, onLogout }: AdminDashboardP
               initial={{ x: '-100%' }}
               animate={{ x: 0 }}
               exit={{ x: '-100%' }}
-              className="relative flex flex-col w-52 bg-slate-900 text-slate-400 border-r border-slate-800 h-full"
+              className="relative flex flex-col w-52 bg-[#0279c7] text-white/90 border-r border-[#0269ad] h-full shadow-2xl select-none"
             >
               <div className="absolute top-3.5 right-3">
-                <button onClick={() => setSidebarOpen(false)} className="text-slate-400 hover:text-white p-1">
+                <button onClick={() => setSidebarOpen(false)} className="text-white/80 hover:text-white p-1">
                   <X className="h-5 w-5" />
                 </button>
               </div>
 
-              <div className="h-16 flex items-center px-4 border-b border-slate-800 space-x-2.5 text-white">
+              <div className="h-16 flex items-center px-4 border-b border-[#0269ad] space-x-2.5 text-white">
                 {storeSettings?.storeLogo ? (
-                  <img 
-                    src={storeSettings.storeLogo} 
-                    alt={storeSettings.storeName || 'Store'} 
-                    className="h-8 w-8 rounded-lg object-contain bg-white/10 p-1 shrink-0 border border-slate-700" 
-                  />
+                  <div className="h-9 w-9 rounded-xl bg-white p-1 shrink-0 flex items-center justify-center shadow-xs border border-white/20">
+                    <img 
+                      src={storeSettings.storeLogo} 
+                      alt={storeSettings.storeName || 'Store'} 
+                      className="h-full w-full object-contain" 
+                    />
+                  </div>
                 ) : (
-                  <ShoppingBag className="h-6 w-6 text-teal-400 shrink-0" />
+                  <ShoppingBag className="h-6 w-6 text-white shrink-0" />
                 )}
                 <div className="min-w-0 pr-6">
-                  <h1 className="text-xs font-bold leading-tight truncate">
+                  <h1 className="text-xs font-black leading-tight text-white truncate tracking-tight">
                     {storeSettings?.storeName || 'E-commerce Admin'}
                   </h1>
-                  <span className="text-[10px] text-teal-400 block truncate">Control Panel</span>
+                  <span className="text-[10px] text-blue-100 font-semibold block truncate">Control Panel</span>
                 </div>
               </div>
 
@@ -500,8 +501,8 @@ export default function AdminDashboard({ adminEmail, onLogout }: AdminDashboardP
                 {menuItems.map((item) => {
                   if (item.isHeader) {
                     return (
-                      <div key={item.id} className="pt-4 pb-1 px-3">
-                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                      <div key={item.id} className="pt-3 pb-1 px-3">
+                        <span className="text-[10px] font-black text-blue-100/75 uppercase tracking-wider">
                           {item.label}
                         </span>
                       </div>
@@ -520,14 +521,16 @@ export default function AdminDashboard({ adminEmail, onLogout }: AdminDashboardP
                       }}
                       className={`w-full inline-flex items-center px-3 py-2 rounded-xl text-xs font-semibold cursor-pointer transition-all ${
                         isActive 
-                          ? 'bg-teal-600 text-white shadow-md' 
-                          : 'hover:bg-slate-800 hover:text-slate-200'
+                          ? 'bg-white text-[#0279c7] shadow-sm font-bold' 
+                          : 'text-white/90 hover:bg-[#0269ad] hover:text-white'
                       }`}
                     >
-                      <Icon className="h-4 w-4 mr-2.5 shrink-0" />
+                      <Icon className={`h-4 w-4 mr-2.5 shrink-0 ${isActive ? 'text-[#0279c7]' : 'text-blue-100'}`} />
                       <span className="truncate flex-1 text-left">{item.label}</span>
                       {item.id === 'abandoned_carts' && abandonedCount > 0 && (
-                        <span className="ml-auto px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-rose-500 text-white shrink-0">
+                        <span className={`ml-auto px-1.5 py-0.5 text-[10px] font-bold rounded-full shrink-0 ${
+                          isActive ? 'bg-[#0279c7] text-white' : 'bg-rose-500 text-white'
+                        }`}>
                           {abandonedCount}
                         </span>
                       )}
@@ -535,16 +538,6 @@ export default function AdminDashboard({ adminEmail, onLogout }: AdminDashboardP
                   );
                 })}
               </nav>
-
-              <div className="p-3 border-t border-slate-800 space-y-2">
-                <button
-                  onClick={onLogout}
-                  className="w-full inline-flex items-center justify-center px-3 py-2 bg-slate-800 text-slate-300 text-xs font-semibold rounded-xl cursor-pointer"
-                >
-                  <LogOut className="h-3.5 w-3.5 mr-1.5 shrink-0" />
-                  Logout
-                </button>
-              </div>
             </motion.div>
           </div>
         )}
@@ -568,8 +561,16 @@ export default function AdminDashboard({ adminEmail, onLogout }: AdminDashboardP
             </div>
           </div>
 
-          <div className="flex items-center space-x-3 sm:space-x-4">
-
+          <div className="flex items-center space-x-3">
+            <button
+              type="button"
+              onClick={onLogout}
+              className="inline-flex items-center gap-2 px-3 py-2 sm:px-3.5 sm:py-2 rounded-xl bg-slate-50 hover:bg-rose-50 text-slate-600 hover:text-rose-600 border border-slate-200/80 hover:border-rose-200 transition-all text-xs font-bold cursor-pointer shadow-2xs group"
+              title="Logout"
+            >
+              <LogOut className="h-4 w-4 text-slate-500 group-hover:text-rose-600 transition-colors" />
+              <span className="hidden sm:inline font-bold">Logout</span>
+            </button>
           </div>
         </header>
 
@@ -618,14 +619,8 @@ export default function AdminDashboard({ adminEmail, onLogout }: AdminDashboardP
                 {activeTab === 'coupons' && (
                   <CouponManager />
                 )}
-                {activeTab === 'membership_tiers' && (
-                  <MembershipTiersManager />
-                )}
-                {activeTab === 'digital_cards' && (
-                  <DigitalCardManager />
-                )}
-                {activeTab === 'member_directory' && (
-                  <MemberDirectoryManager />
+                {activeTab === 'blog_manager' && (
+                  <BlogManager />
                 )}
                 {activeTab === 'contact_messages' && (
                   <ContactMessagesManager />
@@ -639,8 +634,8 @@ export default function AdminDashboard({ adminEmail, onLogout }: AdminDashboardP
                 {activeTab === 'slider_management' && (
                   <SliderManager />
                 )}
-                {activeTab === 'header_settings' && (
-                  <HeaderSettingsManager />
+                {activeTab === 'video_reviews' && (
+                  <VideoReviewsManager />
                 )}
                 {activeTab === 'flash_sale' && (
                   <FlashSaleManager 

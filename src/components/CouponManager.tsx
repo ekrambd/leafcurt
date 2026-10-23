@@ -81,7 +81,7 @@ export default function CouponManager() {
     setFormMinSpent(coupon.minimumSpent || 0);
     setFormUsageLimit(coupon.usageLimit || 0);
     setFormEndDate(coupon.endDate || '');
-    setFormType(coupon.type || 'fixed');
+    setFormType(coupon.type === 'percent' ? 'percentage' : (coupon.type || 'fixed'));
     setFormIsActive(coupon.status === 'Active');
     setFormIsPublic(coupon.visibility === 'Public');
     setFormOncePerCustomer(coupon.oncePerCustomer || false);

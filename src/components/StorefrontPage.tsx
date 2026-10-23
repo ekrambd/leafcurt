@@ -8,12 +8,12 @@ import {
   ShieldCheck, Truck, RefreshCw, Send, HelpCircle, Eye, Share2, Award,
   Phone, Mail, Globe, Droplet, Sun, Moon, Zap, Flame, Layers, MessageCircle, ArrowUp, MapPin, ZoomIn, Clock,
   Building2, BookOpen, Microscope, Quote, Sprout, FlaskConical, CreditCard, Smartphone, Copy, Tag,
-  Play, Pause, Volume2, VolumeX, Menu, CheckCircle2, AlertCircle, Info
+  Play, Pause, Volume2, VolumeX, Menu, CheckCircle2, AlertCircle, Info, Trash2
 } from 'lucide-react';
 import { trackEvent, createEventId } from '../lib/pixelGtmService';
 import { Product, BookOrder, EcomSettings, InstituteInfo, ContactMessage, AboutPageSettings, DeliveryMethodItem, PaymentGatewayItem, Coupon, HeaderSettings, HeroBannerItem } from '../types';
-import { publicStoreService, optimizeImageUrl } from '../lib/publicStoreService';
-import { DEFAULT_ABOUT_SETTINGS, DEFAULT_DELIVERY_METHODS, DEFAULT_PAYMENT_GATEWAYS, DEFAULT_HEADER_SETTINGS, DEFAULT_HERO_BANNERS, DEFAULT_PRODUCTS } from '../lib/constants';
+import { publicStoreService, optimizeImageUrl, readStorefrontCache } from '../lib/publicStoreService';
+import { DEFAULT_ABOUT_SETTINGS, DEFAULT_DELIVERY_METHODS, DEFAULT_PAYMENT_GATEWAYS, DEFAULT_HEADER_SETTINGS, DEFAULT_HERO_BANNERS, DEFAULT_PRODUCTS, BANGLADESHI_FEMALE_CART_REVIEWS } from '../lib/constants';
 import { ProductSearchEngine } from '../lib/searchIndex';
 import { useAppStore } from '../store/useAppStore';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
@@ -24,18 +24,25 @@ import { DoctorFloatingTrigger } from './ai/DoctorFloatingTrigger';
 import { FeedbackDialog } from './ui/FeedbackDialog';
 import AuthenticProductDetailPage from './AuthenticProductDetailPage';
 import ProductReviewsSection from './ProductReviewsSection';
-import { getCustomerSession, clearCustomerSession } from '../lib/customerAuth';
+import { getCustomerSession, clearCustomerSession, type CustomerSession } from '../lib/customerAuth';
 import { calculateCartTotalWeight, calculateDeliveryCharge } from '../lib/deliveryCalculator';
-import LoyaltyMembershipSection from './LoyaltyMembershipSection';
+import BeforeAfterSection from './BeforeAfterSection';
+import BrandLogosSection from './BrandLogosSection';
+import PhotoReviewsSection from './PhotoReviewsSection';
+import VideoReviewsSection from './VideoReviewsSection';
+import FaqSection from './FaqSection';
+import BlogPage from './BlogPage';
+import BlogPostPage from './BlogPostPage';
+import AboutUsPage from './AboutUsPage';
 
-const FantineFooter = React.lazy(() => import('./FantineFooter'));
+const StoreFooter = React.lazy(() => import('./StoreFooter'));
 
-interface FantineStorePageProps {
+interface StorefrontPageProps {
   onGoToLogin?: () => void;
   onGoToLanding?: () => void;
 }
 
-export interface FantineProductItem extends Product {
+export interface StoreProductItem extends Product {
   series: string;
   isSet?: boolean;
   benefitsHighlights?: string;
@@ -43,14 +50,22 @@ export interface FantineProductItem extends Product {
   ingredients?: string;
 }
 
+export interface BestSellerStoreProduct extends StoreProductItem {
+  salesCount: number;
+}
+
+// Backwards compatibility alias
+export type FantineProductItem = StoreProductItem;
+
 
 // Dynamic Product Helpers & Fallbacks (Driven by Server Database & Admin Catalog)
-export const DEFAULT_PRODUCT_FALLBACK_IMAGE = '/authentic/pod_triple_chamber_main.png';
-export const DEFAULT_FANTINE_FALLBACK_IMAGE = DEFAULT_PRODUCT_FALLBACK_IMAGE;
+export const DEFAULT_PRODUCT_FALLBACK_IMAGE = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400"><rect width="400" height="400" fill="%23f8fafc"/><text x="50%" y="50%" font-family="sans-serif" font-size="14" fill="%2394a3b8" dominant-baseline="middle" text-anchor="middle">Product</text></svg>';
+export const DEFAULT_STORE_FALLBACK_IMAGE = DEFAULT_PRODUCT_FALLBACK_IMAGE;
+export const DEFAULT_FANTINE_FALLBACK_IMAGE = DEFAULT_STORE_FALLBACK_IMAGE;
 
 export const getSafeProductImage = (rawImg?: any, _indexOrSeed?: number | string): string => {
   if (!rawImg || typeof rawImg !== 'string' || !rawImg.trim()) {
-    return DEFAULT_PRODUCT_FALLBACK_IMAGE;
+    return DEFAULT_STORE_FALLBACK_IMAGE;
   }
   const trimmed = rawImg.trim();
   if (
@@ -60,14 +75,14 @@ export const getSafeProductImage = (rawImg?: any, _indexOrSeed?: number | string
     trimmed === 'undefined' ||
     trimmed === 'null'
   ) {
-    return DEFAULT_PRODUCT_FALLBACK_IMAGE;
+    return DEFAULT_STORE_FALLBACK_IMAGE;
   }
   return trimmed;
 };
 
 export const getSafeSkincareImage = getSafeProductImage;
 
-export const normalizeFantineProduct = (p: Product, index: number = 0): FantineProductItem => {
+export const normalizeStoreProduct = (p: Product, index: number = 0): StoreProductItem => {
   const price = typeof p.price === 'number' ? p.price : (Number(p.price) || 0);
   const regularPrice = p.regularPrice ? (typeof p.regularPrice === 'number' ? p.regularPrice : Number(p.regularPrice)) : undefined;
   const discountPercentage = p.discountPercentage || (regularPrice && regularPrice > price ? Math.round(((regularPrice - price) / regularPrice) * 100) : undefined);
@@ -84,7 +99,7 @@ export const normalizeFantineProduct = (p: Product, index: number = 0): FantineP
     ...p,
     id: p.id || `prod_${Date.now()}_${index}`,
     title: p.title || 'Product Item',
-    author: (p as any).author || p.brand || 'livewellfresh',
+    author: (p as any).author || p.brand || 'Store',
     regularPrice,
     price,
     discountPercentage,
@@ -104,17 +119,33 @@ export const normalizeFantineProduct = (p: Product, index: number = 0): FantineP
   };
 };
 
+export const normalizeFantineProduct = normalizeStoreProduct;
+
 // Fallback products from constants (only if server database has not returned yet)
-const FALLBACK_PRODUCTS: FantineProductItem[] = DEFAULT_PRODUCTS.map((p, idx) => normalizeFantineProduct(p, idx));
+const FALLBACK_PRODUCTS: StoreProductItem[] = DEFAULT_PRODUCTS.map((p, idx) => normalizeStoreProduct(p, idx));
+const STORE_PRODUCTS = FALLBACK_PRODUCTS;
 const FANTINE_PRODUCTS = FALLBACK_PRODUCTS;
 
+export const BLANK_STORE_PRODUCT: StoreProductItem = {
+  id: '',
+  title: '',
+  price: 0,
+  regularPrice: 0,
+  stockQuantity: 0,
+  category: 'General',
+  series: 'General',
+  coverImage: DEFAULT_STORE_FALLBACK_IMAGE,
+  additionalImages: [DEFAULT_STORE_FALLBACK_IMAGE],
+  description: '',
+  rating: 5,
+  reviewsCount: 0,
+  isFeatured: false,
+};
+
+export const BLANK_FANTINE_PRODUCT = BLANK_STORE_PRODUCT;
+
 const DEFAULT_SHOP_CATEGORIES = [
-  'All',
-  'Laundry Detergent Pods',
-  '3-in-1 Detergent Pods',
-  'Scent Booster Beads',
-  'Dishwasher Pods',
-  'Ultra Clean Series'
+  'All'
 ];
 
 function extractYouTubeVideoId(url?: string): string | null {
@@ -131,13 +162,22 @@ function extractYouTubeVideoId(url?: string): string | null {
 }
 
 
-export default function FantineStorePage({ onGoToLogin, onGoToLanding }: FantineStorePageProps) {
+export default function StorefrontPage({ onGoToLogin, onGoToLanding }: StorefrontPageProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const { id: routeId, slug: routeSlug } = useParams<{ id?: string; slug?: string }>();
 
-  // Navigation View: 'home' | 'shop' | 'about' | 'contact' | 'product_detail' | 'checkout' | 'membership'
-  const [activeNav, setActiveNav] = useState<'home' | 'shop' | 'about' | 'contact' | 'product_detail' | 'checkout' | 'membership'>(() => {
+  // Navigation View: 'home' | 'shop' | 'about' | 'contact' | 'product_detail' | 'checkout' | 'blog' | 'blog_post'
+  const [selectedBlogSlug, setSelectedBlogSlug] = useState<string | null>(() => {
+    if (typeof window !== 'undefined') {
+      const p = window.location.pathname;
+      const m = p.match(/^\/(?:blogs\/news|blogs\/blog|blogs|blog)\/([^/]+)/);
+      if (m && m[1] !== 'news' && m[1] !== 'blog') return decodeURIComponent(m[1]);
+    }
+    return null;
+  });
+
+  const [activeNav, setActiveNav] = useState<'home' | 'shop' | 'about' | 'contact' | 'product_detail' | 'checkout' | 'blog' | 'blog_post'>(() => {
     if (typeof window !== 'undefined') {
       const p = window.location.pathname;
       if (p.startsWith('/product')) return 'product_detail';
@@ -145,7 +185,9 @@ export default function FantineStorePage({ onGoToLogin, onGoToLanding }: Fantine
       if (p.startsWith('/about')) return 'about';
       if (p.startsWith('/contact')) return 'contact';
       if (p.startsWith('/checkout')) return 'checkout';
-      if (p.startsWith('/membership') || p.startsWith('/vip')) return 'membership';
+      const m = p.match(/^\/(?:blogs\/news|blogs\/blog|blogs|blog)\/([^/]+)/);
+      if (m && m[1] !== 'news' && m[1] !== 'blog') return 'blog_post';
+      if (p.startsWith('/blog') || p.startsWith('/blogs') || p.startsWith('/news')) return 'blog';
     }
     return 'home';
   });
@@ -156,29 +198,59 @@ export default function FantineStorePage({ onGoToLogin, onGoToLanding }: Fantine
   const [currentPage, setCurrentPage] = useState<number>(1);
   const itemsPerPage = 15;
 
-  // Dynamic Ecom Settings for Hero Banners & Videos
-  const [ecomSettings, setEcomSettings] = useState<EcomSettings | null>(null);
-  const [instituteInfo, setInstituteInfo] = useState<InstituteInfo | null>(null);
+  // Dynamic Ecom Settings for Hero Banners & Videos (Instant cached synchronous hydration)
+  const [ecomSettings, setEcomSettings] = useState<EcomSettings | null>(() => {
+    return readStorefrontCache<EcomSettings>('noor_ecom_settings', null);
+  });
+  const [instituteInfo, setInstituteInfo] = useState<InstituteInfo | null>(() => {
+    return readStorefrontCache<InstituteInfo>('noor_institute_info', null);
+  });
   const [activeSlideIndex, setActiveSlideIndex] = useState<number>(0);
 
   // Dynamic Product State from Admin / DB (No Seed Data Overwriting)
-  const [products, setProducts] = useState<FantineProductItem[]>(() => {
+  const [products, setProducts] = useState<StoreProductItem[]>(() => {
     try {
       const cached = localStorage.getItem('noor_ecom_products');
       if (cached) {
         const parsed = JSON.parse(cached);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed.map((p, idx) => normalizeFantineProduct(p, idx));
+          const cleanParsed = parsed.filter((p: any) => 
+            p.id !== '3-in-1-laundry-detergent-pods' &&
+            p.id !== 'leaf-curt-5-in-1-laundry-pods-tub' &&
+            p.id !== 'leaf-curt-5-in-1-laundry-pods-box' &&
+            !p.brand?.toLowerCase().includes('fantine') &&
+            p.category !== 'Serums' &&
+            p.category !== 'Toners' &&
+            p.category !== 'Rapid Acne Treatment Series' &&
+            !p.id?.startsWith('prod-')
+          );
+          if (cleanParsed.length > 0) {
+            return cleanParsed.map((p: any, idx: number) => normalizeStoreProduct(p, idx));
+          }
         }
       }
     } catch {
       // fallback
     }
-    return FANTINE_PRODUCTS;
+    return [];
   });
 
+  // Best Sellers (Algorithm-based: Week / Month / All-time sales rankings)
+  const [bestSellers, setBestSellers] = useState<{
+    week: BestSellerStoreProduct[];
+    month: BestSellerStoreProduct[];
+    all: BestSellerStoreProduct[];
+    totalSales: number;
+  }>({
+    week: [],
+    month: [],
+    all: [],
+    totalSales: 0
+  });
+  const [bestSellerPeriod, setBestSellerPeriod] = useState<'week' | 'month' | 'all'>('week');
+
   // Helper to find matching product from URL path or router params
-  const findProductFromPath = useCallback((path: string, idParam?: string, slugParam?: string, productList: FantineProductItem[] = products) => {
+  const findProductFromPath = useCallback((path: string, idParam?: string, slugParam?: string, productList: StoreProductItem[] = products) => {
     if (!productList || productList.length === 0) return null;
     const targetId = (idParam || '').toLowerCase();
     const targetSlug = (slugParam || '').toLowerCase();
@@ -223,8 +295,8 @@ export default function FantineStorePage({ onGoToLogin, onGoToLanding }: Fantine
   }, [products]);
 
   // Active Selected Product for Detail Page (Deep link aware on initial load)
-  const [activeProductDetail, setActiveProductDetail] = useState<FantineProductItem>(() => {
-    const initialList = products.length > 0 ? products : FANTINE_PRODUCTS;
+  const [activeProductDetail, setActiveProductDetail] = useState<StoreProductItem>(() => {
+    const initialList = products.length > 0 ? products : STORE_PRODUCTS;
     if (typeof window !== 'undefined' && window.location.pathname.startsWith('/product')) {
       const p = window.location.pathname;
       const found = initialList.find(prod => {
@@ -233,14 +305,14 @@ export default function FantineStorePage({ onGoToLogin, onGoToLanding }: Fantine
       });
       if (found) return found;
     }
-    return initialList[0] || FANTINE_PRODUCTS[0];
+    return initialList[0] || BLANK_STORE_PRODUCT;
   });
   const [activeImageIndex, setActiveImageIndex] = useState<number>(0);
   const [isZoomModalOpen, setIsZoomModalOpen] = useState<boolean>(false);
   const [isHoverZooming, setIsHoverZooming] = useState<boolean>(false);
   const [zoomPos, setZoomPos] = useState<{ x: number; y: number }>({ x: 50, y: 50 });
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
-  const [customerSession, setCustomerSession] = useState<{ phone: string; name: string } | null>(() => getCustomerSession());
+  const [customerSession, setCustomerSession] = useState<CustomerSession | null>(() => getCustomerSession());
 
   useEffect(() => {
     const handleAuthChange = () => {
@@ -255,32 +327,17 @@ export default function FantineStorePage({ onGoToLogin, onGoToLanding }: Fantine
   }, []);
 
 
-  // Sync Live Settings from dbService & publicStoreService
+  // Sync Live Settings from server API / publicStoreService
   const loadLiveSettings = async () => {
     try {
       const [settings, info] = await Promise.all([
-        (await import('../lib/dbService')).dbService.getEcomSettings().catch(() => null),
-        (await import('../lib/dbService')).dbService.getInstituteInfo().catch(() => null)
-      ]);
-      if (settings) setEcomSettings(settings);
-      if (info) setInstituteInfo(info);
-    } catch {
-      // ignore
-    }
-
-    try {
-      const [pubSettings, pubInfo] = await Promise.all([
         publicStoreService.getEcomSettings().catch(() => null),
         publicStoreService.getInstituteInfo().catch(() => null)
       ]);
-      if (pubSettings) {
-        setEcomSettings(prev => prev || pubSettings);
-      }
-      if (pubInfo) {
-        setInstituteInfo(prev => prev || pubInfo);
-      }
-    } catch {
-      // ignore
+      if (settings) setEcomSettings(settings);
+      if (info) setInstituteInfo(info);
+    } catch (err) {
+      console.warn('Failed loading storefront settings:', err);
     }
   };
 
@@ -292,7 +349,7 @@ export default function FantineStorePage({ onGoToLogin, onGoToLanding }: Fantine
     try {
       const dbProds = await dbService.getProducts();
       if (dbProds && dbProds.length > 0) {
-        const normalized = dbProds.map((p, idx) => normalizeFantineProduct(p, idx));
+        const normalized = dbProds.map((p, idx) => normalizeStoreProduct(p, idx));
         setProducts(normalized);
         setActiveProductDetail(prev => {
           if (typeof window !== 'undefined' && window.location.pathname.startsWith('/product')) {
@@ -311,7 +368,7 @@ export default function FantineStorePage({ onGoToLogin, onGoToLanding }: Fantine
     try {
       const pubProds = await publicStoreService.getProducts();
       if (pubProds && pubProds.length > 0) {
-        const normalized = pubProds.map((p, idx) => normalizeFantineProduct(p, idx));
+        const normalized = pubProds.map((p, idx) => normalizeStoreProduct(p, idx));
         setProducts(normalized);
         setActiveProductDetail(prev => {
           if (typeof window !== 'undefined' && window.location.pathname.startsWith('/product')) {
@@ -327,27 +384,66 @@ export default function FantineStorePage({ onGoToLogin, onGoToLanding }: Fantine
     }
   };
 
+  const loadBestSellers = async () => {
+    try {
+      const res = await publicStoreService.getBestSellers();
+      if (res && res.data) {
+        const normalizeBestSeller = (p: any, idx: number): BestSellerStoreProduct => ({
+          ...normalizeStoreProduct(p, idx),
+          salesCount: Number(p.salesCount || 0)
+        });
 
+        const weekList = (res.data.week || []).map((p, i) => normalizeBestSeller(p, i));
+        const monthList = (res.data.month || []).map((p, i) => normalizeBestSeller(p, i));
+        const allList = (res.data.all || []).map((p, i) => normalizeBestSeller(p, i));
+        const totalSales = Number(res.totalSales || 0);
+
+        setBestSellers({
+          week: weekList,
+          month: monthList,
+          all: allList,
+          totalSales
+        });
+
+        if (weekList.length > 0) {
+          setBestSellerPeriod('week');
+        } else if (monthList.length > 0) {
+          setBestSellerPeriod('month');
+        } else if (allList.length > 0) {
+          setBestSellerPeriod('all');
+        }
+      }
+    } catch (err) {
+      console.warn('Failed loading best sellers:', err);
+    }
+  };
 
   useEffect(() => {
     loadLiveProducts();
     loadLiveSettings();
+    loadBestSellers();
 
     const handleProductUpdate = () => {
       loadLiveProducts();
+      loadBestSellers();
     };
     const handleSettingsUpdate = () => {
       loadLiveSettings();
+    };
+    const handleOrdersUpdate = () => {
+      loadBestSellers();
     };
 
     window.addEventListener('ecom-products-updated', handleProductUpdate);
     window.addEventListener('ecom-settings-updated', handleSettingsUpdate);
     window.addEventListener('institute-info-updated', handleSettingsUpdate);
+    window.addEventListener('book-orders-updated', handleOrdersUpdate);
     window.addEventListener('storage', handleProductUpdate);
     return () => {
       window.removeEventListener('ecom-products-updated', handleProductUpdate);
       window.removeEventListener('ecom-settings-updated', handleSettingsUpdate);
       window.removeEventListener('institute-info-updated', handleSettingsUpdate);
+      window.removeEventListener('book-orders-updated', handleOrdersUpdate);
       window.removeEventListener('storage', handleProductUpdate);
     };
   }, []);
@@ -358,6 +454,14 @@ export default function FantineStorePage({ onGoToLogin, onGoToLanding }: Fantine
   
   // Modals, Feedback Dialog & Drawers
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [cartReviewIndex, setCartReviewIndex] = useState(() => Math.floor(Math.random() * BANGLADESHI_FEMALE_CART_REVIEWS.length));
+
+  // Pick a fresh random authentic Bangladeshi female review each time the cart drawer opens
+  useEffect(() => {
+    if (isCartOpen) {
+      setCartReviewIndex(Math.floor(Math.random() * BANGLADESHI_FEMALE_CART_REVIEWS.length));
+    }
+  }, [isCartOpen]);
   const [showNotificationToast, setShowNotificationToast] = useState<{
     show: boolean;
     msg: string;
@@ -418,6 +522,9 @@ export default function FantineStorePage({ onGoToLogin, onGoToLanding }: Fantine
   }, [cart.length]);
 
   // Contact Form State
+  const [contactFirstName, setContactFirstName] = useState('');
+  const [contactLastName, setContactLastName] = useState('');
+  const [contactCountryCode, setContactCountryCode] = useState('+880');
   const [contactSenderName, setContactSenderName] = useState('');
   const [contactEmail, setContactEmail] = useState('');
   const [contactPhone, setContactPhone] = useState('');
@@ -432,49 +539,97 @@ export default function FantineStorePage({ onGoToLogin, onGoToLanding }: Fantine
   }, [ecomSettings?.headerSettings]);
 
   // Dynamic Store & Footer Brand Details (From Admin Profile / Store Setup)
-  const displayStoreName = ecomSettings?.storeName?.trim() || liveHeaderSettings?.brandName?.trim() || instituteInfo?.name?.trim() || 'livewellfresh';
-  const displayStoreLogo = ecomSettings?.storeLogo?.trim() || liveHeaderSettings?.logoUrl?.trim() || instituteInfo?.logo?.trim() || '/livewellfresh_logo.png';
+  const displayStoreName = ecomSettings?.storeName?.trim() || liveHeaderSettings?.brandName?.trim() || instituteInfo?.name?.trim() || 'Store';
+  const displayStoreLogo = ecomSettings?.storeLogo?.trim() || liveHeaderSettings?.logoUrl?.trim() || instituteInfo?.logo?.trim() || '';
   const displayCompanyName = ecomSettings?.companyName || instituteInfo?.name || `${displayStoreName} Ltd.`;
-  const displayTagline = ecomSettings?.storeTagline || ecomSettings?.footerDescription || instituteInfo?.description || `${displayStoreName} • Innovative 3-in-1 Triple Chamber Laundry Pods & Eco Detergent Care. Fresh Clothes. Better Life.`;
-  const displayEmail = ecomSettings?.contactEmail || instituteInfo?.email || 'authentic.factory@outlook.com';
-  const displayPhone = ecomSettings?.contactPhone || instituteInfo?.phone || '+86 18027300683';
-  const displayAddress = ecomSettings?.storeAddress || instituteInfo?.address || 'No. 88 Industrial Avenue, High-Tech Manufacturing Zone';
-  const displayAnnouncement = ecomSettings?.topAnnouncementText || `WELCOME TO ${displayStoreName.toUpperCase()} • FRESH CLOTHES. BETTER LIFE`;
+  const displayTagline = ecomSettings?.storeTagline || ecomSettings?.footerDescription || instituteInfo?.description || '';
+  const displayEmail = ecomSettings?.contactEmail || instituteInfo?.email || '';
+  const displayPhone = ecomSettings?.contactPhone || instituteInfo?.phone || '';
+  const displayAddress = ecomSettings?.storeAddress || instituteInfo?.address || '';
+  const displayAnnouncement = ecomSettings?.topAnnouncementText || (displayStoreName ? `WELCOME TO ${displayStoreName.toUpperCase()}` : '');
   const socialLinks = ecomSettings?.socialLinks;
   const aboutSettings: AboutPageSettings = ecomSettings?.aboutSettings || DEFAULT_ABOUT_SETTINGS;
 
   const menuItemsToRender = useMemo(() => {
-    return liveHeaderSettings.menuItems?.length
-      ? liveHeaderSettings.menuItems
-      : DEFAULT_HEADER_SETTINGS.menuItems;
-  }, [liveHeaderSettings.menuItems]);
+    if (liveHeaderSettings.menuItems && liveHeaderSettings.menuItems.length > 0) {
+      return liveHeaderSettings.menuItems.filter(item => 
+        item.id !== 'menu-faq' && 
+        !item.link?.includes('faq') && 
+        item.label?.toLowerCase().trim() !== 'faq'
+      );
+    }
+    // Dynamic fallback generated from real database categories
+    const categoryDropdown = (ecomSettings?.categories || [])
+      .filter((c: any) => typeof c === 'string' && c.trim() && c !== 'All')
+      .map((c: string) => ({
+        label: c.trim(),
+        link: `/shop?category=${encodeURIComponent(c.trim())}`
+      }));
 
-  const facebookUrl = liveHeaderSettings.socialLinks?.facebook;
-  const youtubeUrl = liveHeaderSettings.socialLinks?.youtube;
-  const instagramUrl = liveHeaderSettings.socialLinks?.instagram;
-  const linkedinUrl = liveHeaderSettings.socialLinks?.linkedin;
-  const tiktokUrl = liveHeaderSettings.socialLinks?.tiktok;
-  const headerEmail = liveHeaderSettings.email || displayEmail;
-  const headerPhone = liveHeaderSettings.phone || displayPhone;
+    return [
+      { id: 'menu-home', label: 'Home', link: '/', hasDropdown: false },
+      { 
+        id: 'menu-shop', 
+        label: 'Shop', 
+        link: '/shop', 
+        hasDropdown: categoryDropdown.length > 0,
+        dropdownItems: categoryDropdown.length > 0 ? categoryDropdown : undefined
+      },
+      { id: 'menu-about', label: 'About', link: '/about', hasDropdown: false },
+      { id: 'menu-blog', label: 'Blog', link: '/blog', hasDropdown: false },
+      { id: 'menu-contact', label: 'Contact', link: '/contact', hasDropdown: false }
+    ];
+  }, [liveHeaderSettings.menuItems, ecomSettings?.categories]);
+
+  const activeBlogPost = useMemo(() => {
+    const list = ecomSettings?.blogPosts || [];
+    if (!selectedBlogSlug) return list[0] || null;
+    return list.find(p => p.slug === selectedBlogSlug || p.id === selectedBlogSlug) || list[0] || null;
+  }, [selectedBlogSlug, ecomSettings?.blogPosts]);
+
+  // Dynamically derived social links directly from Admin Panel (Profile Settings & Header Settings)
+  const activeSocialLinks = useMemo(() => {
+    const src = {
+      ...(ecomSettings?.socialLinks || {}),
+      ...(liveHeaderSettings?.socialLinks || {})
+    };
+    return {
+      facebook: (src.facebook || '').trim(),
+      instagram: (src.instagram || '').trim(),
+      youtube: (src.youtube || '').trim(),
+      twitter: (src.twitter || '').trim(),
+      tiktok: (src.tiktok || '').trim(),
+      linkedin: (src.linkedin || '').trim(),
+      whatsapp: (src.whatsapp || '').trim()
+    };
+  }, [ecomSettings?.socialLinks, liveHeaderSettings?.socialLinks]);
+
+  const hasValidLink = useCallback((url?: string) => {
+    return Boolean(url && url.trim() && url.trim() !== '#' && url.trim() !== '/');
+  }, []);
+
+  const headerEmail = (liveHeaderSettings.email || displayEmail || '').trim();
+  const headerPhone = (liveHeaderSettings.phone || displayPhone || '').trim();
 
   // Dynamic Hero Banners for Slider (Driven by Admin Panel)
   const activeHeroBanners = useMemo<HeroBannerItem[]>(() => {
     if (ecomSettings?.heroBanners && ecomSettings.heroBanners.length > 0) {
       return ecomSettings.heroBanners;
     }
-    return DEFAULT_HERO_BANNERS;
+    return [];
   }, [ecomSettings?.heroBanners]);
 
   const [isSliderPaused, setIsSliderPaused] = useState<boolean>(false);
 
   // Slider Autoplay Effect (5s Interval)
   useEffect(() => {
-    if (isSliderPaused || activeHeroBanners.length <= 1) return;
+    const currentIsVideo = activeHeroBanners[activeSlideIndex]?.mediaType === 'video';
+    if (isSliderPaused || activeHeroBanners.length <= 1 || currentIsVideo) return;
     const interval = setInterval(() => {
       setActiveSlideIndex(prev => (prev + 1) % activeHeroBanners.length);
     }, 5000);
     return () => clearInterval(interval);
-  }, [isSliderPaused, activeHeroBanners.length]);
+  }, [isSliderPaused, activeHeroBanners.length, activeSlideIndex, activeHeroBanners]);
 
   const handlePrevSlide = () => {
     setActiveSlideIndex(prev => (prev - 1 + activeHeroBanners.length) % activeHeroBanners.length);
@@ -505,13 +660,13 @@ export default function FantineStorePage({ onGoToLogin, onGoToLanding }: Fantine
     }
     setIsSubmittingQuote(true);
     try {
-      await dbService.addContactMessage({
+      await dbService.saveContactMessage({
         id: `quote-${Date.now()}`,
         name: quoteForm.fullName,
         email: quoteForm.email,
         phone: quoteForm.phone,
-        subject: `[OEM/ODM Quote Request] ${quoteForm.company} (${quoteForm.quantity})`,
-        message: `Company: ${quoteForm.company}\nTarget MOQ: ${quoteForm.quantity}\nRequirements:\n${quoteForm.message}`,
+        subject: `[Customer Inquiry] ${quoteForm.company || quoteForm.fullName} (${quoteForm.quantity || 'General'})`,
+        message: `Customer: ${quoteForm.fullName}\nCompany/Notes: ${quoteForm.company}\nDetails/Quantity: ${quoteForm.quantity}\nRequirements:\n${quoteForm.message}`,
         createdAt: new Date().toISOString(),
         status: 'unread'
       });
@@ -671,9 +826,9 @@ export default function FantineStorePage({ onGoToLogin, onGoToLanding }: Fantine
   }, []);
 
   // Central Router Navigation Helper (Syncs Browser URL with SPA Views)
-  const navigateTo = useCallback((section: 'home' | 'shop' | 'about' | 'contact' | 'checkout' | 'membership') => {
+  const navigateTo = useCallback((section: 'home' | 'shop' | 'about' | 'contact' | 'checkout' | 'blog') => {
     setIsMobileMenuOpen(false);
-    const targetPath = section === 'home' ? '/' : `/${section}`;
+    const targetPath = section === 'home' ? '/' : section === 'blog' ? '/blogs/news' : `/${section}`;
     if (location.pathname !== targetPath) {
       navigate(targetPath);
     }
@@ -701,12 +856,23 @@ export default function FantineStorePage({ onGoToLogin, onGoToLanding }: Fantine
       setActiveNav('contact');
     } else if (path.startsWith('/checkout')) {
       setActiveNav('checkout');
+    } else if (path.match(/^\/(?:blogs\/news|blogs\/blog|blogs|blog)\/([^/]+)/)) {
+      const m = path.match(/^\/(?:blogs\/news|blogs\/blog|blogs|blog)\/([^/]+)/);
+      if (m && m[1] !== 'news' && m[1] !== 'blog') {
+        setSelectedBlogSlug(decodeURIComponent(m[1]));
+        setActiveNav('blog_post');
+      } else {
+        setActiveNav('blog');
+      }
+    } else if (path.startsWith('/blog') || path.startsWith('/blogs') || path.startsWith('/news')) {
+      setActiveNav('blog');
     } else if (path.startsWith('/membership') || path.startsWith('/vip')) {
-      setActiveNav('membership');
+      navigate('/');
+      setActiveNav('home');
     } else if (path === '/' || path === '') {
       setActiveNav('home');
     }
-  }, [location.pathname, routeId, routeSlug, products, findProductFromPath]);
+  }, [location.pathname, routeId, routeSlug, products, findProductFromPath, navigate]);
 
   // Bangladeshi Taka BDT Currency Formatter (Exclusive)
   const formatPrice = (priceVal: number) => {
@@ -749,7 +915,7 @@ export default function FantineStorePage({ onGoToLogin, onGoToLanding }: Fantine
   }, [removeFromCartAction, updateQuantityAction]);
 
   // Open Full Product Detail Page with dynamic SEO deep-link URL
-  const openProductDetail = useCallback((product: FantineProductItem) => {
+  const openProductDetail = useCallback((product: StoreProductItem) => {
     setActiveProductDetail(product);
     setActiveImageIndex(0);
     setActiveNav('product_detail');
@@ -766,6 +932,15 @@ export default function FantineStorePage({ onGoToLogin, onGoToLanding }: Fantine
   const totalCartCount = useMemo(() => {
     return cart.reduce((acc, item) => acc + item.quantity, 0);
   }, [cart]);
+
+  // Real "You May Also Like" Products in Cart Drawer (Excludes items already in cart)
+  const cartUpsellProducts = useMemo(() => {
+    if (!products || products.length === 0) return [];
+    const inCartIds = new Set(cart.map(item => item.product.id));
+    const unadded = products.filter(p => !inCartIds.has(p.id));
+    if (unadded.length > 0) return unadded;
+    return products.slice(0, 4);
+  }, [products, cart]);
 
   // Filtered & Sorted Catalog for Shop Page
   const filteredCatalog = useMemo(() => {
@@ -1118,6 +1293,9 @@ export default function FantineStorePage({ onGoToLogin, onGoToLanding }: Fantine
 
   const handleContactSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const fullName = `${contactFirstName} ${contactLastName}`.trim() || contactSenderName.trim() || 'Valued Customer';
+    const fullPhone = contactPhone.trim() ? `${contactCountryCode} ${contactPhone.trim()}` : '';
+
     if (!contactEmail.trim()) {
       setFeedback({
         isOpen: true,
@@ -1132,10 +1310,10 @@ export default function FantineStorePage({ onGoToLogin, onGoToLanding }: Fantine
     try {
       setIsSubmittingContact(true);
       await dbService.saveContactMessage({
-        name: contactSenderName.trim(),
+        name: fullName,
         email: contactEmail.trim(),
-        phone: contactPhone.trim(),
-        subject: contactSubject.trim(),
+        phone: fullPhone,
+        subject: contactSubject.trim() || 'General Customer Inquiry',
         message: contactMessage.trim(),
         createdAt: new Date().toISOString(),
         status: 'unread'
@@ -1143,6 +1321,8 @@ export default function FantineStorePage({ onGoToLogin, onGoToLanding }: Fantine
 
       setContactSubmitted(true);
       trackEvent('Contact', { content_name: 'Customer Contact Form' });
+      setContactFirstName('');
+      setContactLastName('');
       setContactSenderName('');
       setContactEmail('');
       setContactPhone('');
@@ -1160,14 +1340,16 @@ export default function FantineStorePage({ onGoToLogin, onGoToLanding }: Fantine
       console.error('Error submitting contact form to dbService:', err);
       try {
         await publicStoreService.submitContactMessage({
-          name: contactSenderName.trim(),
+          name: fullName,
           email: contactEmail.trim(),
-          phone: contactPhone.trim(),
-          subject: contactSubject.trim(),
+          phone: fullPhone,
+          subject: contactSubject.trim() || 'General Customer Inquiry',
           message: contactMessage.trim()
         });
       } catch {}
       setContactSubmitted(true);
+      setContactFirstName('');
+      setContactLastName('');
       setContactSenderName('');
       setContactEmail('');
       setContactPhone('');
@@ -1183,21 +1365,23 @@ export default function FantineStorePage({ onGoToLogin, onGoToLanding }: Fantine
       showToast(`Thank you! Your message has been received.`, 'success');
     } finally {
       setIsSubmittingContact(false);
-      setTimeout(() => setContactSubmitted(false), 3000);
+      setTimeout(() => setContactSubmitted(false), 6000);
     }
   };
 
   const currentProductImages = useMemo(() => {
+    if (!activeProductDetail) return [DEFAULT_PRODUCT_FALLBACK_IMAGE];
     return activeProductDetail.additionalImages && activeProductDetail.additionalImages.length > 0
       ? activeProductDetail.additionalImages
-      : [activeProductDetail.coverImage];
+      : [activeProductDetail.coverImage || DEFAULT_PRODUCT_FALLBACK_IMAGE];
   }, [activeProductDetail]);
 
-  const isAuthenticDetail = activeNav === 'product_detail' && (
-    activeProductDetail.id === '3-in-1-laundry-detergent-pods' || 
-    activeProductDetail.brand?.toUpperCase() === 'AUTHENTIC' ||
-    activeProductDetail.category?.toLowerCase().includes('pods') ||
-    Boolean(activeProductDetail.specTable && activeProductDetail.specTable.length > 0)
+  const isAuthenticDetail = activeNav === 'product_detail' && Boolean(
+    activeProductDetail?.id && (
+      (activeProductDetail.specTable && activeProductDetail.specTable.length > 0) ||
+      (activeProductDetail.specificationsList && activeProductDetail.specificationsList.length > 0) ||
+      activeProductDetail.hasVideo
+    )
   );
 
   if (isAuthenticDetail) {
@@ -1214,6 +1398,13 @@ export default function FantineStorePage({ onGoToLogin, onGoToLanding }: Fantine
           navigateTo('shop');
           navigate('/shop');
         }}
+        onAddToCart={handleAddToCart}
+        onBuyNow={(prod, qty) => {
+          handleAddToCart(prod, qty);
+          setIsCartOpen(false);
+          navigateTo('checkout');
+        }}
+        formatPrice={formatPrice}
         onRequestQuote={(prod) => {
           showToast(`Quote request received for ${prod.title}! Our sales team will reach out via WhatsApp & email shortly.`, 'success');
         }}
@@ -1255,7 +1446,7 @@ export default function FantineStorePage({ onGoToLogin, onGoToLanding }: Fantine
       {/* ============================================================
           TOP CONTACT & SOCIAL BAR (Dynamic from Admin Panel)
           ============================================================ */}
-      {liveHeaderSettings.showTopBar !== false && (
+      {liveHeaderSettings.showTopBar !== false && (headerPhone || headerEmail || Object.values(activeSocialLinks).some(hasValidLink)) && (
         <div className="bg-[#1c2850] text-white text-xs py-2 px-4 sm:px-8 transition-colors">
           <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
             {/* Left: Phone & Email */}
@@ -1280,40 +1471,60 @@ export default function FantineStorePage({ onGoToLogin, onGoToLanding }: Fantine
               )}
             </div>
 
-            {/* Right: Social Media Icons */}
+            {/* Right: Dynamic Social Media Icons (Only show if configured in Admin) */}
             <div className="flex items-center gap-4 text-white">
-              {facebookUrl && (
-                <a href={facebookUrl} target="_blank" rel="noopener noreferrer" className="hover:text-blue-200 transition-colors" title="Facebook">
+              {hasValidLink(activeSocialLinks.facebook) && (
+                <a href={activeSocialLinks.facebook} target="_blank" rel="noopener noreferrer" className="hover:text-blue-200 transition-colors" title="Facebook">
                   <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
                     <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
                   </svg>
                 </a>
               )}
-              {youtubeUrl && (
-                <a href={youtubeUrl} target="_blank" rel="noopener noreferrer" className="hover:text-blue-200 transition-colors" title="YouTube">
-                  <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
-                    <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
-                  </svg>
-                </a>
-              )}
-              {instagramUrl && (
-                <a href={instagramUrl} target="_blank" rel="noopener noreferrer" className="hover:text-blue-200 transition-colors" title="Instagram">
+              {hasValidLink(activeSocialLinks.instagram) && (
+                <a href={activeSocialLinks.instagram} target="_blank" rel="noopener noreferrer" className="hover:text-blue-200 transition-colors" title="Instagram">
                   <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
                     <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
                   </svg>
                 </a>
               )}
-              {linkedinUrl && (
-                <a href={linkedinUrl} target="_blank" rel="noopener noreferrer" className="hover:text-blue-200 transition-colors" title="LinkedIn">
+              {hasValidLink(activeSocialLinks.youtube) && (
+                <a href={activeSocialLinks.youtube} target="_blank" rel="noopener noreferrer" className="hover:text-blue-200 transition-colors" title="YouTube">
+                  <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                    <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                  </svg>
+                </a>
+              )}
+              {hasValidLink(activeSocialLinks.twitter) && (
+                <a href={activeSocialLinks.twitter} target="_blank" rel="noopener noreferrer" className="hover:text-blue-200 transition-colors" title="X (Twitter)">
+                  <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                  </svg>
+                </a>
+              )}
+              {hasValidLink(activeSocialLinks.tiktok) && (
+                <a href={activeSocialLinks.tiktok} target="_blank" rel="noopener noreferrer" className="hover:text-blue-200 transition-colors" title="TikTok">
+                  <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                    <path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.24 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z"/>
+                  </svg>
+                </a>
+              )}
+              {hasValidLink(activeSocialLinks.linkedin) && (
+                <a href={activeSocialLinks.linkedin} target="_blank" rel="noopener noreferrer" className="hover:text-blue-200 transition-colors" title="LinkedIn">
                   <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
                     <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/>
                   </svg>
                 </a>
               )}
-              {tiktokUrl && (
-                <a href={tiktokUrl} target="_blank" rel="noopener noreferrer" className="hover:text-blue-200 transition-colors" title="TikTok">
+              {hasValidLink(activeSocialLinks.whatsapp) && (
+                <a 
+                  href={activeSocialLinks.whatsapp.startsWith('http') ? activeSocialLinks.whatsapp : `https://wa.me/${activeSocialLinks.whatsapp.replace(/[^0-9]/g, '')}`} 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="hover:text-emerald-300 transition-colors" 
+                  title="WhatsApp"
+                >
                   <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
-                    <path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.24 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z"/>
+                    <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/>
                   </svg>
                 </a>
               )}
@@ -1333,14 +1544,20 @@ export default function FantineStorePage({ onGoToLogin, onGoToLanding }: Fantine
             className="flex items-center cursor-pointer group shrink-0" 
             onClick={() => navigateTo('home')}
           >
-            <img 
-              src={liveHeaderSettings.logoUrl || displayStoreLogo || '/livewellfresh_logo.png'} 
-              alt={liveHeaderSettings.brandName || displayStoreName || "livewellfresh"} 
-              className="h-10 sm:h-12 md:h-13 max-h-13 max-w-[200px] sm:max-w-[260px] md:max-w-[300px] object-contain transition-all duration-200 group-hover:opacity-95"
-              onError={(e) => {
-                e.currentTarget.src = '/livewellfresh_logo.png';
-              }}
-            />
+            {(liveHeaderSettings.logoUrl || displayStoreLogo) ? (
+              <img 
+                src={liveHeaderSettings.logoUrl || displayStoreLogo} 
+                alt={displayStoreName} 
+                className="h-10 sm:h-12 md:h-13 max-h-13 max-w-[200px] sm:max-w-[260px] md:max-w-[300px] object-contain transition-all duration-200 group-hover:opacity-95"
+                onError={(e) => {
+                  (e.currentTarget as HTMLElement).style.display = 'none';
+                }}
+              />
+            ) : (
+              <span className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+                {displayStoreName}
+              </span>
+            )}
           </div>
 
           {/* Center Navigation Links (Dynamic from liveHeaderSettings.menuItems) */}
@@ -1353,7 +1570,14 @@ export default function FantineStorePage({ onGoToLogin, onGoToLanding }: Fantine
                     if (item.link?.startsWith('/about')) navigateTo('about');
                     else if (item.link?.startsWith('/shop')) navigateTo('shop');
                     else if (item.link?.startsWith('/contact')) navigateTo('contact');
-                    else if (item.link?.startsWith('/membership') || item.link?.startsWith('/vip')) navigateTo('membership');
+                    else if (item.link?.startsWith('/blog') || item.link?.startsWith('/blogs')) navigateTo('blog');
+                    else if (item.link?.includes('faq')) {
+                      if (activeNav !== 'home') navigateTo('home');
+                      setTimeout(() => {
+                        const el = document.getElementById('faq-section');
+                        if (el) el.scrollIntoView({ behavior: 'smooth' });
+                      }, 100);
+                    }
                     else if (item.link?.startsWith('#quote')) setIsQuoteModalOpen(true);
                     else if (item.link?.startsWith('/product')) {
                       navigate(item.link);
@@ -1382,7 +1606,14 @@ export default function FantineStorePage({ onGoToLogin, onGoToLanding }: Fantine
                             if (sub.link?.startsWith('/about')) navigateTo('about');
                             else if (sub.link?.startsWith('/shop')) navigateTo('shop');
                             else if (sub.link?.startsWith('/contact')) navigateTo('contact');
-                            else if (sub.link?.startsWith('/membership') || sub.link?.startsWith('/vip')) navigateTo('membership');
+                            else if (sub.link?.startsWith('/blog') || sub.link?.startsWith('/blogs')) navigateTo('blog');
+                            else if (sub.link?.includes('faq')) {
+                              if (activeNav !== 'home') navigateTo('home');
+                              setTimeout(() => {
+                                const el = document.getElementById('faq-section');
+                                if (el) el.scrollIntoView({ behavior: 'smooth' });
+                              }, 100);
+                            }
                             else if (sub.link?.startsWith('#quote')) setIsQuoteModalOpen(true);
                             else if (sub.link?.startsWith('/product')) {
                               navigate(sub.link);
@@ -1401,71 +1632,10 @@ export default function FantineStorePage({ onGoToLogin, onGoToLanding }: Fantine
                 )}
               </div>
             ))}
-
-            {/* VIP Club Membership Pill */}
-            <button 
-              type="button"
-              onClick={() => {
-                if (activeNav === 'home') {
-                  const el = document.getElementById('membership-club-section');
-                  if (el) {
-                    el.scrollIntoView({ behavior: 'smooth' });
-                    return;
-                  }
-                }
-                navigateTo('membership');
-              }}
-              className={`px-3 py-1.5 transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap rounded-lg ${
-                activeNav === 'membership'
-                  ? 'text-amber-900 font-bold bg-amber-100'
-                  : 'hover:text-amber-900 text-amber-800 bg-amber-50/90 hover:bg-amber-100/80 border border-amber-200/60'
-              }`}
-            >
-              <Award className="w-4 h-4 text-amber-500" />
-              <span>VIP Club</span>
-              <span className="text-[9px] bg-gradient-to-r from-amber-500 to-rose-500 text-white font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wider shadow-2xs">
-                মেম্বার
-              </span>
-            </button>
           </nav>
 
-          {/* Right Tools: Search, Bag, Customer Account & Get A Quote */}
+          {/* Right Tools: Bag, Customer Account & Get A Quote */}
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-            {/* Interactive Inline Search Bar */}
-            <div className="relative flex items-center rounded-full bg-slate-100 focus-within:bg-white focus-within:ring-2 focus-within:ring-slate-900/10 border border-slate-200 focus-within:border-slate-400 text-slate-900 w-28 sm:w-40 md:w-52 lg:w-56 pl-3 pr-2 py-1.5 shadow-2xs transition-all duration-300">
-              <Search className="w-3.5 h-3.5 shrink-0 text-slate-400" />
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => {
-                  setSearchTerm(e.target.value);
-                  if (activeNav !== 'shop') {
-                    navigateTo('shop');
-                  }
-                  setCurrentPage(1);
-                }}
-                onFocus={() => {
-                  if (activeNav !== 'shop' && searchTerm.trim()) {
-                    navigateTo('shop');
-                  }
-                }}
-                placeholder="Search..."
-                className="w-full bg-transparent text-[11px] sm:text-xs pl-2 pr-1 focus:outline-none placeholder:text-slate-400 text-slate-900"
-              />
-              {searchTerm && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSearchTerm('');
-                    setCurrentPage(1);
-                  }}
-                  className="p-0.5 text-slate-400 hover:text-slate-600 cursor-pointer"
-                  title="Clear Search"
-                >
-                  <X className="w-3 h-3" />
-                </button>
-              )}
-            </div>
 
             {/* Shopping Bag Button */}
             <button 
@@ -1532,16 +1702,6 @@ export default function FantineStorePage({ onGoToLogin, onGoToLanding }: Fantine
               )}
             </div>
 
-            {/* Gradient Get A Quote Button (Matching Screenshot) */}
-            {liveHeaderSettings.showCtaButton !== false && (
-              <button
-                onClick={() => setIsQuoteModalOpen(true)}
-                className="hidden sm:inline-flex items-center gap-2 bg-gradient-to-r from-[#0093d0] to-[#00a651] hover:from-[#0082b8] hover:to-[#008f45] text-white text-xs sm:text-sm font-semibold px-4 sm:px-5 py-2 sm:py-2.5 rounded-full transition-all shadow-md hover:shadow-lg active:scale-95 cursor-pointer shrink-0"
-              >
-                <span>{liveHeaderSettings.ctaButtonText || 'Get A Quote'}</span>
-                <span className="text-base font-bold">→</span>
-              </button>
-            )}
 
             {/* Mobile Hamburger Menu Toggle Button (Visible on lg:hidden) */}
             <button
@@ -1587,7 +1747,14 @@ export default function FantineStorePage({ onGoToLogin, onGoToLanding }: Fantine
                       if (item.link?.startsWith('/about')) navigateTo('about');
                       else if (item.link?.startsWith('/shop')) navigateTo('shop');
                       else if (item.link?.startsWith('/contact')) navigateTo('contact');
-                      else if (item.link?.startsWith('/membership') || item.link?.startsWith('/vip')) navigateTo('membership');
+                      else if (item.link?.startsWith('/blog') || item.link?.startsWith('/blogs')) navigateTo('blog');
+                      else if (item.link?.includes('faq')) {
+                        if (activeNav !== 'home') navigateTo('home');
+                        setTimeout(() => {
+                          const el = document.getElementById('faq-section');
+                          if (el) el.scrollIntoView({ behavior: 'smooth' });
+                        }, 100);
+                      }
                       else if (item.link?.startsWith('#quote')) setIsQuoteModalOpen(true);
                       else if (item.link?.startsWith('/product')) {
                         navigate(item.link);
@@ -1611,7 +1778,14 @@ export default function FantineStorePage({ onGoToLogin, onGoToLanding }: Fantine
                             if (sub.link?.startsWith('/about')) navigateTo('about');
                             else if (sub.link?.startsWith('/shop')) navigateTo('shop');
                             else if (sub.link?.startsWith('/contact')) navigateTo('contact');
-                            else if (sub.link?.startsWith('/membership') || sub.link?.startsWith('/vip')) navigateTo('membership');
+                            else if (sub.link?.startsWith('/blog') || sub.link?.startsWith('/blogs')) navigateTo('blog');
+                            else if (sub.link?.includes('faq')) {
+                              if (activeNav !== 'home') navigateTo('home');
+                              setTimeout(() => {
+                                const el = document.getElementById('faq-section');
+                                if (el) el.scrollIntoView({ behavior: 'smooth' });
+                              }, 100);
+                            }
                             else if (sub.link?.startsWith('#quote')) setIsQuoteModalOpen(true);
                             else if (sub.link?.startsWith('/product')) {
                               navigate(sub.link);
@@ -1630,40 +1804,17 @@ export default function FantineStorePage({ onGoToLogin, onGoToLanding }: Fantine
                 </div>
               ))}
 
-              <button
-                onClick={() => {
-                  setIsMobileMenuOpen(false);
-                  if (activeNav === 'home') {
-                    const el = document.getElementById('membership-club-section');
-                    if (el) {
-                      el.scrollIntoView({ behavior: 'smooth' });
-                      return;
-                    }
-                  }
-                  navigateTo('membership');
-                }}
-                className={`w-full text-left px-4 py-3 rounded-xl transition flex items-center justify-between ${
-                  activeNav === 'membership'
-                    ? 'bg-amber-600 text-white font-bold'
-                    : 'bg-gradient-to-r from-amber-50 to-orange-50 hover:bg-amber-100 text-amber-900 border border-amber-200/60 font-semibold'
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  <Award className="w-4 h-4 text-amber-600" />
-                  <span>VIP Club (মেম্বারশিপ ও পয়েন্ট ছাড়)</span>
-                </div>
-                <ChevronRight className="w-4 h-4 opacity-70" />
-              </button>
-
-              <button
-                onClick={() => {
-                  setIsMobileMenuOpen(false);
-                  setIsQuoteModalOpen(true);
-                }}
-                className="w-full text-center py-3 rounded-xl bg-gradient-to-r from-[#0093d0] to-[#00a651] text-white font-bold shadow-md cursor-pointer"
-              >
-                {liveHeaderSettings.ctaButtonText || 'Get A Quote'} →
-              </button>
+              {liveHeaderSettings.showCtaButton && liveHeaderSettings.ctaButtonText?.trim() && (
+                <button
+                  onClick={() => {
+                    setIsMobileMenuOpen(false);
+                    setIsQuoteModalOpen(true);
+                  }}
+                  className="w-full text-center py-3 rounded-xl bg-gradient-to-r from-[#0093d0] to-[#00a651] text-white font-bold shadow-md cursor-pointer"
+                >
+                  {liveHeaderSettings.ctaButtonText} →
+                </button>
+              )}
 
               {customerSession ? (
                 <div className="px-4 py-3 bg-emerald-50 border border-emerald-100 rounded-xl space-y-2">
@@ -1721,6 +1872,24 @@ export default function FantineStorePage({ onGoToLogin, onGoToLanding }: Fantine
 
       {/* VIEW 1: DEDICATED PRODUCT DETAIL VIEW (Screenshot 2: product_385231.html) */}
       {activeNav === 'product_detail' && (
+        !activeProductDetail?.id ? (
+          <div className="py-20 text-center max-w-md mx-auto px-4">
+            <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mx-auto text-slate-400 mb-4">
+              <ShoppingBag className="w-8 h-8" />
+            </div>
+            <h2 className="text-xl font-bold text-slate-900 mb-2">No Product Selected</h2>
+            <p className="text-sm text-slate-500 mb-6">Please select a product from our store catalog.</p>
+            <button
+              onClick={() => {
+                navigateTo('shop');
+                navigate('/shop');
+              }}
+              className="px-5 py-2.5 bg-slate-900 text-white rounded-xl text-xs font-semibold hover:bg-slate-800 transition cursor-pointer"
+            >
+              Browse Shop
+            </button>
+          </div>
+        ) : (
         <div className="py-6 sm:py-12 lg:py-16 max-w-7xl mx-auto px-4 sm:px-8">
           
           <div className="mb-4 sm:mb-6 flex flex-wrap items-center gap-1.5 sm:gap-2 text-xs text-slate-500">
@@ -1749,7 +1918,7 @@ export default function FantineStorePage({ onGoToLogin, onGoToLanding }: Fantine
                     <img width={80} height={80} src={imgUrl} alt="Thumbnail" 
                       onError={(e) => {
                         e.currentTarget.onerror = null;
-                        e.currentTarget.src = DEFAULT_FANTINE_FALLBACK_IMAGE;
+                        e.currentTarget.src = DEFAULT_STORE_FALLBACK_IMAGE;
                       }}
                       className="w-full h-full object-contain" 
                     />
@@ -1773,7 +1942,7 @@ export default function FantineStorePage({ onGoToLogin, onGoToLanding }: Fantine
                 <img fetchPriority="high" width={500} height={500} src={currentProductImages[activeImageIndex] || activeProductDetail.coverImage} alt={activeProductDetail.title} 
                   onError={(e) => {
                     e.currentTarget.onerror = null;
-                    e.currentTarget.src = DEFAULT_FANTINE_FALLBACK_IMAGE;
+                    e.currentTarget.src = DEFAULT_STORE_FALLBACK_IMAGE;
                   }}
                   style={{
                     transformOrigin: `${zoomPos.x}% ${zoomPos.y}%`,
@@ -1914,131 +2083,259 @@ export default function FantineStorePage({ onGoToLogin, onGoToLanding }: Fantine
             />
           </div>
         </div>
+        )
       )}
 
-      {/* VIEW 2: CONTACT US PAGE (Screenshot 1) */}
+      {/* VIEW 2: CONTACT US PAGE (Logo Branding & NeuAura Style) */}
       {activeNav === 'contact' && (
-        <div className="py-12 sm:py-20 max-w-7xl mx-auto px-4 sm:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-12 rounded-2xl overflow-hidden shadow-xl border border-slate-200 bg-white">
+        <div className="py-10 sm:py-16 bg-[#fafbfc] min-h-screen">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
             
-            <div className="lg:col-span-4 bg-[#1e293b] text-white p-8 sm:p-10 space-y-8 flex flex-col justify-between">
-              <div className="space-y-4">
-                <h2 className="font-sans text-2xl font-semibold text-white">Contact information</h2>
-                <p className="text-xs text-slate-300 leading-relaxed font-normal">
-                  Contact us for product inquiries, wholesale pricing, international distribution, and OEM/ODM manufacturing partnerships.
-                </p>
-              </div>
-
-              <div className="space-y-6 text-xs text-slate-300">
-                <div className="flex items-center gap-3">
-                  <Phone className="w-4 h-4 text-slate-500 shrink-0" />
-                  <span>{displayPhone}</span>
-                </div>
-
-                <div className="flex items-center gap-3">
-                  <Mail className="w-4 h-4 text-slate-500 shrink-0" />
-                  <a href={`mailto:${displayEmail}`} className="hover:text-white transition-colors">{displayEmail}</a>
-                </div>
-
-                <div className="flex items-start gap-3">
-                  <MapPin className="w-4 h-4 text-slate-500 shrink-0 mt-0.5" />
-                  <span className="leading-relaxed">
-                    {displayAddress}
-                  </span>
-                </div>
-              </div>
-
-              <div className="pt-6 border-t border-slate-700 text-[11px] text-slate-400">
-                {displayCompanyName.toUpperCase()} • Global Customer Service
-              </div>
+            {/* Page Header & Breadcrumbs */}
+            <div className="text-center mb-8 sm:mb-12">
+              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-[#0279c7] tracking-tight">
+                Contact Us
+              </h1>
+              <nav className="flex items-center justify-center gap-2 text-xs sm:text-sm font-medium text-slate-500 mt-2.5">
+                <button 
+                  onClick={() => navigateTo('home')}
+                  className="hover:text-[#0279c7] transition cursor-pointer"
+                >
+                  Home
+                </button>
+                <span className="text-slate-400">›</span>
+                <span className="text-slate-700 font-semibold">Contact Us</span>
+              </nav>
             </div>
 
-            <div className="lg:col-span-8 p-8 sm:p-12 space-y-6 bg-white">
-              <h3 className="font-sans text-2xl text-slate-900 font-normal">Leave us message</h3>
+            {/* Main Two-Column Card Container */}
+            <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm overflow-hidden flex flex-col lg:flex-row">
               
-              <form onSubmit={handleContactSubmit} className="space-y-5">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-slate-700">Full Name</label>
-                    <input 
-                      type="text" 
-                      value={contactSenderName} 
-                      onChange={e => setContactSenderName(e.target.value)} 
-                      placeholder="Your name"
-                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-900"
-                    />
+              {/* Left Column: Let's Talk (Vibrant Logo Ocean Water Blue) */}
+              <div className="lg:w-[38%] bg-[#0279c7] text-white p-8 sm:p-10 lg:p-12 flex flex-col justify-between relative overflow-hidden">
+                <div className="absolute -bottom-24 -right-24 w-64 h-64 rounded-full bg-white/5 pointer-events-none blur-2xl" />
+                
+                <div className="relative z-10 space-y-8">
+                  <div>
+                    <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight mb-3">
+                      Let's Talk
+                    </h2>
+                    <p className="text-xs sm:text-sm text-blue-100/90 leading-relaxed font-normal">
+                      Have a question about your order, our products, or anything else? We're here to help.
+                    </p>
                   </div>
 
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-slate-700">Email *</label>
-                    <input 
-                      type="email" 
-                      value={contactEmail} 
-                      onChange={e => setContactEmail(e.target.value)} 
-                      required 
-                      placeholder="your.email@example.com"
-                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-900"
-                    />
+                  <div className="space-y-6">
+                    {/* Email */}
+                    <div className="flex items-start gap-4">
+                      <div className="w-11 h-11 rounded-full bg-white/15 flex items-center justify-center text-white shrink-0 shadow-inner">
+                        <Mail className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <span className="text-[11px] font-bold text-blue-200 uppercase tracking-wider block mb-0.5">
+                          Email
+                        </span>
+                        <a 
+                          href={`mailto:${displayEmail || 'info@livewellfresh.com'}`}
+                          className="text-xs sm:text-sm text-white font-medium hover:underline break-all"
+                        >
+                          {displayEmail || 'info@livewellfresh.com'}
+                        </a>
+                      </div>
+                    </div>
+
+                    {/* Customer Support Hours */}
+                    <div className="flex items-start gap-4">
+                      <div className="w-11 h-11 rounded-full bg-white/15 flex items-center justify-center text-white shrink-0 shadow-inner">
+                        <Clock className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <span className="text-[11px] font-bold text-blue-200 uppercase tracking-wider block mb-0.5">
+                          Customer Support
+                        </span>
+                        <p className="text-xs sm:text-sm text-white font-medium leading-relaxed">
+                          Monday – Saturday<br />
+                          10:00 AM – 6:00 PM
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Phone / WhatsApp */}
+                    {displayPhone && (
+                      <div className="flex items-start gap-4">
+                        <div className="w-11 h-11 rounded-full bg-white/15 flex items-center justify-center text-white shrink-0 shadow-inner">
+                          <Phone className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <span className="text-[11px] font-bold text-blue-200 uppercase tracking-wider block mb-0.5">
+                            Customer Care Hotline
+                          </span>
+                          <a 
+                            href={`tel:${displayPhone}`}
+                            className="text-xs sm:text-sm text-white font-medium hover:underline"
+                          >
+                            {displayPhone}
+                          </a>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Location */}
+                    {displayAddress && (
+                      <div className="flex items-start gap-4">
+                        <div className="w-11 h-11 rounded-full bg-white/15 flex items-center justify-center text-white shrink-0 shadow-inner">
+                          <MapPin className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <span className="text-[11px] font-bold text-blue-200 uppercase tracking-wider block mb-0.5">
+                            Office Location
+                          </span>
+                          <p className="text-xs sm:text-sm text-white font-medium leading-relaxed">
+                            {displayAddress}
+                          </p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                  <div className="space-y-1.5">
-                    <div className="flex justify-between">
-                      <label className="text-xs font-semibold text-slate-700">Phone</label>
-                      <span className="text-[10px] text-slate-500">Optional</span>
+                <div className="relative z-10 pt-8 mt-8 border-t border-white/15 text-[11px] text-blue-200/80">
+                  {displayCompanyName} • Dedicated Customer Care
+                </div>
+              </div>
+
+              {/* Right Column: Send us a message form */}
+              <div className="lg:flex-1 p-8 sm:p-10 lg:p-12 bg-white">
+                <h2 className="text-2xl sm:text-3xl font-extrabold text-[#0279c7] tracking-tight mb-8">
+                  Send us a message
+                </h2>
+
+                <form onSubmit={handleContactSubmit} className="space-y-5">
+                  
+                  {/* First Name & Last Name */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-800 mb-1.5">
+                        First Name
+                      </label>
+                      <input 
+                        type="text" 
+                        value={contactFirstName} 
+                        onChange={e => setContactFirstName(e.target.value)} 
+                        placeholder="First Name"
+                        className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-900 outline-none focus:border-[#0279c7] focus:ring-1 focus:ring-[#0279c7] transition shadow-2xs"
+                      />
                     </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-800 mb-1.5">
+                        Last Name
+                      </label>
+                      <input 
+                        type="text" 
+                        value={contactLastName} 
+                        onChange={e => setContactLastName(e.target.value)} 
+                        placeholder="Last Name"
+                        className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-900 outline-none focus:border-[#0279c7] focus:ring-1 focus:ring-[#0279c7] transition shadow-2xs"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Email Address */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-800 mb-1.5">
+                      Email Address <span className="text-red-500">*</span>
+                    </label>
                     <input 
-                      type="tel" 
-                      value={contactPhone} 
-                      onChange={e => setContactPhone(e.target.value)} 
-                      placeholder="+82 / 01..."
-                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-900"
+                      type="email" 
+                      required
+                      value={contactEmail} 
+                      onChange={e => setContactEmail(e.target.value)} 
+                      placeholder="your.email@example.com"
+                      className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-900 outline-none focus:border-[#0279c7] focus:ring-1 focus:ring-[#0279c7] transition shadow-2xs"
                     />
                   </div>
 
-                  <div className="space-y-1.5">
-                    <div className="flex justify-between">
-                      <label className="text-xs font-semibold text-slate-700">Subject</label>
-                      <span className="text-[10px] text-slate-500">Optional</span>
+                  {/* Phone Number with country dropdown */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-800 mb-1.5">
+                      Phone Number
+                    </label>
+                    <div className="flex gap-2">
+                      <select
+                        value={contactCountryCode}
+                        onChange={e => setContactCountryCode(e.target.value)}
+                        className="px-3 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold text-slate-700 outline-none focus:border-[#0279c7] cursor-pointer"
+                      >
+                        <option value="+880">+880 (BD)</option>
+                        <option value="+91">+91 (IN)</option>
+                        <option value="+1">+1 (US)</option>
+                        <option value="+44">+44 (UK)</option>
+                        <option value="+971">+971 (UAE)</option>
+                        <option value="+966">+966 (KSA)</option>
+                        <option value="+60">+60 (MY)</option>
+                      </select>
+                      <input 
+                        type="tel" 
+                        value={contactPhone} 
+                        onChange={e => setContactPhone(e.target.value)} 
+                        placeholder="01XXXXXXXXX"
+                        className="flex-1 px-4 py-3 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-900 outline-none focus:border-[#0279c7] focus:ring-1 focus:ring-[#0279c7] transition shadow-2xs"
+                      />
                     </div>
+                  </div>
+
+                  {/* Subject */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-800 mb-1.5">
+                      Subject
+                    </label>
                     <input 
                       type="text" 
                       value={contactSubject} 
                       onChange={e => setContactSubject(e.target.value)} 
-                      placeholder="Product inquiry, wholesale, etc."
-                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-900"
+                      placeholder="How can we help you?"
+                      className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-900 outline-none focus:border-[#0279c7] focus:ring-1 focus:ring-[#0279c7] transition shadow-2xs"
                     />
                   </div>
-                </div>
 
-                <div className="space-y-1.5">
-                  <div className="flex justify-between">
-                    <label className="text-xs font-semibold text-slate-700">Message *</label>
-                    <span className="text-[10px] text-slate-500">Required</span>
+                  {/* Message */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-800 mb-1.5">
+                      Message <span className="text-red-500">*</span>
+                    </label>
+                    <textarea 
+                      rows={5} 
+                      required
+                      value={contactMessage} 
+                      onChange={e => setContactMessage(e.target.value)} 
+                      placeholder="Write your message or inquiry here..."
+                      className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-900 outline-none focus:border-[#0279c7] focus:ring-1 focus:ring-[#0279c7] transition shadow-2xs resize-none"
+                    />
                   </div>
-                  <textarea 
-                    rows={5} 
-                    value={contactMessage} 
-                    onChange={e => setContactMessage(e.target.value)} 
-                    required
-                    placeholder="Write your message here..."
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-900 resize-none"
-                  />
-                </div>
 
-                <div className="flex justify-end pt-2">
-                  <button 
-                    type="submit" 
-                    disabled={isSubmittingContact}
-                    className="bg-[#111827] hover:bg-slate-800 text-white font-medium px-8 py-3 rounded-lg text-xs tracking-wider uppercase transition-colors shadow-md disabled:opacity-50 cursor-pointer"
-                  >
-                    {isSubmittingContact ? 'Submitting...' : contactSubmitted ? 'Sent!' : 'Submit'}
-                  </button>
-                </div>
-              </form>
+                  {/* Submit Button */}
+                  <div className="pt-2">
+                    <button 
+                      type="submit" 
+                      disabled={isSubmittingContact}
+                      className="w-full sm:w-auto px-8 py-3.5 bg-[#0279c7] hover:bg-[#0269ad] text-white text-xs sm:text-sm font-bold rounded-xl transition-all shadow-md hover:shadow-lg disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
+                    >
+                      {isSubmittingContact ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          <span>Sending Message...</span>
+                        </>
+                      ) : contactSubmitted ? (
+                        <span>✓ Message Sent Successfully!</span>
+                      ) : (
+                        <span>Send Message</span>
+                      )}
+                    </button>
+                  </div>
+                </form>
+              </div>
+
             </div>
-
           </div>
         </div>
       )}
@@ -2267,63 +2564,17 @@ export default function FantineStorePage({ onGoToLogin, onGoToLanding }: Fantine
       )}
 
       {/* ============================================================
-          VIEW 4: DEDICATED ABOUT US PAGE (Clean Simple Text & Narrative)
+          VIEW 4: DEDICATED ABOUT US PAGE (Exact NeuAura Style & Rich Laundry Pod Content)
           ============================================================ */}
       {activeNav === 'about' && (
-        <div className="bg-[#faf9f6] animate-fadeIn min-h-[70vh]">
-          
-          {/* 1. CINEMATIC ABOUT HERO BANNER */}
-          <section className="relative overflow-hidden -mt-[84px] sm:-mt-[92px] md:-mt-[100px] pt-[84px] sm:pt-[92px] md:pt-[100px] min-h-[420px] sm:min-h-[500px] flex items-center justify-center bg-slate-950 text-white border-b border-slate-900">
-            <div className="absolute inset-0 z-0 overflow-hidden">
-              <img
-                src={aboutSettings.image || aboutSettings.heroImage || 'https://images.unsplash.com/photo-1571781926291-c477ebfd024b?w=1600&auto=format&fit=crop&q=85'}
-                alt={aboutSettings.title || aboutSettings.heroTitle || 'About FANTINE'}
-                className="w-full h-full object-cover filter brightness-75 scale-105 transition-transform duration-1000"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/50 to-slate-950/40"></div>
-            </div>
-
-            <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-8 py-16 text-center space-y-4">
-              <div className="inline-flex items-center gap-2 bg-[#93c5fd]/20 text-[#93c5fd] border border-[#93c5fd]/30 text-xs font-semibold px-4 py-1.5 rounded-full uppercase tracking-widest backdrop-blur-xs">
-                <Sparkles className="w-3.5 h-3.5" />
-                {aboutSettings.badge || 'ABOUT OUR BRAND'}
-              </div>
-
-              <h1 className="font-sans text-3xl sm:text-5xl lg:text-6xl text-white font-semibold uppercase leading-tight tracking-tight drop-shadow-md">
-                {aboutSettings.title || aboutSettings.heroTitle || 'about us'}
-              </h1>
-
-              {(aboutSettings.subtitle || aboutSettings.heroSubtitle) && (
-                <p className="text-slate-200 text-sm sm:text-base font-normal leading-relaxed max-w-2xl mx-auto">
-                  {aboutSettings.subtitle || aboutSettings.heroSubtitle}
-                </p>
-              )}
-
-              {/* Breadcrumb */}
-              <div className="pt-2 flex items-center justify-center gap-2 text-xs text-slate-300 font-mono tracking-wider uppercase">
-                <button onClick={() => navigateTo('home')} className="hover:text-white transition-colors cursor-pointer">HOME</button>
-                <span>/</span>
-                <span className="text-[#93c5fd] font-semibold">about us</span>
-              </div>
-            </div>
-          </section>
-
-          {/* 2. MAIN STORY TEXT CONTENT */}
-          <section className="py-16 sm:py-24 max-w-4xl mx-auto px-4 sm:px-8">
-            <div className="bg-white p-8 sm:p-12 rounded-2xl shadow-xs border border-slate-200/80 space-y-8">
-              <div className="prose prose-slate max-w-none text-slate-700 leading-relaxed font-normal text-base sm:text-lg whitespace-pre-line space-y-4 text-justify">
-                {aboutSettings.content || [
-                  aboutSettings.storyParagraph1,
-                  aboutSettings.storyParagraph2,
-                  aboutSettings.storyParagraph3
-                ].filter(Boolean).join('\n\n') || 'Detailed information about us will be added soon.'}
-              </div>
-
-
-            </div>
-          </section>
-
-        </div>
+        <AboutUsPage 
+          onNavigateHome={() => navigateTo('home')}
+          onNavigateShop={() => navigateTo('shop')}
+          onNavigateContact={() => navigateTo('contact')}
+          brandName={displayStoreName || 'Leaf Curt'}
+          brandLogo={displayStoreLogo}
+          products={products}
+        />
       )}
 
       {/* ============================================================
@@ -2342,7 +2593,7 @@ export default function FantineStorePage({ onGoToLogin, onGoToLanding }: Fantine
         />
       )}
 
-      {/* VIEW 6: HOME VIEW (Default - Matching brandini.co.kr) */}
+      {/* VIEW 6: HOME VIEW (Default Storefront) */}
       {activeNav === 'home' && (
         <>
           {/* ============================================================
@@ -2353,114 +2604,176 @@ export default function FantineStorePage({ onGoToLogin, onGoToLanding }: Fantine
             onMouseEnter={() => setIsSliderPaused(true)}
             onMouseLeave={() => setIsSliderPaused(false)}
           >
-            {activeHeroBanners.map((banner, index) => {
-              const isActive = index === activeSlideIndex;
-              return (
-                <div
-                  key={banner.id || index}
-                  className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${
-                    isActive ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'
-                  }`}
-                >
-                  {/* Slide Background: High-Res Video or Image */}
-                  {banner.mediaType === 'video' && banner.videoUrl ? (
-                    <div className="absolute inset-0 overflow-hidden">
-                      <video
-                        autoPlay
-                        loop
-                        muted
-                        playsInline
-                        preload="auto"
-                        className="w-full h-full object-cover"
-                      >
-                        <source src={banner.videoUrl} type="video/mp4" />
-                      </video>
-                      <div className={`absolute inset-0 bg-gradient-to-r ${banner.bgGradient || 'from-slate-950/85 via-slate-900/60 to-transparent'}`} />
-                    </div>
-                  ) : (
-                    <div className="absolute inset-0">
-                      <picture>
-                        {banner.mobileImageUrl && (
-                          <source media="(max-width: 640px)" srcSet={banner.mobileImageUrl} />
-                        )}
-                        <img
-                          src={banner.imageUrl || 'https://images.unsplash.com/photo-1585421514738-01798e348b17?w=1920&auto=format&fit=crop&q=85'}
-                          alt={banner.title || 'livewellfresh banner'}
-                          className="w-full h-full object-cover object-center"
-                          loading={index === 0 ? 'eager' : 'lazy'}
-                        />
-                      </picture>
-                      <div className={`absolute inset-0 bg-gradient-to-r ${banner.bgGradient || 'from-slate-950/85 via-slate-900/50 to-transparent'}`} />
-                    </div>
+            {activeHeroBanners.length === 0 ? (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-[#0f172a] to-slate-900" />
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_30%,rgba(2,132,199,0.18),transparent_55%)] pointer-events-none" />
+                <div className="relative z-10 max-w-5xl mx-auto px-6 sm:px-12 py-16 sm:py-24 text-center space-y-6">
+                  <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white text-xs sm:text-sm font-bold tracking-widest uppercase animate-fadeIn">
+                    <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                    <span>{displayStoreName.toUpperCase()}</span>
+                  </div>
+                  <h1 className="text-3xl sm:text-5xl md:text-6xl font-extrabold text-white tracking-tight drop-shadow-md leading-[1.15]">
+                    {displayStoreName}
+                  </h1>
+                  {displayTagline && (
+                    <p className="text-sm sm:text-lg md:text-xl text-slate-200 max-w-2xl mx-auto leading-relaxed font-normal">
+                      {displayTagline}
+                    </p>
                   )}
+                  <div className="pt-4 flex justify-center">
+                    <button
+                      type="button"
+                      onClick={() => navigateTo('shop')}
+                      className="px-8 sm:px-10 py-3.5 sm:py-4 rounded-full bg-gradient-to-r from-[#0093d0] to-[#00a651] hover:from-[#0082b8] hover:to-[#008f45] text-white font-bold text-sm sm:text-base shadow-xl hover:shadow-2xl transition-all duration-300 flex items-center gap-2 cursor-pointer active:scale-95"
+                    >
+                      <span>EXPLORE SHOP</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              activeHeroBanners.map((banner, index) => {
+                const isActive = index === activeSlideIndex;
+                const isVideo = banner.mediaType === 'video';
+                const ytId = isVideo && (banner.videoType === 'youtube' || banner.youtubeUrl)
+                  ? extractYouTubeVideoId(banner.youtubeUrl || banner.videoUrl)
+                  : null;
+                const directVideoUrl = isVideo && !ytId ? banner.videoUrl : null;
 
-                  {/* Slide Content Overlay */}
-                  {!banner.imageOnly && (
-                    <div className="relative z-10 max-w-7xl mx-auto px-6 sm:px-12 lg:px-16 h-full flex flex-col justify-center items-start py-16 sm:py-24">
-                      {banner.badge && (
-                        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/15 backdrop-blur-md border border-white/25 text-white text-xs sm:text-sm font-bold tracking-wider uppercase mb-4 animate-fadeIn">
-                          <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-                          <span>{banner.badge}</span>
-                        </div>
-                      )}
+                return (
+                  <div
+                    key={banner.id || index}
+                    className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${
+                      isActive ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'
+                    }`}
+                  >
+                    {/* Slide Background: Video (YouTube or MP4) or Image */}
+                    {isVideo ? (
+                      <div className="absolute inset-0 overflow-hidden bg-black flex items-center justify-center">
+                        {ytId ? (
+                          <iframe
+                            src={`https://www.youtube-nocookie.com/embed/${ytId}?autoplay=1&mute=1&controls=1&loop=1&playlist=${ytId}&playsinline=1&rel=0&modestbranding=1`}
+                            title={banner.title || "Hero Video"}
+                            className="w-full h-full border-0 aspect-video pointer-events-auto"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                            allowFullScreen
+                          />
+                        ) : directVideoUrl ? (
+                          <video
+                            autoPlay
+                            loop
+                            muted
+                            playsInline
+                            preload="auto"
+                            className="w-full h-full object-cover pointer-events-auto"
+                          >
+                            <source src={directVideoUrl} type="video/mp4" />
+                          </video>
+                        ) : null}
+                      </div>
+                    ) : (
+                      <div className="absolute inset-0">
+                        <picture>
+                          {banner.mobileImageUrl && (
+                            <source media="(max-width: 640px)" srcSet={banner.mobileImageUrl} />
+                          )}
+                          {banner.imageUrl ? (
+                            <img
+                              src={banner.imageUrl}
+                              alt={banner.title || displayStoreName}
+                              className="w-full h-full object-cover object-center"
+                              loading={index === 0 ? 'eager' : 'lazy'}
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-gradient-to-br from-slate-950 via-[#0f172a] to-slate-900" />
+                          )}
+                        </picture>
+                        <div className={`absolute inset-0 bg-gradient-to-r ${banner.bgGradient || 'from-slate-950/85 via-slate-900/50 to-transparent'}`} />
+                      </div>
+                    )}
 
-                      {banner.showDiscount && banner.discountText && (
-                        <span className="inline-block px-3 py-1 bg-gradient-to-r from-amber-500 to-rose-500 text-white text-xs sm:text-sm font-extrabold rounded-md uppercase tracking-wider mb-3 shadow-md">
-                          {banner.discountText}
-                        </span>
-                      )}
+                    {/* Slide Content Overlay (Only for image slides — for video slides, ONLY the video is shown with nothing else) */}
+                    {!banner.imageOnly && !isVideo && (
+                      <div className="relative z-10 max-w-7xl mx-auto px-6 sm:px-12 lg:px-16 h-full flex flex-col justify-center items-start py-16 sm:py-24">
+                        {banner.badge && (
+                          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/15 backdrop-blur-md border border-white/25 text-white text-xs sm:text-sm font-bold tracking-wider uppercase mb-4 animate-fadeIn">
+                            <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                            <span>{banner.badge}</span>
+                          </div>
+                        )}
 
-                      <h1 className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold text-white tracking-tight max-w-3xl leading-[1.15] mb-4 sm:mb-6 drop-shadow-md">
-                        {banner.title}
-                      </h1>
+                        {banner.showDiscount && banner.discountText && (
+                          <span className="inline-block px-3 py-1 bg-gradient-to-r from-amber-500 to-rose-500 text-white text-xs sm:text-sm font-extrabold rounded-md uppercase tracking-wider mb-3 shadow-md">
+                            {banner.discountText}
+                          </span>
+                        )}
 
-                      {banner.subtitle && (
-                        <p className="text-sm sm:text-lg md:text-xl text-slate-200 max-w-2xl leading-relaxed mb-6 sm:mb-8 font-normal drop-shadow-sm">
-                          {banner.subtitle}
-                        </p>
-                      )}
+                        <h1 className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold text-white tracking-tight max-w-3xl leading-[1.15] mb-4 sm:mb-6 drop-shadow-md">
+                          {banner.title}
+                        </h1>
 
-                      <div className="flex flex-wrap items-center gap-3 sm:gap-4">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (banner.actionType === 'product' && banner.productId) {
-                              const found = products.find(p => p.id === banner.productId);
-                              if (found) {
-                                openProductDetail(found);
+                        {banner.subtitle && (
+                          <p className="text-sm sm:text-lg md:text-xl text-slate-200 max-w-2xl leading-relaxed mb-6 sm:mb-8 font-normal drop-shadow-sm">
+                            {banner.subtitle}
+                          </p>
+                        )}
+
+                        <div className="flex flex-wrap items-center gap-3 sm:gap-4">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (banner.actionType === 'product' && banner.productId) {
+                                const found = products.find(p => p.id === banner.productId);
+                                if (found) {
+                                  openProductDetail(found);
+                                } else {
+                                  navigateTo('shop');
+                                }
+                              } else if (banner.link === '#quote') {
+                                setIsQuoteModalOpen(true);
+                              } else if (banner.link?.startsWith('/product')) {
+                                navigate(banner.link);
+                                setActiveNav('product_detail');
+                              } else if (banner.link?.startsWith('/')) {
+                                navigate(banner.link);
                               } else {
                                 navigateTo('shop');
                               }
-                            } else if (banner.link === '#quote') {
-                              setIsQuoteModalOpen(true);
-                            } else if (banner.link?.startsWith('/product')) {
-                              navigate(banner.link);
-                              setActiveNav('product_detail');
-                            } else if (banner.link?.startsWith('/')) {
-                              navigate(banner.link);
-                            } else {
-                              navigateTo('shop');
-                            }
-                          }}
-                          className="px-6 sm:px-8 py-3 sm:py-4 rounded-full bg-gradient-to-r from-[#0093d0] to-[#00a651] hover:from-[#0082b8] hover:to-[#008f45] text-white font-bold text-sm sm:text-base shadow-xl hover:shadow-2xl transition-all duration-300 flex items-center gap-2 group cursor-pointer active:scale-95"
-                        >
-                          <span>{banner.buttonText || 'BUY NOW'}</span>
-                          <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                        </button>
+                            }}
+                            className="px-6 sm:px-8 py-3 sm:py-4 rounded-full bg-gradient-to-r from-[#0093d0] to-[#00a651] hover:from-[#0082b8] hover:to-[#008f45] text-white font-bold text-sm sm:text-base shadow-xl hover:shadow-2xl transition-all duration-300 flex items-center gap-2 group cursor-pointer active:scale-95"
+                          >
+                            <span>{banner.buttonText || 'BUY NOW'}</span>
+                            <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                          </button>
 
-                        <button
-                          type="button"
-                          onClick={() => setIsQuoteModalOpen(true)}
-                          className="px-6 sm:px-8 py-3 sm:py-4 rounded-full bg-white/15 hover:bg-white/25 backdrop-blur-md border border-white/30 text-white font-semibold text-sm sm:text-base transition-all duration-300 flex items-center gap-2 cursor-pointer active:scale-95"
-                        >
-                          <span>Get Factory Quote</span>
-                        </button>
+                          {banner.secondaryButtonText?.trim() && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (banner.secondaryButtonLink === '#quote') {
+                                  setIsQuoteModalOpen(true);
+                                } else if (banner.secondaryButtonLink?.startsWith('/')) {
+                                  navigate(banner.secondaryButtonLink);
+                                } else if (banner.secondaryButtonLink) {
+                                  window.location.href = banner.secondaryButtonLink;
+                                } else {
+                                  setIsQuoteModalOpen(true);
+                                }
+                              }}
+                              className="px-6 sm:px-8 py-3 sm:py-4 rounded-full bg-white/15 hover:bg-white/25 backdrop-blur-md border border-white/30 text-white font-semibold text-sm sm:text-base transition-all duration-300 flex items-center gap-2 cursor-pointer active:scale-95"
+                            >
+                              <span>{banner.secondaryButtonText}</span>
+                            </button>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+                    )}
+                  </div>
+                );
+              })
+            )}
 
             {/* Slider Navigation Arrows (Prev / Next) */}
             {activeHeroBanners.length > 1 && (
@@ -2482,180 +2795,327 @@ export default function FantineStorePage({ onGoToLogin, onGoToLanding }: Fantine
                   <ChevronRight className="w-6 h-6" />
                 </button>
 
-                {/* Dot Pagination Indicators */}
-                <div className="absolute bottom-5 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2.5">
-                  {activeHeroBanners.map((_, dotIdx) => (
-                    <button
-                      key={dotIdx}
-                      type="button"
-                      onClick={() => setActiveSlideIndex(dotIdx)}
-                      className={`transition-all rounded-full cursor-pointer ${
-                        dotIdx === activeSlideIndex
-                          ? 'w-8 h-2.5 bg-gradient-to-r from-[#0093d0] to-[#00a651] shadow-md'
-                          : 'w-2.5 h-2.5 bg-white/50 hover:bg-white/80'
-                      }`}
-                      aria-label={`Slide ${dotIdx + 1}`}
-                    />
-                  ))}
-                </div>
+                {/* Dot Pagination Indicators (Hidden when video is active) */}
+                {activeHeroBanners[activeSlideIndex]?.mediaType !== 'video' && (
+                  <div className="absolute bottom-5 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2.5">
+                    {activeHeroBanners.map((_, dotIdx) => (
+                      <button
+                        key={dotIdx}
+                        type="button"
+                        onClick={() => setActiveSlideIndex(dotIdx)}
+                        className={`transition-all rounded-full cursor-pointer ${
+                          dotIdx === activeSlideIndex
+                            ? 'w-8 h-2.5 bg-gradient-to-r from-[#0093d0] to-[#00a651] shadow-md'
+                            : 'w-2.5 h-2.5 bg-white/50 hover:bg-white/80'
+                        }`}
+                        aria-label={`Slide ${dotIdx + 1}`}
+                      />
+                    ))}
+                  </div>
+                )}
               </>
             )}
           </section>
 
           {/* ============================================================
-              3. FEATURED PRODUCTS (Dynamic Products from Admin & DB)
+          {/* ============================================================
+              3. EMPTY STATE OR FEATURED PRODUCTS (Dynamic from Admin & DB)
               ============================================================ */}
-          <section className="py-12 sm:py-20 lg:py-24 bg-white border-b border-slate-100">
-            <div className="max-w-7xl mx-auto px-4 sm:px-8">
-              
-              <div className="text-center max-w-3xl mx-auto mb-8 sm:mb-14">
-                <h2 className="font-sans text-2xl sm:text-3xl lg:text-4xl text-slate-900 font-semibold tracking-tight mb-2 sm:mb-3">
-                  {ecomSettings?.featuredSectionTitle || `${displayStoreName} Featured Products`}
-                </h2>
-                <p className="text-slate-600 text-[11px] sm:text-sm tracking-wider uppercase font-medium">
-                  {ecomSettings?.featuredSectionSubtitle || 'Premium Quality • OEM/ODM Manufacturing • Direct Factory Supply'}
-                </p>
-              </div>
-
-              <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 lg:gap-8">
-                {products.slice(0, 4).map((product) => (
-                  <div 
-                    key={product.id}
-                    className="group flex flex-col bg-white rounded-none border border-transparent hover:border-slate-200 transition-all duration-300 p-1.5 sm:p-2"
+          {products.length === 0 ? (
+            <section className="py-16 sm:py-24 bg-white border-b border-slate-100 text-center">
+              <div className="max-w-md mx-auto px-4 space-y-4">
+                <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mx-auto text-slate-400">
+                  <ShoppingBag className="w-8 h-8" />
+                </div>
+                <div className="space-y-1">
+                  <h3 className="font-sans text-xl font-bold text-slate-900">
+                    Welcome to {displayStoreName}
+                  </h3>
+                  <p className="text-xs sm:text-sm text-slate-500">
+                    Our catalog is ready for products. Manage and add your items directly from the Admin Panel.
+                  </p>
+                </div>
+                <div className="pt-2">
+                  <button
+                    onClick={() => {
+                      if (onGoToLogin) {
+                        onGoToLogin();
+                      } else {
+                        navigate('/login');
+                      }
+                    }}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 bg-slate-900 text-white text-xs font-semibold rounded-xl hover:bg-slate-800 transition-colors cursor-pointer"
                   >
-                    <div className="relative aspect-square w-full bg-[#f6f5f2] rounded-none overflow-hidden mb-2.5 sm:mb-4 cursor-pointer" onClick={() => openProductDetail(product)}>
-                      <img 
-                        loading="lazy" 
-                        decoding="async"
-                        width={286} 
-                        height={286} 
-                        src={optimizeImageUrl(product.coverImage, 400)} 
-                        srcSet={`${optimizeImageUrl(product.coverImage, 360)} 360w, ${optimizeImageUrl(product.coverImage, 600)} 600w`}
-                        sizes="(max-width: 640px) 50vw, 286px"
-                        alt={product.title}
-                        onError={(e) => {
-                          e.currentTarget.onerror = null;
-                          e.currentTarget.src = DEFAULT_PRODUCT_FALLBACK_IMAGE;
-                        }}
-                        className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500"
-                      />
-                      <div className="absolute inset-x-0 bottom-0 p-2 sm:p-3 bg-gradient-to-t from-slate-950/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                        <button 
-                          onClick={(e) => { e.stopPropagation(); handleAddToCart(product); }}
-                          className="w-full bg-white text-slate-950 hover:bg-slate-100 py-1.5 sm:py-2 rounded-none text-[10px] sm:text-xs font-semibold tracking-wider uppercase shadow-md transition-colors"
-                        >
-                          ADD TO BAG
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="text-center flex-1 flex flex-col justify-between space-y-1 sm:space-y-1.5">
-                      <h3 
-                        onClick={() => openProductDetail(product)}
-                        className="font-sans text-xs sm:text-base text-slate-900 hover:text-amber-800 transition-colors cursor-pointer font-medium line-clamp-1"
-                      >
-                        {product.title}
-                      </h3>
-                      
-                      <div className="font-sans text-xs sm:text-sm font-semibold text-slate-700">
-                        {formatPrice(product.price)}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="flex items-center justify-center mt-8 sm:mt-10">
-                <div 
-                  onClick={() => navigateTo('shop')}
-                  className="flex items-center gap-2 sm:gap-3 text-slate-900 bg-[#f9f8f6] px-4 sm:px-5 py-2 rounded-full border border-slate-200 cursor-pointer hover:bg-slate-100 transition-colors shadow-xs"
-                >
-                  <span className="text-[11px] sm:text-xs font-sans font-semibold">View All Products ({products.length})</span>
-                  <ArrowRight className="w-3.5 h-3.5 text-slate-700" />
+                    Go to Admin Panel & Add Products
+                  </button>
                 </div>
               </div>
-            </div>
-          </section>
-
-          {/* ============================================================
-              4. SPECIAL BUNDLES & OFFERS (Dynamic Bundle Formulations)
-              ============================================================ */}
-          <section className="py-12 sm:py-20 lg:py-24 bg-[#faf8f5] border-b border-slate-200/70">
-            <div className="max-w-7xl mx-auto px-4 sm:px-8">
-              
-              <div className="text-center mb-8 sm:mb-14">
-                <h2 className="font-sans text-2xl sm:text-3xl lg:text-4xl text-slate-900 font-semibold tracking-tight mb-2">
-                  {ecomSettings?.bundlesSectionTitle || 'Exclusive Value Packages & Bundles'}
-                </h2>
-                <p className="text-slate-600 text-[11px] sm:text-sm tracking-wide font-normal">
-                  {ecomSettings?.bundlesSectionSubtitle || 'Curated high-performance formulas packaged with special discount savings'}
-                </p>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-8 max-w-5xl mx-auto">
-                {products.slice(0, 3).map((product) => (
-                  <div 
-                    key={`set-${product.id}`}
-                    className="group flex flex-col bg-white rounded-none border border-slate-200/80 hover:shadow-xl transition-all duration-300 p-3 sm:p-4"
-                  >
-                    <div className="relative aspect-square w-full bg-[#f6f5f2] rounded-none overflow-hidden mb-3 sm:mb-4 cursor-pointer" onClick={() => openProductDetail(product)}>
-                      <img 
-                        loading="lazy" 
-                        decoding="async"
-                        width={286} 
-                        height={286} 
-                        src={optimizeImageUrl(product.coverImage, 400)} 
-                        srcSet={`${optimizeImageUrl(product.coverImage, 360)} 360w, ${optimizeImageUrl(product.coverImage, 600)} 600w`}
-                        sizes="(max-width: 640px) 50vw, 286px"
-                        alt={product.title}
-                        onError={(e) => {
-                          e.currentTarget.onerror = null;
-                          e.currentTarget.src = DEFAULT_FANTINE_FALLBACK_IMAGE;
-                        }}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                      />
-                      {product.discountPercentage ? (
-                        <span className="absolute top-2.5 left-2.5 sm:top-3 sm:left-3 bg-rose-50 text-rose-700 text-[10px] font-bold px-2 py-0.5 border border-rose-200">
-                          SAVE {product.discountPercentage}%
-                        </span>
-                      ) : (
-                        <span className="absolute top-2.5 left-2.5 sm:top-3 sm:left-3 bg-indigo-50 text-indigo-700 text-[10px] font-bold px-2 py-0.5 border border-indigo-200">
-                          SET VALUE
-                        </span>
-                      )}
+            </section>
+          ) : (
+            <>
+              {/* FEATURED PRODUCTS */}
+              <section className="py-12 sm:py-20 lg:py-24 bg-white border-b border-slate-100">
+                <div className="max-w-7xl mx-auto px-4 sm:px-8">
+                  <div className="text-center max-w-3xl mx-auto mb-10 sm:mb-16">
+                    <div className="inline-block relative">
+                      <h2 className="font-sans text-2xl sm:text-3xl lg:text-4xl text-slate-900 font-bold tracking-tight pb-1">
+                        {ecomSettings?.featuredSectionTitle && ecomSettings.featuredSectionTitle !== `${displayStoreName} Featured Products`
+                          ? ecomSettings.featuredSectionTitle 
+                          : 'Featured Products'}
+                      </h2>
+                      {/* Hand-drawn colorful curved underline */}
+                      <svg 
+                        className="w-full h-3.5 sm:h-5 max-w-[240px] sm:max-w-[290px] mx-auto mt-0.5 overflow-visible" 
+                        viewBox="0 0 250 20" 
+                        fill="none" 
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <defs>
+                          <linearGradient id="featuredCurveGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                            <stop offset="0%" stopColor="#0284c7" />
+                            <stop offset="25%" stopColor="#06b6d4" />
+                            <stop offset="55%" stopColor="#8b5cf6" />
+                            <stop offset="80%" stopColor="#ec4899" />
+                            <stop offset="100%" stopColor="#f59e0b" />
+                          </linearGradient>
+                          <filter id="curveSoftGlow" x="-10%" y="-10%" width="120%" height="120%">
+                            <feGaussianBlur stdDeviation="1.5" result="glow" />
+                            <feComposite in="SourceGraphic" in2="glow" operator="over" />
+                          </filter>
+                        </defs>
+                        {/* Playful, organic hand-drawn curved stroke */}
+                        <path 
+                          d="M6 13 C 48 4, 96 16, 146 9 C 184 3.5, 218 7, 244 11" 
+                          stroke="url(#featuredCurveGradient)" 
+                          strokeWidth="3.5" 
+                          strokeLinecap="round" 
+                          filter="url(#curveSoftGlow)"
+                        />
+                        <path 
+                          d="M18 16 C 62 8, 112 17, 162 11 C 196 6.5, 222 9, 238 12" 
+                          stroke="url(#featuredCurveGradient)" 
+                          strokeWidth="1.8" 
+                          strokeLinecap="round" 
+                          opacity="0.85"
+                        />
+                      </svg>
                     </div>
+                    <p className="text-slate-600 text-[11px] sm:text-sm tracking-wider uppercase font-medium mt-3 sm:mt-4">
+                      {ecomSettings?.featuredSectionSubtitle || 'Premium Quality • Verified Assurance • Fast Home Delivery'}
+                    </p>
+                  </div>
 
-                    <div className="text-center space-y-1.5 sm:space-y-2 flex-1 flex flex-col justify-between">
-                      <h3 
-                        onClick={() => openProductDetail(product)}
-                        className="font-sans text-xs sm:text-base text-slate-900 hover:text-amber-800 transition-colors cursor-pointer font-medium line-clamp-1"
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-3.5 sm:gap-6 lg:gap-8">
+                    {products.slice(0, 6).map((product) => (
+                      <div 
+                        key={product.id}
+                        className="group flex flex-col bg-white rounded-none border border-transparent hover:border-slate-200 transition-all duration-300 p-1.5 sm:p-2"
                       >
-                        {product.title}
-                      </h3>
-                      
-                      <div className="flex items-center justify-center gap-2 font-sans">
-                        <span className="text-rose-600 font-semibold text-sm sm:text-base">
-                          {formatPrice(product.price)}
-                        </span>
-                        {product.regularPrice && (
-                          <span className="text-slate-500 line-through text-xs sm:text-sm">
-                            {formatPrice(product.regularPrice)}
-                          </span>
-                        )}
+                        <div className="relative aspect-square w-full bg-[#f6f5f2] rounded-none overflow-hidden mb-2.5 sm:mb-4 cursor-pointer" onClick={() => openProductDetail(product)}>
+                          <img 
+                            loading="lazy" 
+                            decoding="async"
+                            width={286} 
+                            height={286} 
+                            src={optimizeImageUrl(product.coverImage, 400)} 
+                            srcSet={`${optimizeImageUrl(product.coverImage, 360)} 360w, ${optimizeImageUrl(product.coverImage, 600)} 600w`}
+                            sizes="(max-width: 640px) 50vw, 286px"
+                            alt={product.title}
+                            onError={(e) => {
+                              e.currentTarget.onerror = null;
+                              e.currentTarget.src = DEFAULT_PRODUCT_FALLBACK_IMAGE;
+                            }}
+                            className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500"
+                          />
+                          <div className="absolute inset-x-0 bottom-0 p-2 sm:p-3 bg-gradient-to-t from-slate-950/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                            <button 
+                              onClick={(e) => { e.stopPropagation(); handleAddToCart(product); }}
+                              className="w-full bg-white text-slate-950 hover:bg-slate-100 py-1.5 sm:py-2 rounded-none text-[10px] sm:text-xs font-semibold tracking-wider uppercase shadow-md transition-colors"
+                            >
+                              ADD TO BAG
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="text-center flex-1 flex flex-col justify-between space-y-1 sm:space-y-1.5">
+                          <h3 
+                            onClick={() => openProductDetail(product)}
+                            className="font-sans text-xs sm:text-base text-slate-900 hover:text-amber-800 transition-colors cursor-pointer font-medium line-clamp-1"
+                          >
+                            {product.title}
+                          </h3>
+                          
+                          <div className="font-sans text-xs sm:text-sm font-semibold text-slate-700">
+                            {formatPrice(product.price)}
+                          </div>
+                        </div>
                       </div>
+                    ))}
+                  </div>
 
-                      <button 
-                        onClick={() => handleAddToCart(product)}
-                        className="mt-2 sm:mt-3 w-full bg-slate-900 hover:bg-slate-800 text-white text-[11px] sm:text-xs font-semibold py-2 sm:py-2.5 uppercase tracking-wider transition-colors"
-                      >
-                        ADD TO BAG
-                      </button>
+                  <div className="flex items-center justify-center mt-8 sm:mt-10">
+                    <div 
+                      onClick={() => navigateTo('shop')}
+                      className="flex items-center gap-2 sm:gap-3 text-slate-900 bg-[#f9f8f6] px-4 sm:px-5 py-2 rounded-full border border-slate-200 cursor-pointer hover:bg-slate-100 transition-colors shadow-xs"
+                    >
+                      <span className="text-[11px] sm:text-xs font-sans font-semibold">View All Products ({products.length})</span>
+                      <ArrowRight className="w-3.5 h-3.5 text-slate-700" />
                     </div>
                   </div>
-                ))}
-              </div>
-            </div>
-          </section>
+                </div>
+              </section>
+
+              {/* BEST SELLERS SECTION (ALGORITHM-BASED WITH THREE TABS: THIS WEEK / THIS MONTH / ALL TIME) */}
+              {/* If no products have sales (total sales is 0), this whole section is completely hidden */}
+              {bestSellers.totalSales > 0 && (bestSellers.week.length > 0 || bestSellers.month.length > 0 || bestSellers.all.length > 0) ? (
+                <section className="py-12 sm:py-20 lg:py-24 bg-[#faf8f5] border-b border-slate-200/70">
+                  <div className="max-w-7xl mx-auto px-4 sm:px-8">
+                    <div className="text-center mb-8 sm:mb-12">
+                      <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-50 border border-amber-200/70 text-amber-800 text-[11px] sm:text-xs font-semibold uppercase tracking-wider mb-3">
+                        <Flame className="w-3.5 h-3.5 text-amber-600" />
+                        Top Ranked By Sales
+                      </div>
+                      <h2 className="font-sans text-2xl sm:text-3xl lg:text-4xl text-slate-900 font-semibold tracking-tight mb-2">
+                        {ecomSettings?.bestSellersSectionTitle || ecomSettings?.bundlesSectionTitle || 'Best Sellers'}
+                      </h2>
+                      <p className="text-slate-600 text-[11px] sm:text-sm tracking-wide font-normal max-w-xl mx-auto">
+                        {ecomSettings?.bestSellersSectionSubtitle || ecomSettings?.bundlesSectionSubtitle || 'Discover our top-performing products ranked by customer orders'}
+                      </p>
+                    </div>
+
+                    {/* 3 Tabs: This Week / This Month / All Time */}
+                    <div className="flex items-center justify-center mb-8 sm:mb-12">
+                      <div className="inline-flex p-1 bg-slate-200/70 rounded-full border border-slate-300/50 shadow-inner">
+                        {(['week', 'month', 'all'] as const).map((period) => {
+                          const label = period === 'week' ? 'This Week' : period === 'month' ? 'This Month' : 'All Time';
+                          const count = bestSellers[period]?.length || 0;
+                          const isActive = bestSellerPeriod === period;
+                          return (
+                            <button
+                              key={period}
+                              type="button"
+                              onClick={() => setBestSellerPeriod(period)}
+                              className={`px-4 sm:px-6 py-2 rounded-full text-xs sm:text-sm font-semibold transition-all duration-200 flex items-center gap-2 ${
+                                isActive
+                                  ? 'bg-slate-900 text-white shadow-md'
+                                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/40'
+                              }`}
+                            >
+                              <span>{label}</span>
+                              {count > 0 && (
+                                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                                  isActive ? 'bg-amber-400 text-slate-950' : 'bg-slate-300 text-slate-700'
+                                }`}>
+                                  {count}
+                                </span>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Products Grid for Active Tab */}
+                    {bestSellers[bestSellerPeriod]?.length > 0 ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6 max-w-6xl mx-auto">
+                        {bestSellers[bestSellerPeriod].map((product, rankIdx) => (
+                          <div 
+                            key={`bestseller-${bestSellerPeriod}-${product.id}`}
+                            className="group relative flex flex-col bg-white border border-slate-200/80 hover:shadow-xl transition-all duration-300 p-3 sm:p-4"
+                          >
+                            {/* Best Seller Rank Badge */}
+                            <div className="absolute top-4 left-4 z-10 flex flex-col gap-1 items-start">
+                              <span className="inline-flex items-center gap-1 bg-amber-500 text-white text-[10px] font-bold px-2 py-0.5 rounded shadow-sm">
+                                <Sparkles className="w-2.5 h-2.5" />
+                                #{rankIdx + 1} Best Seller
+                              </span>
+                              {product.salesCount > 0 && (
+                                <span className="inline-flex items-center gap-1 bg-slate-900/90 text-white text-[9px] font-medium px-1.5 py-0.5 rounded backdrop-blur-xs">
+                                  🔥 {product.salesCount} Sold
+                                </span>
+                              )}
+                            </div>
+
+                            <div 
+                              className="relative aspect-square w-full bg-[#f6f5f2] overflow-hidden mb-3 sm:mb-4 cursor-pointer" 
+                              onClick={() => openProductDetail(product)}
+                            >
+                              <img 
+                                loading="lazy" 
+                                decoding="async"
+                                width={286} 
+                                height={286} 
+                                src={optimizeImageUrl(product.coverImage, 400)} 
+                                srcSet={`${optimizeImageUrl(product.coverImage, 360)} 360w, ${optimizeImageUrl(product.coverImage, 600)} 600w`}
+                                sizes="(max-width: 640px) 50vw, 286px"
+                                alt={product.title}
+                                onError={(e) => {
+                                  e.currentTarget.onerror = null;
+                                  e.currentTarget.src = DEFAULT_PRODUCT_FALLBACK_IMAGE;
+                                }}
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                              />
+                              {product.discountPercentage ? (
+                                <span className="absolute top-4 right-4 bg-rose-600 text-white text-[10px] font-bold px-2 py-0.5 shadow-sm">
+                                  -{product.discountPercentage}%
+                                </span>
+                              ) : null}
+                            </div>
+
+                            <div className="text-center space-y-1.5 sm:space-y-2 flex-1 flex flex-col justify-between">
+                              <h3 
+                                onClick={() => openProductDetail(product)}
+                                className="font-sans text-xs sm:text-sm text-slate-900 hover:text-amber-800 transition-colors cursor-pointer font-medium line-clamp-1"
+                                title={product.title}
+                              >
+                                {product.title}
+                              </h3>
+                              
+                              <div className="flex items-center justify-center gap-2 font-sans">
+                                <span className="text-rose-600 font-semibold text-sm sm:text-base">
+                                  {formatPrice(product.price)}
+                                </span>
+                                {product.regularPrice && product.regularPrice > product.price && (
+                                  <span className="text-slate-400 line-through text-xs sm:text-sm">
+                                    {formatPrice(product.regularPrice)}
+                                  </span>
+                                )}
+                              </div>
+
+                              <button 
+                                onClick={() => handleAddToCart(product)}
+                                className="mt-2 sm:mt-3 w-full bg-slate-900 hover:bg-slate-800 text-white text-[11px] sm:text-xs font-semibold py-2 sm:py-2.5 uppercase tracking-wider transition-colors flex items-center justify-center gap-1.5"
+                              >
+                                <ShoppingBag className="w-3.5 h-3.5" />
+                                ADD TO BAG
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-12 bg-white/70 border border-dashed border-slate-300 max-w-md mx-auto p-6">
+                        <Sparkles className="w-8 h-8 text-amber-500 mx-auto mb-3" />
+                        <h4 className="text-base font-medium text-slate-900 mb-1">
+                          No sales recorded {bestSellerPeriod === 'week' ? 'this week' : 'this month'} yet
+                        </h4>
+                        <p className="text-xs text-slate-500 mb-4">
+                          Explore our all-time top performing customer favorites!
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => setBestSellerPeriod('all')}
+                          className="px-5 py-2.5 bg-slate-900 text-white text-xs font-semibold uppercase tracking-wider hover:bg-slate-800 transition-colors shadow-sm"
+                        >
+                          View All-Time Best Sellers
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </section>
+              ) : null}
+            </>
+          )}
 
 
           {/* ============================================================
@@ -2779,24 +3239,128 @@ export default function FantineStorePage({ onGoToLogin, onGoToLanding }: Fantine
 
                       </div>
 
-                      {/* Right Column: Seamless Product Image (Directly on background - No Box Card) */}
+                      {/* Right Column: Seamless Product Image with Floating Soap Bubbles */}
                       <div className="lg:col-span-6 relative flex items-center justify-center lg:justify-end">
                         <div 
                           onClick={() => {
                             if (targetProd) openProductDetail(targetProd);
                           }}
-                          className="relative w-full max-w-md lg:max-w-lg cursor-pointer group flex items-center justify-center"
+                          className="relative w-full max-w-[320px] sm:max-w-[370px] lg:max-w-[410px] cursor-pointer group flex items-center justify-center py-6 sm:py-8"
                         >
                           {/* Ambient Backlight Glow */}
-                          <div className="absolute inset-0 bg-gradient-to-tr from-amber-200/40 via-rose-200/30 to-transparent rounded-full blur-3xl opacity-60 group-hover:opacity-90 transition-opacity duration-700 pointer-events-none scale-105"></div>
+                          <div className="absolute inset-0 bg-gradient-to-tr from-amber-200/40 via-rose-200/30 to-sky-200/30 rounded-full blur-3xl opacity-60 group-hover:opacity-90 transition-opacity duration-700 pointer-events-none scale-105"></div>
 
-                          {/* Seamless Floating Product Image */}
-                          <img loading="lazy" width={286} height={286} src={image} alt={title} 
+                          {/* Floating Iridescent Soap Bubbles (Smoothly animated matching reference photo) */}
+                          <div className="absolute inset-0 pointer-events-none z-20">
+                            {/* Bubble 1: Big top-center bubble (circled in user image) */}
+                            <div 
+                              className="soap-bubble animate-bubble-1"
+                              style={{
+                                width: '64px',
+                                height: '64px',
+                                top: '-8%',
+                                left: '22%',
+                                animationDelay: '0s'
+                              }}
+                            />
+
+                            {/* Bubble 2: Medium-large bubble above right edge (circled in user image) */}
+                            <div 
+                              className="soap-bubble animate-bubble-2"
+                              style={{
+                                width: '52px',
+                                height: '52px',
+                                top: '2%',
+                                right: '14%',
+                                animationDelay: '-2.5s'
+                              }}
+                            />
+
+                            {/* Bubble 3: Medium bubble far top-left */}
+                            <div 
+                              className="soap-bubble animate-bubble-3"
+                              style={{
+                                width: '38px',
+                                height: '38px',
+                                top: '-14%',
+                                left: '4%',
+                                animationDelay: '-5s'
+                              }}
+                            />
+
+                            {/* Bubble 4: Small-medium bubble mid-left */}
+                            <div 
+                              className="soap-bubble animate-bubble-4"
+                              style={{
+                                width: '30px',
+                                height: '30px',
+                                top: '32%',
+                                left: '-8%',
+                                animationDelay: '-1.5s'
+                              }}
+                            />
+
+                            {/* Bubble 5: Small accent bubble between top bubbles */}
+                            <div 
+                              className="soap-bubble animate-bubble-1"
+                              style={{
+                                width: '22px',
+                                height: '22px',
+                                top: '-5%',
+                                right: '38%',
+                                animationDelay: '-4s'
+                              }}
+                            />
+
+                            {/* Bubble 6: Medium accent bubble bottom-right */}
+                            <div 
+                              className="soap-bubble animate-bubble-3"
+                              style={{
+                                width: '36px',
+                                height: '36px',
+                                bottom: '6%',
+                                right: '-4%',
+                                animationDelay: '-3.5s'
+                              }}
+                            />
+
+                            {/* Bubble 7: Soft smaller bubble mid-right */}
+                            <div 
+                              className="soap-bubble animate-bubble-2"
+                              style={{
+                                width: '24px',
+                                height: '24px',
+                                top: '44%',
+                                right: '-6%',
+                                animationDelay: '-6s'
+                              }}
+                            />
+
+                            {/* Bubble 8: Small lower-left bubble */}
+                            <div 
+                              className="soap-bubble animate-bubble-4"
+                              style={{
+                                width: '26px',
+                                height: '26px',
+                                bottom: '12%',
+                                left: '-2%',
+                                animationDelay: '-7.5s'
+                              }}
+                            />
+                          </div>
+
+                          {/* Seamless Floating Product Image (Resized slightly smaller for optimal balance) */}
+                          <img 
+                            loading="lazy" 
+                            width={286} 
+                            height={286} 
+                            src={image} 
+                            alt={title} 
                             onError={(e) => {
                               e.currentTarget.onerror = null;
-                              e.currentTarget.src = DEFAULT_FANTINE_FALLBACK_IMAGE;
+                              e.currentTarget.src = DEFAULT_STORE_FALLBACK_IMAGE;
                             }}
-                            className="relative z-10 w-full h-auto max-h-[460px] sm:max-h-[520px] object-contain drop-shadow-2xl group-hover:scale-105 group-hover:-translate-y-2 transition-all duration-700 select-none"
+                            className="relative z-10 w-full h-auto max-h-[340px] sm:max-h-[390px] lg:max-h-[420px] object-contain drop-shadow-2xl group-hover:scale-105 group-hover:-translate-y-2 transition-all duration-700 select-none"
                           />
                         </div>
                       </div>
@@ -2808,14 +3372,7 @@ export default function FantineStorePage({ onGoToLogin, onGoToLanding }: Fantine
             );
           })()}
 
-          {/* ============================================================
-              7. RUNNING MARQUEE BANNER
-              ============================================================ */}
-          <div className="bg-[#bfe0fb] text-slate-900 py-3 px-4 overflow-hidden border-y border-blue-200/60 font-medium text-xs sm:text-sm tracking-wider uppercase text-center">
-            <div className="animate-marquee-brands whitespace-nowrap">
-              <span>{aboutSettings.missionStatement || 'WE SINCERELY HOPE WE CAN RELIEVE YOUR TENSIONS AND STRESSES, AND GIVE YOU A HEALTHIER AND MORE PEACEFUL LIFE.'} &nbsp; • &nbsp; {aboutSettings.missionStatement || 'WE SINCERELY HOPE WE CAN RELIEVE YOUR TENSIONS AND STRESSES, AND GIVE YOU A HEALTHIER AND MORE PEACEFUL LIFE.'}</span>
-            </div>
-          </div>
+
 
           {/* ============================================================
               8. HIGHLIGHT SPOTLIGHT (Product or Category Focus)
@@ -2840,19 +3397,19 @@ export default function FantineStorePage({ onGoToLogin, onGoToLanding }: Fantine
               .trim() || rawDesc.slice(0, 160);
 
             const title = hlConfig?.title?.trim() 
-              || (isProductTarget ? (targetProd?.title || 'FANTINE Skincare Spotlight') : `Explore Our ${targetCat} Collection`);
+              || (isProductTarget ? (targetProd?.title || `${displayStoreName} Spotlight`) : `Explore Our ${targetCat} Collection`);
             
             const subtitle = (hlConfig?.subtitle && !hlConfig.subtitle.includes('stay in touch')) 
               ? hlConfig.subtitle
               : (isProductTarget ? productExcerpt : `Discover premium formulations and clinical results in our ${targetCat} line.`);
             
-            const badgeTag = (hlConfig?.badgeTag && !hlConfig.badgeTag.includes('BRANDINI SEOUL TOWER')) 
+            const badgeTag = hlConfig?.badgeTag?.trim() 
               ? hlConfig.badgeTag 
               : (isProductTarget && targetProd?.category ? `${(targetProd.series || targetProd.category).toUpperCase()} • SPOTLIGHT` : `${targetCat.toUpperCase()} • COLLECTION`);
             
             const image = isProductTarget 
-              ? (targetProd?.coverImage || (targetProd?.images && targetProd.images[0]) || hlConfig?.customImage || DEFAULT_FANTINE_FALLBACK_IMAGE)
-              : (products.find(p => p.category?.toLowerCase() === targetCat.toLowerCase())?.coverImage || hlConfig?.customImage || DEFAULT_FANTINE_FALLBACK_IMAGE);
+              ? (targetProd?.coverImage || (targetProd?.images && targetProd.images[0]) || hlConfig?.customImage || DEFAULT_STORE_FALLBACK_IMAGE)
+              : (products.find(p => p.category?.toLowerCase() === targetCat.toLowerCase())?.coverImage || hlConfig?.customImage || DEFAULT_STORE_FALLBACK_IMAGE);
 
             const currentPrice = targetProd?.price || 500;
             const regularPrice = targetProd?.regularPrice && targetProd.regularPrice > currentPrice 
@@ -2891,7 +3448,7 @@ export default function FantineStorePage({ onGoToLogin, onGoToLanding }: Fantine
                       <img loading="lazy" width={286} height={286} src={image} alt={title} 
                         onError={(e) => {
                           e.currentTarget.onerror = null;
-                          e.currentTarget.src = DEFAULT_FANTINE_FALLBACK_IMAGE;
+                          e.currentTarget.src = DEFAULT_STORE_FALLBACK_IMAGE;
                         }}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                       />
@@ -2956,39 +3513,73 @@ export default function FantineStorePage({ onGoToLogin, onGoToLanding }: Fantine
           })()}
 
           {/* ============================================================
-              VIP CLUB MEMBERSHIP PROMOTION (Meena Bazar / Shwapno Style)
+              DYNAMIC HOMEPAGE SECTIONS (100% Admin Configurable)
               ============================================================ */}
-          <div id="membership-club-section">
-            <LoyaltyMembershipSection 
-              onExploreProducts={() => navigateTo('shop')}
-              onOpenCheckout={() => setIsCartOpen(true)}
-            />
-          </div>
+
+
+
+
+
+          {/* 5. Video Reviews Reel ("Hear it from the people who wash") */}
+          <VideoReviewsSection 
+            settings={ecomSettings?.videoReviews}
+            onNavigateShop={() => navigateTo('shop')}
+          />
+
+          {/* 6. Frequently Asked Questions Accordion */}
+          <FaqSection 
+            settings={ecomSettings?.faqs}
+          />
+
+
         </>
       )}
 
-      {/* VIEW 8: DEDICATED VIP MEMBERSHIP CLUB VIEW */}
-      {activeNav === 'membership' && (
-        <div className="pt-8 sm:pt-12 min-h-screen bg-[#f8fafc]">
-          <LoyaltyMembershipSection 
-            onExploreProducts={() => navigateTo('shop')}
-            onOpenCheckout={() => setIsCartOpen(true)}
-          />
-        </div>
+      {/* VIEW 8: BLOG DIRECTORY */}
+      {activeNav === 'blog' && (
+        <BlogPage 
+          posts={ecomSettings?.blogPosts || []}
+          onSelectPost={(post) => {
+            setSelectedBlogSlug(post.slug);
+            setActiveNav('blog_post');
+            navigate(`/blogs/news/${post.slug}`);
+            scrollToTop();
+          }}
+          onNavigateHome={() => navigateTo('home')}
+        />
+      )}
+
+      {/* VIEW 9: SINGLE BLOG POST DETAIL */}
+      {activeNav === 'blog_post' && activeBlogPost && (
+        <BlogPostPage 
+          post={activeBlogPost}
+          allPosts={ecomSettings?.blogPosts || []}
+          onNavigateBlog={() => {
+            setActiveNav('blog');
+            navigate('/blogs/news');
+            scrollToTop();
+          }}
+          onSelectPost={(post) => {
+            setSelectedBlogSlug(post.slug);
+            navigate(`/blogs/news/${post.slug}`);
+            scrollToTop();
+          }}
+          onNavigateHome={() => navigateTo('home')}
+        />
       )}
 
       {/* ============================================================
           LUXURY FOOTER
           ============================================================ */}
       <React.Suspense fallback={<div className="h-40 bg-[#111827]"></div>}>
-        <FantineFooter 
+        <StoreFooter 
           displayStoreLogo={displayStoreLogo}
           displayStoreName={displayStoreName}
           displayTagline={displayTagline}
           displayEmail={displayEmail}
           displayPhone={displayPhone}
           shopCategories={shopCategories}
-          socialLinks={socialLinks}
+          socialLinks={activeSocialLinks}
           setActiveNav={(nav) => navigateTo(nav as any)}
           setSelectedCategoryCheckbox={setSelectedCategoryCheckbox}
           scrollToTop={scrollToTop}
@@ -2996,160 +3587,428 @@ export default function FantineStorePage({ onGoToLogin, onGoToLanding }: Fantine
       </React.Suspense>
 
       {/* ============================================================
-          SLIDE-OUT SHOPPING BAG & CHECKOUT DRAWER
+          SLIDE-OUT SHOPPING BAG & CHECKOUT DRAWER (MATCHING SCREENSHOT)
           ============================================================ */}
       {isCartOpen && (
         <div className="fixed inset-0 z-50 overflow-hidden animate-fadeIn">
-          <div className="absolute inset-0 bg-slate-950/60 backdrop-blur-xs transition-opacity" onClick={() => setIsCartOpen(false)}></div>
+          <div 
+            className="absolute inset-0 bg-slate-950/60 backdrop-blur-xs transition-opacity" 
+            onClick={() => setIsCartOpen(false)}
+          />
           
-          <div className="fixed inset-y-0 right-0 max-w-full flex pl-0 sm:pl-10">
+          <div className="fixed inset-y-0 right-0 max-w-full flex">
+            {/* 1. Desktop Attached "You May Also Like" Panel (Real Store Products) */}
+            {cartUpsellProducts.length > 0 && (
+              <div className="hidden md:flex w-64 lg:w-72 bg-white border-r border-slate-200/90 flex-col shrink-0 shadow-sm overflow-hidden">
+                <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+                  <h3 className="font-sans text-base font-extrabold text-[#081d34]">
+                    You may also like
+                  </h3>
+                  <span className="text-[11px] font-semibold text-purple-600 bg-purple-50 px-2 py-0.5 rounded-full">
+                    {cartUpsellProducts.length}
+                  </span>
+                </div>
+
+                <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                  {cartUpsellProducts.map((prod) => (
+                    <div 
+                      key={prod.id} 
+                      className="bg-white rounded-2xl border border-slate-200/80 p-3.5 flex flex-col items-center text-center space-y-2.5 hover:shadow-md hover:border-purple-200 transition-all group"
+                    >
+                      <div 
+                        onClick={() => {
+                          setIsCartOpen(false);
+                          openProductDetail(prod);
+                        }}
+                        className="w-24 h-24 rounded-xl overflow-hidden bg-slate-50 flex items-center justify-center p-1 cursor-pointer"
+                      >
+                        <img 
+                          src={getSafeProductImage(prod.image || prod.coverImage)} 
+                          alt={prod.title} 
+                          className="w-full h-full object-contain group-hover:scale-105 transition-transform" 
+                          loading="lazy"
+                        />
+                      </div>
+                      <div className="w-full">
+                        <h4 
+                          onClick={() => {
+                            setIsCartOpen(false);
+                            openProductDetail(prod);
+                          }}
+                          className="font-sans text-xs font-bold text-slate-900 line-clamp-2 min-h-[32px] leading-snug cursor-pointer hover:text-purple-600 transition-colors"
+                          title={prod.title}
+                        >
+                          {prod.title}
+                        </h4>
+                        <div className="flex items-center justify-center gap-1.5 mt-1">
+                          <span className="text-xs font-extrabold text-slate-900">
+                            {formatPrice(prod.price)}
+                          </span>
+                          {prod.regularPrice && prod.regularPrice > prod.price && (
+                            <span className="text-[10px] text-slate-400 line-through">
+                              {formatPrice(prod.regularPrice)}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleAddToCart(prod, 1)}
+                        className="w-full py-2 px-3 border border-[#7c3aed] hover:bg-purple-600 hover:text-white text-[#7c3aed] active:scale-95 text-xs font-bold rounded-xl transition cursor-pointer"
+                      >
+                        Add to cart
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* 2. Main "Your Cart" Panel */}
             <div className="w-screen max-w-full sm:max-w-md bg-white shadow-2xl flex flex-col">
               
+              {/* Header */}
               <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <ShoppingBag className="w-5 h-5 text-slate-800" />
-                  <h3 className="font-sans text-lg font-bold text-slate-900">Your Shopping Bag ({totalCartCount})</h3>
-                </div>
-                <button onClick={() => setIsCartOpen(false)} className="text-slate-500 hover:text-slate-800 p-1 cursor-pointer">
+                <h3 className="font-sans text-xl font-bold text-[#081d34]">
+                  Your cart
+                </h3>
+                <button 
+                  onClick={() => setIsCartOpen(false)} 
+                  className="text-slate-400 hover:text-slate-800 p-1 cursor-pointer transition"
+                  aria-label="Close cart"
+                >
                   <X className="w-5 h-5" />
                 </button>
               </div>
 
-              {/* 10-Minute Cart Reservation Hold Banner */}
-              {cart.length > 0 && (
-                <div className="bg-gradient-to-r from-amber-500/15 to-orange-500/15 border-b border-amber-500/25 px-6 py-2.5 flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-2 text-amber-900 font-semibold">
-                    <Clock className="w-4 h-4 text-amber-600 animate-pulse shrink-0" />
-                    <span>Stock Reserved For You:</span>
-                  </div>
-                  <div className="font-mono font-black text-amber-950 bg-amber-200/80 px-2 py-0.5 rounded-md text-xs shadow-2xs">
-                    {Math.floor(reservationSeconds / 60).toString().padStart(2, '0')}:{(reservationSeconds % 60).toString().padStart(2, '0')}
-                  </div>
-                </div>
-              )}
+              {/* Free Shipping Dynamic Progress Goal Bar */}
+              {(() => {
+                const threshold = ecomSettings?.freeDeliveryMinPurchase || 450;
+                const remaining = Math.max(0, threshold - cartSubtotal);
+                const progressPct = Math.min(100, Math.round((cartSubtotal / threshold) * 100));
+                const isUnlocked = cartSubtotal >= threshold;
+                return (
+                  <div className="px-6 pt-3 pb-2 border-b border-slate-100 space-y-1.5">
+                    <div className="flex items-center justify-between text-xs font-semibold text-slate-800">
+                      <span className="flex items-center gap-1.5">
+                        <Truck className="w-4 h-4 text-[#7c3aed] shrink-0" />
+                        {isUnlocked ? (
+                          <span className="text-emerald-700 font-bold">🎉 You've unlocked FREE shipping!</span>
+                        ) : (
+                          <span>You're <strong className="text-[#7c3aed] font-extrabold">{formatPrice(remaining)}</strong> away from free shipping!</span>
+                        )}
+                      </span>
+                    </div>
 
-              <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                    {/* Progress Bar Track with Purple Circle Thumb Dot */}
+                    <div className="w-full bg-slate-100 rounded-full h-2 relative mt-2">
+                      <div 
+                        className="h-full bg-[#7c3aed] rounded-full transition-all duration-300 relative"
+                        style={{ width: `${Math.max(3, progressPct)}%` }}
+                      >
+                        <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 w-3.5 h-3.5 rounded-full bg-[#7c3aed] border-2 border-white shadow-xs" />
+                      </div>
+                    </div>
+
+                    {/* Table Column Headers */}
+                    <div className="flex items-center justify-between text-[11px] font-bold text-slate-400 uppercase tracking-wider pt-2">
+                      <span>PRODUCT</span>
+                      <span>TOTAL</span>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Cart Body */}
+              <div className="flex-1 overflow-y-auto px-6 py-2 space-y-4">
                 {cart.length === 0 ? (
                   <div className="text-center py-16 space-y-3">
                     <ShoppingBag className="w-12 h-12 text-slate-300 mx-auto" />
-                    <div className="font-sans text-lg text-slate-600">Your bag is empty</div>
-                    <p className="text-xs text-slate-500">Discover our featured products to get started.</p>
+                    <div className="font-sans text-lg font-bold text-slate-700">Your cart is empty</div>
+                    <p className="text-xs text-slate-500">Discover our featured laundry products to get started.</p>
                     <button
                       type="button"
                       onClick={() => setIsCartOpen(false)}
-                      className="mt-4 px-6 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all cursor-pointer inline-flex items-center gap-1.5"
+                      className="mt-4 px-6 py-2.5 bg-[#7c3aed] hover:bg-[#6d28d9] text-white rounded-xl text-xs font-bold transition-all cursor-pointer inline-flex items-center gap-1.5 shadow-md shadow-purple-600/20"
                     >
                       Continue Shopping
                     </button>
                   </div>
                 ) : (
-                  cart.map((item) => (
-                    <div key={item.product.id} className="flex gap-3 sm:gap-4 pb-4 border-b border-slate-100 items-center relative group">
-                      <img 
-                        src={item.product.coverImage} 
-                        alt={item.product.title} 
-                        onError={(e) => {
-                          e.currentTarget.onerror = null;
-                          e.currentTarget.src = DEFAULT_FANTINE_FALLBACK_IMAGE;
-                        }}
-                        className="w-16 h-16 object-cover bg-slate-50 rounded-lg border border-slate-100 shrink-0" 
-                      />
-                      <div className="flex-1 min-w-0 pr-1">
-                        <h4 className="font-sans text-sm font-semibold text-slate-900 truncate">{item.product.title}</h4>
-                        <div className="text-xs text-slate-500 mt-0.5">{formatPrice(item.product.price)}</div>
-                        
-                        <div className="flex items-center gap-2 mt-2">
-                          <button 
-                            type="button"
-                            onClick={() => {
-                              if (item.quantity > 1) {
-                                handleUpdateQuantity(item.product.id, item.quantity - 1);
-                              } else {
-                                handleRemoveFromCart(item.product.id);
-                              }
+                  <>
+                    {/* Cart Items List */}
+                    {cart.map((item) => (
+                      <div key={item.product.id} className="flex gap-3 sm:gap-4 py-4 border-b border-slate-100 items-start">
+                        {/* Product Image */}
+                        <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden bg-slate-50 border border-slate-200/80 shrink-0 p-1 flex items-center justify-center">
+                          <img 
+                            src={item.product.coverImage || item.product.image || DEFAULT_STORE_FALLBACK_IMAGE} 
+                            alt={item.product.title} 
+                            className="w-full h-full object-contain" 
+                            onError={(e) => {
+                              e.currentTarget.onerror = null;
+                              e.currentTarget.src = DEFAULT_STORE_FALLBACK_IMAGE;
                             }}
-                            className="w-6 h-6 border border-slate-200 rounded flex items-center justify-center text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
-                            aria-label="Decrease quantity"
-                          >
-                            <Minus className="w-3 h-3" />
-                          </button>
-                          <span className="text-xs font-semibold px-2">{item.quantity}</span>
-                          <button 
-                            type="button"
-                            onClick={() => handleUpdateQuantity(item.product.id, item.quantity + 1)}
-                            className="w-6 h-6 border border-slate-200 rounded flex items-center justify-center text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
-                            aria-label="Increase quantity"
-                          >
-                            <Plus className="w-3 h-3" />
-                          </button>
+                          />
                         </div>
-                      </div>
 
-                      {/* Right side: Remove Cross Button + Total Price */}
-                      <div className="flex flex-col items-end justify-between self-stretch shrink-0 py-0.5 min-h-[60px]">
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveFromCart(item.product.id)}
-                          className="text-slate-500 hover:text-red-500 hover:bg-red-50 p-1 rounded-md transition-colors cursor-pointer -mr-1"
-                          title="Remove item"
-                          aria-label="Remove item"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-                        <div className="text-sm font-sans font-bold text-slate-900">
+                        {/* Product Info */}
+                        <div className="flex-1 min-w-0 pr-1 sm:pr-2">
+                          <h4 className="font-sans text-xs sm:text-sm font-bold text-slate-900 leading-snug line-clamp-2">
+                            {item.product.title}
+                          </h4>
+                          {item.variant?.name && (
+                            <div className="text-[11px] text-slate-500 font-medium mt-0.5">
+                              {item.variant.name}
+                            </div>
+                          )}
+                          <div className="text-xs font-bold text-slate-900 mt-1">
+                            {formatPrice(item.product.price)}
+                          </div>
+
+                          {/* Quantity Pill + Purple Trash */}
+                          <div className="flex items-center gap-3 mt-2.5">
+                            <div className="inline-flex items-center border border-slate-200 rounded-lg bg-white shadow-2xs">
+                              <button 
+                                type="button"
+                                onClick={() => {
+                                  if (item.quantity > 1) {
+                                    handleUpdateQuantity(item.product.id, item.quantity - 1);
+                                  } else {
+                                    handleRemoveFromCart(item.product.id);
+                                  }
+                                }}
+                                className="w-7 h-7 flex items-center justify-center text-slate-500 hover:text-slate-900 hover:bg-slate-50 transition cursor-pointer"
+                                aria-label="Decrease quantity"
+                              >
+                                <Minus className="w-3 h-3" />
+                              </button>
+                              <span className="w-7 text-center text-xs font-bold text-slate-900">
+                                {item.quantity}
+                              </span>
+                              <button 
+                                type="button"
+                                onClick={() => handleUpdateQuantity(item.product.id, item.quantity + 1)}
+                                className="w-7 h-7 flex items-center justify-center text-slate-500 hover:text-slate-900 hover:bg-slate-50 transition cursor-pointer"
+                                aria-label="Increase quantity"
+                              >
+                                <Plus className="w-3 h-3" />
+                              </button>
+                            </div>
+
+                            {/* Purple Trash Icon */}
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveFromCart(item.product.id)}
+                              className="p-1.5 text-[#7c3aed] hover:text-purple-800 hover:bg-purple-50 rounded-lg transition cursor-pointer"
+                              title="Remove item"
+                              aria-label="Remove item"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Line Total */}
+                        <div className="text-right shrink-0 font-sans text-xs sm:text-sm font-bold text-slate-900 pt-0.5">
                           {formatPrice(item.product.price * item.quantity)}
                         </div>
                       </div>
-                    </div>
-                  ))
+                    ))}
+
+                    {/* Mobile "You May Also Like" Upsell Section (Real Store Products) */}
+                    {cartUpsellProducts.length > 0 && (
+                      <div className="md:hidden pt-4 border-t border-slate-100 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <h4 className="font-sans text-xs font-bold uppercase tracking-wider text-slate-800">
+                            You may also like
+                          </h4>
+                          <span className="text-[10px] font-semibold text-purple-600 bg-purple-50 px-2 py-0.5 rounded-full">
+                            Recommendations
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          {cartUpsellProducts.slice(0, 4).map((prod) => (
+                            <div 
+                              key={prod.id} 
+                              className="bg-slate-50/70 border border-slate-200/80 rounded-xl p-2.5 flex flex-col items-center text-center space-y-1.5 hover:border-purple-200 transition-all"
+                            >
+                              <div 
+                                onClick={() => {
+                                  setIsCartOpen(false);
+                                  openProductDetail(prod);
+                                }}
+                                className="w-16 h-16 rounded-lg overflow-hidden bg-white p-1 flex items-center justify-center cursor-pointer"
+                              >
+                                <img 
+                                  src={getSafeProductImage(prod.image || prod.coverImage)} 
+                                  alt={prod.title} 
+                                  className="w-full h-full object-contain" 
+                                  loading="lazy"
+                                />
+                              </div>
+                              <h5 
+                                onClick={() => {
+                                  setIsCartOpen(false);
+                                  openProductDetail(prod);
+                                }}
+                                className="text-[11px] font-bold text-slate-900 line-clamp-1 cursor-pointer hover:text-purple-600 transition-colors" 
+                                title={prod.title}
+                              >
+                                {prod.title}
+                              </h5>
+                              <div className="flex items-center gap-1">
+                                <span className="text-xs font-extrabold text-slate-900">
+                                  {formatPrice(prod.price)}
+                                </span>
+                                {prod.regularPrice && prod.regularPrice > prod.price && (
+                                  <span className="text-[9px] text-slate-400 line-through">
+                                    {formatPrice(prod.regularPrice)}
+                                  </span>
+                                )}
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => handleAddToCart(prod, 1)}
+                                className="w-full py-1.5 border border-[#7c3aed] hover:bg-purple-600 hover:text-white text-[#7c3aed] text-[10px] font-bold rounded-lg transition active:scale-95"
+                              >
+                                Add to cart
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Embedded Customer Reviews Box in Cart Drawer (Randomized Authentic Bangladeshi Female Reviews) */}
+                    {(() => {
+                      const currentCartReview = (() => {
+                        const cr = ecomSettings?.cartReview;
+                        if (
+                          cr &&
+                          cr.reviewerName &&
+                          cr.reviewerName.toLowerCase() !== 'cleo' &&
+                          !cr.reviewerName.toLowerCase().includes('cleo') &&
+                          cr.comment &&
+                          !cr.comment.includes('signature WDF')
+                        ) {
+                          return cr;
+                        }
+                        return BANGLADESHI_FEMALE_CART_REVIEWS[cartReviewIndex % BANGLADESHI_FEMALE_CART_REVIEWS.length] || BANGLADESHI_FEMALE_CART_REVIEWS[0];
+                      })();
+
+                      if (ecomSettings?.cartReview?.enabled === false) return null;
+
+                      return (
+                        <div className="mt-4 p-4 rounded-2xl border border-purple-100 bg-gradient-to-br from-[#fcfaff] to-white shadow-2xs space-y-2.5 transition-all">
+                          <div className="flex items-center justify-between">
+                            <h4 className="font-sans text-xs sm:text-sm font-bold text-slate-900 flex items-center gap-1.5">
+                              Customer Reviews
+                            </h4>
+                            {/* Subtle shuffle button to preview other real reviews */}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setCartReviewIndex((prev) => (prev + 1) % BANGLADESHI_FEMALE_CART_REVIEWS.length);
+                              }}
+                              className="text-slate-400 hover:text-purple-600 transition-colors p-1 -mr-1 rounded-full hover:bg-purple-50"
+                              title="অন্যান্য কাস্টমার রিভিউ দেখুন"
+                            >
+                              <RefreshCw className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+
+                          {/* 5 Purple Stars */}
+                          <div className="flex items-center gap-0.5">
+                            {[1, 2, 3, 4, 5].map((s) => (
+                              <Star 
+                                key={s} 
+                                className={`w-4 h-4 ${
+                                  s <= (currentCartReview.rating || 5)
+                                    ? 'fill-[#7c3aed] text-[#7c3aed]'
+                                    : 'fill-slate-200 text-slate-200'
+                                }`} 
+                              />
+                            ))}
+                          </div>
+
+                          {/* Reviewer line: Name [Verified] [Location] Date */}
+                          <div className="flex flex-wrap items-center gap-2 text-xs">
+                            <span className="font-bold text-slate-900">
+                              {currentCartReview.reviewerName}
+                            </span>
+                            {currentCartReview.isVerified !== false && (
+                              <span className="px-1.5 py-0.5 rounded border border-emerald-300 text-emerald-700 bg-emerald-50 text-[10px] font-semibold inline-flex items-center gap-0.5">
+                                <Check className="w-2.5 h-2.5 stroke-[2.5]" />
+                                Verified
+                              </span>
+                            )}
+                            {currentCartReview.location && (
+                              <span className="text-[11px] text-slate-500 font-medium">
+                                • {currentCartReview.location}
+                              </span>
+                            )}
+                            <span className="text-[11px] text-slate-400 ml-auto">
+                              {currentCartReview.reviewDate}
+                            </span>
+                          </div>
+
+                          {/* Review Quote */}
+                          <p className="text-xs text-slate-700 leading-relaxed font-normal">
+                            "{currentCartReview.comment}"
+                          </p>
+                        </div>
+                      );
+                    })()}
+                  </>
                 )}
               </div>
 
+              {/* Footer & Checkout */}
               {cart.length > 0 && (
-                <div className="p-5 sm:p-6 bg-white border-t border-slate-200/80 space-y-4 shadow-lg">
-                  {/* Price Breakdown Summary */}
-                  <div className="space-y-2 text-xs">
-                    <div className="flex justify-between text-slate-600">
-                      <span>Subtotal:</span>
-                      <span className="font-sans font-semibold text-slate-900">{formatPrice(cartSubtotal)}</span>
-                    </div>
-                    <div className="flex justify-between items-center font-sans text-sm sm:text-base font-bold text-slate-900 pt-2 border-t border-slate-100">
-                      <span>Total:</span>
-                      <span className="text-[#0284c7] text-lg font-black">{formatPrice(cartSubtotal)}</span>
-                    </div>
+                <div className="p-5 sm:p-6 bg-white border-t border-slate-200 space-y-3 shadow-lg">
+                  {/* Estimated total */}
+                  <div className="flex items-center justify-between text-sm sm:text-base">
+                    <span className="font-bold text-slate-900">Estimated total</span>
+                    <span className="font-extrabold text-slate-900 font-sans text-base sm:text-lg">
+                      {formatPrice(cartSubtotal)}
+                    </span>
                   </div>
 
-                  {/* Proceed to Dedicated Checkout Page Button */}
-                  <div className="pt-2">
-                    <button 
-                      type="button"
-                      onClick={() => {
-                        if (cart.length > 0) {
-                          const eventId = createEventId('initiate_checkout');
-                          trackEvent('InitiateCheckout', {
-                            content_name: cart.map(i => i.product.title).join(', '),
-                            content_ids: cart.map(i => i.product.id),
-                            content_type: 'product',
-                            value: cartGrandTotal || cartSubtotal,
-                            currency: 'BDT',
-                            num_items: cart.reduce((acc, item) => acc + item.quantity, 0),
-                            contents: cart.map(item => ({
-                              id: item.product.id,
-                              name: item.product.title,
-                              quantity: item.quantity,
-                              item_price: item.product.price
-                            }))
-                          }, eventId);
-                        }
-                        setIsCartOpen(false);
-                        navigateTo('checkout');
-                      }}
-                      className="w-full bg-gradient-to-r from-[#0284c7] via-[#0284c7] to-[#16a34a] hover:from-[#0369a1] hover:to-[#15803d] active:scale-[0.99] text-white py-4 rounded-2xl text-xs font-bold uppercase tracking-wider transition-all shadow-xl shadow-sky-600/25 cursor-pointer flex items-center justify-center gap-2"
-                    >
-                      <span>PROCEED TO CHECKOUT</span>
-                      <ArrowRight className="w-4 h-4" />
-                    </button>
-                  </div>
+                  {/* Taxes & shipping disclaimer */}
+                  <p className="text-[11px] text-slate-500 text-center">
+                    Taxes, discounts and <span className="underline cursor-pointer text-slate-700 font-medium">shipping</span> calculated at checkout.
+                  </p>
+
+                  {/* Check out CTA Button */}
+                  <button 
+                    type="button"
+                    onClick={() => {
+                      if (cart.length > 0) {
+                        const eventId = createEventId('initiate_checkout');
+                        trackEvent('InitiateCheckout', {
+                          content_name: cart.map(i => i.product.title).join(', '),
+                          content_ids: cart.map(i => i.product.id),
+                          content_type: 'product',
+                          value: cartGrandTotal || cartSubtotal,
+                          currency: 'BDT',
+                          num_items: cart.reduce((acc, item) => acc + item.quantity, 0),
+                          contents: cart.map(item => ({
+                            id: item.product.id,
+                            name: item.product.title,
+                            quantity: item.quantity,
+                            item_price: item.product.price
+                          }))
+                        }, eventId);
+                      }
+                      setIsCartOpen(false);
+                      navigateTo('checkout');
+                    }}
+                    className="w-full py-3.5 px-4 bg-[#7c3aed] hover:bg-[#6d28d9] active:scale-[0.99] text-white font-bold text-sm sm:text-base rounded-xl transition shadow-md shadow-purple-600/20 cursor-pointer flex items-center justify-center gap-2"
+                  >
+                    <span>Check out</span>
+                  </button>
                 </div>
               )}
 
@@ -3169,7 +4028,7 @@ export default function FantineStorePage({ onGoToLogin, onGoToLanding }: Fantine
             </div>
             <h3 className="font-sans text-2xl font-bold text-slate-900">Order Confirmed!</h3>
             <p className="text-xs text-slate-600">
-              Thank you for ordering with FANTINE Korea. Your order ID is <strong>{orderSuccess.id}</strong>.
+              Thank you for ordering with {displayStoreName}. Your order ID is <strong>{orderSuccess.id}</strong>.
               Our delivery team will contact you shortly.
             </p>
             <button 
@@ -3205,7 +4064,7 @@ export default function FantineStorePage({ onGoToLogin, onGoToLanding }: Fantine
             <img fetchPriority="high" width={500} height={500} src={currentProductImages[activeImageIndex] || activeProductDetail.coverImage} alt={activeProductDetail.title} 
               onError={(e) => {
                 e.currentTarget.onerror = null;
-                e.currentTarget.src = DEFAULT_FANTINE_FALLBACK_IMAGE;
+                e.currentTarget.src = DEFAULT_STORE_FALLBACK_IMAGE;
               }}
               className="max-h-[80vh] w-auto max-w-full object-contain rounded-xl shadow-2xl bg-white/5 p-2 border border-white/10"
             />
@@ -3237,16 +4096,10 @@ export default function FantineStorePage({ onGoToLogin, onGoToLanding }: Fantine
         </div>
       )}
 
-      {/* ============================================================
-          FLOATING WHATSAPP CUSTOMER SUPPORT WIDGET
-          ============================================================ */}
-      <DoctorFloatingTrigger
-        whatsappNumber={socialLinks?.whatsapp || liveHeaderSettings?.socialLinks?.whatsapp || displayPhone}
-        storeName={displayStoreName}
-      />
+
 
       {/* ============================================================
-          FACTORY DIRECT QUOTE & OEM/ODM INQUIRY MODAL
+          DIRECT CUSTOMER INQUIRY MODAL
           ============================================================ */}
       {isQuoteModalOpen && (
         <div 
@@ -3274,18 +4127,25 @@ export default function FantineStorePage({ onGoToLogin, onGoToLanding }: Fantine
                 </div>
                 <h3 className="text-2xl font-bold text-slate-900">Inquiry Received!</h3>
                 <p className="text-slate-600 text-sm max-w-md mx-auto leading-relaxed">
-                  Thank you for reaching out to <strong>{displayStoreName}</strong>. Our export and OEM development team will review your specifications and contact you within 24 hours.
+                  Thank you for reaching out to <strong>{displayStoreName}</strong>. Our customer support team will review your inquiry and contact you within 24 hours.
                 </p>
                 <div className="pt-4 flex flex-col sm:flex-row gap-3 justify-center">
-                  <a
-                    href={`https://wa.me/${(socialLinks?.whatsapp || '+8618027300683').replace(/\D/g, '')}?text=${encodeURIComponent(`Hello ${displayStoreName}! I just submitted a quote request for ${quoteForm.company || 'our brand'}.`)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center justify-center gap-2 bg-[#25D366] hover:bg-[#20ba59] text-white px-5 py-2.5 rounded-full font-semibold text-sm transition shadow-md"
-                  >
-                    <MessageCircle className="w-4 h-4 fill-current" />
-                    <span>Follow Up on WhatsApp</span>
-                  </a>
+                  {(() => {
+                    const rawWa = socialLinks?.whatsapp || liveHeaderSettings?.socialLinks?.whatsapp || displayPhone;
+                    const cleanWa = rawWa ? rawWa.replace(/[^0-9]/g, '') : '';
+                    if (!cleanWa) return null;
+                    return (
+                      <a
+                        href={`https://wa.me/${cleanWa}?text=${encodeURIComponent(`Hello ${displayStoreName}! I just submitted an inquiry.`)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center justify-center gap-2 bg-[#25D366] hover:bg-[#20ba59] text-white px-5 py-2.5 rounded-full font-semibold text-sm transition shadow-md"
+                      >
+                        <MessageCircle className="w-4 h-4 fill-current" />
+                        <span>Follow Up on WhatsApp</span>
+                      </a>
+                    );
+                  })()}
                   <button
                     type="button"
                     onClick={() => {
@@ -3303,13 +4163,13 @@ export default function FantineStorePage({ onGoToLogin, onGoToLanding }: Fantine
                 <div className="space-y-1">
                   <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 border border-blue-200 text-[#0093d0] text-xs font-bold uppercase tracking-wider">
                     <Sparkles className="w-3.5 h-3.5" />
-                    <span>Direct Factory OEM / ODM Inquiry</span>
+                    <span>{displayStoreName} Support</span>
                   </div>
                   <h3 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
-                    Get A Custom Manufacturing Quote
+                    {liveHeaderSettings.ctaButtonText || 'Direct Customer Inquiry'}
                   </h3>
                   <p className="text-xs sm:text-sm text-slate-600">
-                    Formulation, fragrance customization, pod structure, packaging, and private label support.
+                    {displayTagline || 'Fill out the form below and our team will get back to you shortly.'}
                   </p>
                 </div>
 

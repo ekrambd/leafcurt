@@ -289,81 +289,24 @@ export default function ProductManager({
       setBottomBannerBadge(product.bottomBannerBadge || '');
 
       // Specifications & Key Features
-      setSpecTableRows(product.specTable && product.specTable.length > 0 ? product.specTable : [
-        { feature: 'Recommended Laundry Load', details: '8g: Approx. 2–4 kg\n10g: Approx. 3–5 kg\n25g: Approx. 8–12 kg' },
-        { feature: 'Function', details: 'Deep Cleaning / Stain Removal / Antibacterial / Anti-Mite / Fabric Softening / Color Protection / Long-Lasting Fragrance / Odor Control / Hypoallergenic / Customized Functions' },
-        { feature: 'Fragrance', details: 'Sweet Peach / green fruit / Sandhill / Rose Feast / Customized' },
-        { feature: 'MOQ', details: 'OEM/ODM Starting from 100,000 Pcs' },
-        { feature: 'Sample Service', details: 'Stock Samples Available; Custom Samples Developed Based on Project Requirements' },
-        { feature: 'OEM Service', details: 'Formula + Fragrance + Pod Structure + Shape + Weight + Color + Packaging + Label' }
-      ]);
+      setSpecTableRows(product.specTable && product.specTable.length > 0 ? product.specTable : []);
       setSpecificationsList(
         product.specificationsList && product.specificationsList.length > 0
           ? (typeof product.specificationsList[0] === 'string'
               ? (product.specificationsList as string[]).map((s, idx) => ({ title: `${idx + 1}. Specification Detail`, description: s }))
               : (product.specificationsList as any))
-          : [
-              {
-                title: '1. Flexible 3-In-1 Laundry Solution',
-                description: 'Three-Chamber Laundry Pods For Brands, Importers, Distributors And Private-Label Customers. Custom Options Support Everyday Laundry, Baby Care, Pet Care, Sportswear And Commercial Use.'
-              },
-              {
-                title: '2. Multiple Pod Weights & Dosage',
-                description: 'Available In 8g, 10g And 25g Sizes. One 10g Pod Is Recommended For Approximately 3–5 Kg Of Laundry, With Dosage Varying By Formula, Soil Level And Washing Conditions.'
-              },
-              {
-                title: '3. Customizable Formulas & Functions',
-                description: 'Core Functions Include Deep Cleaning, Anti-Mite Care And Long-Lasting Fragrance. Combine Liquid, Powder Or Fragrance Beads, With Customized Additives Available For Specific Projects.'
-              },
-              {
-                title: '4. Fragrance Options',
-                description: 'Choose From Sweet Peach, Green Fruity, Sandhill, Rose Feast Or Custom Scents. Fragrance Direction And Intensity Can Be Tailored To Regional Preferences And Brand Positioning.'
-              },
-              {
-                title: '5. Custom Packaging & Design',
-                description: 'Available In Boxes, Pouches, Tubs, Jars Or Buckets, Including Child-Resistant, Recyclable And Plastic-Free Options. In-House Design Support Covers Multilingual Labels And Brand Visuals.'
-              },
-              {
-                title: '6. OEM/ODM Support & Production',
-                description: 'Customize Pod Structure, Shape, Weight, Color, Formula, Fragrance, Packaging And Labels. Standard Starting Quantity: 100,000 Pieces. Stock And Custom Samples Are Available; Production Takes Approximately 20–30 Days After Sample Approval And Deposit, Depending On Order Requirements.'
-              }
-            ]
+          : []
       );
       setKeyFeatureCards(
         product.keyFeatureCards && product.keyFeatureCards.length > 0
           ? product.keyFeatureCards
-          : [
-              {
-                icon: 'globe',
-                title: 'Global Fragrance Partnerships & Custom Development',
-                subtitle: 'Co-Developed Fragrances with Leading Global Suppliers',
-                description: 'Through long-term collaboration with leading global fragrance suppliers, including Givaudan and Firmenich, our team has jointly developed a wide range of popular fragrance solutions for laundry products. From floral and fruity to fresh and sophisticated perfume-inspired profiles, fragrance type and intensity can be customized to meet different brand positioning and market preferences.'
-              },
-              {
-                icon: 'clock',
-                title: '72 Hours To 1 Week Fragrance Retention',
-                subtitle: 'Multi-Stage Testing for Long-Lasting Fragrance',
-                description: 'Our laboratory team conducts multiple fragrance performance and retention tests to evaluate and optimize scent performance on fabrics. Depending on the fragrance system, formula and usage conditions, fragrance retention on fabrics can reach approximately 72 hours to 1 week, supporting the development of long-lasting fragrance laundry pods for different market requirements.'
-              },
-              {
-                icon: 'box',
-                title: '3 Billion Pods Annual Production Capacity',
-                subtitle: 'Automated Manufacturing Built for High-Volume Orders',
-                description: 'With an annual laundry pod production capacity of up to 3 billion pieces, Authentic is equipped with fully automated production lines and automated manufacturing equipment covering key production processes. Our scalable production system supports customized OEM/ODM projects and high-volume orders for global brands, importers and distributors.'
-              },
-              {
-                icon: 'check',
-                title: '5-Stage Quality Control',
-                subtitle: 'Quality Control Throughout the Manufacturing Process',
-                description: 'Our 5-stage quality control process covers key stages from raw materials and production to finished product inspection. Supported by laboratory testing and 100% batch inspection, our QC system helps maintain consistent product quality across OEM/ODM production.'
-              }
-            ]
+          : []
       );
-      setWhatsappNumber(product.whatsappNumber || '+8618027300683');
-      setWhatsappMessage(product.whatsappMessage || `Hello Authentic! I am interested in getting a quote for ${product.title || '3-in-1 Laundry Pods'}.`);
-      setContactEmail(product.contactEmail || 'authentic.factory@outlook.com');
-      setFacebookUrl(product.facebookUrl || 'https://facebook.com');
-      setLinkedinUrl(product.linkedinUrl || 'https://linkedin.com');
+      setWhatsappNumber(product.whatsappNumber || '');
+      setWhatsappMessage(product.whatsappMessage || (product.title ? `Hello! I am interested in ${product.title}.` : ''));
+      setContactEmail(product.contactEmail || '');
+      setFacebookUrl(product.facebookUrl || '');
+      setLinkedinUrl(product.linkedinUrl || '');
     } else {
       setEditingProduct(null);
       setProductType('Physical product');
@@ -436,76 +379,19 @@ export default function ProductManager({
       setVideoDescription('');
       setGalleryAutoScroll(true);
       setGalleryScrollInterval(4);
-      setWeightBadge('Basis weight: 25g/pcs');
+      setWeightBadge('');
       setWeightKg(0.5);
-      setCapacityBadge('1 pod ~24-28pcs clothes');
-      setSizeBadge('Size: 6*6*2cm');
-      setBottomBannerBadge('Custom formula, color, and scent.');
-      setSpecTableRows([
-        { feature: 'Recommended Laundry Load', details: '8g: Approx. 2–4 kg\n10g: Approx. 3–5 kg\n25g: Approx. 8–12 kg' },
-        { feature: 'Function', details: 'Deep Cleaning / Stain Removal / Antibacterial / Anti-Mite / Fabric Softening / Color Protection / Long-Lasting Fragrance / Odor Control / Hypoallergenic / Customized Functions' },
-        { feature: 'Fragrance', details: 'Sweet Peach / green fruit / Sandhill / Rose Feast / Customized' },
-        { feature: 'MOQ', details: 'OEM/ODM Starting from 100,000 Pcs' },
-        { feature: 'Sample Service', details: 'Stock Samples Available; Custom Samples Developed Based on Project Requirements' },
-        { feature: 'OEM Service', details: 'Formula + Fragrance + Pod Structure + Shape + Weight + Color + Packaging + Label' }
-      ]);
-      setSpecificationsList([
-        {
-          title: '1. Flexible 3-In-1 Laundry Solution',
-          description: 'Three-Chamber Laundry Pods For Brands, Importers, Distributors And Private-Label Customers. Custom Options Support Everyday Laundry, Baby Care, Pet Care, Sportswear And Commercial Use.'
-        },
-        {
-          title: '2. Multiple Pod Weights & Dosage',
-          description: 'Available In 8g, 10g And 25g Sizes. One 10g Pod Is Recommended For Approximately 3–5 Kg Of Laundry, With Dosage Varying By Formula, Soil Level And Washing Conditions.'
-        },
-        {
-          title: '3. Customizable Formulas & Functions',
-          description: 'Core Functions Include Deep Cleaning, Anti-Mite Care And Long-Lasting Fragrance. Combine Liquid, Powder Or Fragrance Beads, With Customized Additives Available For Specific Projects.'
-        },
-        {
-          title: '4. Fragrance Options',
-          description: 'Choose From Sweet Peach, Green Fruity, Sandhill, Rose Feast Or Custom Scents. Fragrance Direction And Intensity Can Be Tailored To Regional Preferences And Brand Positioning.'
-        },
-        {
-          title: '5. Custom Packaging & Design',
-          description: 'Available In Boxes, Pouches, Tubs, Jars Or Buckets, Including Child-Resistant, Recyclable And Plastic-Free Options. In-House Design Support Covers Multilingual Labels And Brand Visuals.'
-        },
-        {
-          title: '6. OEM/ODM Support & Production',
-          description: 'Customize Pod Structure, Shape, Weight, Color, Formula, Fragrance, Packaging And Labels. Standard Starting Quantity: 100,000 Pieces. Stock And Custom Samples Are Available; Production Takes Approximately 20–30 Days After Sample Approval And Deposit, Depending On Order Requirements.'
-        }
-      ]);
-      setKeyFeatureCards([
-        {
-          icon: 'globe',
-          title: 'Global Fragrance Partnerships & Custom Development',
-          subtitle: 'Co-Developed Fragrances with Leading Global Suppliers',
-          description: 'Through long-term collaboration with leading global fragrance suppliers, including Givaudan and Firmenich, our team has jointly developed a wide range of popular fragrance solutions for laundry products. From floral and fruity to fresh and sophisticated perfume-inspired profiles, fragrance type and intensity can be customized to meet different brand positioning and market preferences.'
-        },
-        {
-          icon: 'clock',
-          title: '72 Hours To 1 Week Fragrance Retention',
-          subtitle: 'Multi-Stage Testing for Long-Lasting Fragrance',
-          description: 'Our laboratory team conducts multiple fragrance performance and retention tests to evaluate and optimize scent performance on fabrics. Depending on the fragrance system, formula and usage conditions, fragrance retention on fabrics can reach approximately 72 hours to 1 week, supporting the development of long-lasting fragrance laundry pods for different market requirements.'
-        },
-        {
-          icon: 'box',
-          title: '3 Billion Pods Annual Production Capacity',
-          subtitle: 'Automated Manufacturing Built for High-Volume Orders',
-          description: 'With an annual laundry pod production capacity of up to 3 billion pieces, Authentic is equipped with fully automated production lines and automated manufacturing equipment covering key production processes. Our scalable production system supports customized OEM/ODM projects and high-volume orders for global brands, importers and distributors.'
-        },
-        {
-          icon: 'check',
-          title: '5-Stage Quality Control',
-          subtitle: 'Quality Control Throughout the Manufacturing Process',
-          description: 'Our 5-stage quality control process covers key stages from raw materials and production to finished product inspection. Supported by laboratory testing and 100% batch inspection, our QC system helps maintain consistent product quality across OEM/ODM production.'
-        }
-      ]);
-      setWhatsappNumber('+8618027300683');
-      setWhatsappMessage('Hello Authentic! I am interested in getting a quote for 3-in-1 Laundry Pods.');
-      setContactEmail('authentic.factory@outlook.com');
-      setFacebookUrl('https://facebook.com');
-      setLinkedinUrl('https://linkedin.com');
+      setCapacityBadge('');
+      setSizeBadge('');
+      setBottomBannerBadge('');
+      setSpecTableRows([]);
+      setSpecificationsList([]);
+      setKeyFeatureCards([]);
+      setWhatsappNumber('');
+      setWhatsappMessage('');
+      setContactEmail('');
+      setFacebookUrl('');
+      setLinkedinUrl('');
     }
     setActiveTab('title-summary');
     setIsModalOpen(true);
@@ -686,7 +572,7 @@ export default function ProductManager({
     );
     const finalBrandName = brand.trim() || matchedBrand?.name || undefined;
     const finalBrandId = matchedBrand?.id || brandId || undefined;
-    const finalAuthor = finalBrandName || authorName.trim() || 'FANTINE Korea';
+    const finalAuthor = finalBrandName || authorName.trim() || undefined;
 
     return {
       id: editingProduct ? editingProduct.id : `prod-${Date.now()}`,
@@ -760,12 +646,12 @@ export default function ProductManager({
       addBarcodeToImage,
       giftWrapEnabled,
       giftWrapPrice: Number(giftWrapPrice) || 0,
-      description: description.trim() || shortSummary.trim(),
-      shortSummary: shortSummary.trim() || description.trim(),
-      benefitsHighlights: benefitsHighlights.trim(),
-      howToUse: howToUse.trim(),
-      howToUseIt: howToUse.trim(),
-      ingredients: ingredients.trim(),
+      description: description.trim(),
+      shortSummary: description.trim(),
+      benefitsHighlights: '',
+      howToUse: '',
+      howToUseIt: '',
+      ingredients: '',
       specs: [],
       tableOfContents: [],
       // book metadata
@@ -848,14 +734,14 @@ export default function ProductManager({
   const filteredProducts = products.filter(p => {
     const term = searchTerm.toLowerCase();
     const matchesSearch = !term ||
-      p.title.toLowerCase().includes(term) ||
+      (p.title && p.title.toLowerCase().includes(term)) ||
       (p.subtitle && p.subtitle.toLowerCase().includes(term)) ||
       (p.sku && p.sku.toLowerCase().includes(term)) ||
       (p.brand && p.brand.toLowerCase().includes(term)) ||
       (p.authorName && p.authorName.toLowerCase().includes(term)) ||
       (p.author && p.author.toLowerCase().includes(term)) ||
       (p.slug && p.slug.toLowerCase().includes(term)) ||
-      (p.seoKeywords && p.seoKeywords.some(keyword => keyword.toLowerCase().includes(term)));
+      (p.seoKeywords && p.seoKeywords.some(keyword => keyword && keyword.toLowerCase().includes(term)));
 
     const matchesCat = selectedCategory === 'all' || 
       (p.category && p.category.trim().toLowerCase() === selectedCategory.trim().toLowerCase());
@@ -997,13 +883,14 @@ export default function ProductManager({
               <tbody className="divide-y divide-slate-100">
                 {filteredProducts.map((p, idx) => {
                   const hasVar = Boolean(p.hasVariants && p.variants && p.variants.length > 0);
-                  const validVariants = hasVar ? p.variants!.filter(v => v.price > 0) : [];
-                  const variantPrices = validVariants.map(v => v.price);
-                  const minVarPrice = variantPrices.length > 0 ? Math.min(...variantPrices) : p.price;
-                  const maxVarPrice = variantPrices.length > 0 ? Math.max(...variantPrices) : p.price;
-                  const displayPrice = hasVar && minVarPrice > 0 ? minVarPrice : p.price;
+                  const validVariants = hasVar ? p.variants!.filter(v => typeof v.price === 'number' && v.price > 0) : [];
+                  const variantPrices = validVariants.map(v => Number(v.price) || 0);
+                  const basePrice = Number(p.price) || 0;
+                  const minVarPrice = variantPrices.length > 0 ? Math.min(...variantPrices) : basePrice;
+                  const maxVarPrice = variantPrices.length > 0 ? Math.max(...variantPrices) : basePrice;
+                  const displayPrice = hasVar && minVarPrice > 0 ? minVarPrice : basePrice;
                   const lowestVar = hasVar ? validVariants.find(v => v.price === displayPrice) : null;
-                  const displayRegPrice = lowestVar?.regularPrice || p.regularPrice;
+                  const displayRegPrice = Number(lowestVar?.regularPrice ?? p.regularPrice ?? 0);
 
                   return (
                   <tr key={p.id} className="hover:bg-slate-50/80 transition-colors">
@@ -1019,11 +906,11 @@ export default function ProductManager({
                       <div className="flex items-center gap-3">
                         <div className="h-14 w-14 rounded-xl bg-slate-100 border border-slate-200 overflow-hidden shrink-0 flex items-center justify-center p-1">
                           <img
-                            src={p.image || p.coverImage || (p.images && p.images[0]) || '/uploads/file-1791830876714-429462367.jpg'}
+                            src={p.image || p.coverImage || (p.images && p.images[0]) || '/authentic/pod_triple_chamber_main.png'}
                             alt={p.title}
                             onError={(e) => {
                               e.currentTarget.onerror = null;
-                              e.currentTarget.src = '/uploads/file-1791830876714-429462367.jpg';
+                              e.currentTarget.src = '/authentic/pod_triple_chamber_main.png';
                             }}
                             className="max-h-full max-w-full object-contain"
                           />
@@ -1057,7 +944,7 @@ export default function ProductManager({
                         <span className="inline-block bg-teal-50 text-teal-800 text-[11px] font-bold px-2.5 py-1 rounded-lg border border-teal-200">
                           {p.category}
                         </span>
-                        {(p.brand || p.authorName || (p.author && p.author !== 'FANTINE Laboratory' ? p.author : '')) && (
+                        {(p.brand || p.authorName || p.author) && (
                           <div>
                             <span className="inline-flex items-center gap-1 bg-amber-50 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-md border border-amber-200">
                               <Bookmark className="h-2.5 w-2.5" />
@@ -1076,14 +963,14 @@ export default function ProductManager({
                     {/* Price */}
                     <td className="py-3 px-4 whitespace-nowrap">
                       <div className="text-sm font-extrabold text-teal-700 flex items-center gap-1">
-                        <span>Tk. {displayPrice.toLocaleString('en-US')}</span>
+                        <span>Tk. {Number(displayPrice || 0).toLocaleString('en-US')}</span>
                         {hasVar && minVarPrice !== maxVarPrice && (
-                          <span className="text-[11px] font-bold text-slate-500">- Tk. {maxVarPrice.toLocaleString('en-US')}</span>
+                          <span className="text-[11px] font-bold text-slate-500">- Tk. {Number(maxVarPrice || 0).toLocaleString('en-US')}</span>
                         )}
                       </div>
-                      {displayRegPrice && displayRegPrice > displayPrice && (
+                      {displayRegPrice > displayPrice && (
                         <div className="text-[11px] text-slate-400 line-through">
-                          Tk. {displayRegPrice.toLocaleString('en-US')}
+                          Tk. {Number(displayRegPrice || 0).toLocaleString('en-US')}
                         </div>
                       )}
                       {hasVar && (
@@ -1206,11 +1093,11 @@ export default function ProductManager({
             >
               <div className="relative h-32 sm:h-36 bg-slate-50 overflow-hidden flex items-center justify-center p-2">
                 <img
-                  src={p.image || p.coverImage || (p.images && p.images[0]) || '/uploads/file-1791830876714-429462367.jpg'}
+                  src={p.image || p.coverImage || (p.images && p.images[0]) || '/authentic/pod_triple_chamber_main.png'}
                   alt={p.title}
                   onError={(e) => {
                     e.currentTarget.onerror = null;
-                    e.currentTarget.src = '/uploads/file-1791830876714-429462367.jpg';
+                    e.currentTarget.src = '/authentic/pod_triple_chamber_main.png';
                   }}
                   className="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-300"
                 />
@@ -1221,7 +1108,7 @@ export default function ProductManager({
                   <span className="bg-slate-900/80 backdrop-blur-md text-white text-[9px] font-bold px-1.5 py-0.5 rounded truncate">
                     {p.category}
                   </span>
-                  {(p.brand || p.authorName || (p.author && p.author !== 'FANTINE Laboratory' ? p.author : '')) && (
+                  {(p.brand || p.authorName || p.author) && (
                     <span className="bg-amber-400/90 backdrop-blur-md text-slate-950 text-[9px] font-black px-1.5 py-0.5 rounded flex items-center gap-0.5">
                       <Bookmark className="h-2 w-2" />
                       {p.brand || p.authorName || p.author}
@@ -1260,25 +1147,26 @@ export default function ProductManager({
                   <div>
                     {(() => {
                       const hasVar = Boolean(p.hasVariants && p.variants && p.variants.length > 0);
-                      const validVariants = hasVar ? p.variants!.filter(v => v.price > 0) : [];
-                      const variantPrices = validVariants.map(v => v.price);
-                      const minVarPrice = variantPrices.length > 0 ? Math.min(...variantPrices) : p.price;
-                      const maxVarPrice = variantPrices.length > 0 ? Math.max(...variantPrices) : p.price;
-                      const displayPrice = hasVar && minVarPrice > 0 ? minVarPrice : p.price;
+                      const validVariants = hasVar ? p.variants!.filter(v => typeof v.price === 'number' && v.price > 0) : [];
+                      const variantPrices = validVariants.map(v => Number(v.price) || 0);
+                      const basePrice = Number(p.price) || 0;
+                      const minVarPrice = variantPrices.length > 0 ? Math.min(...variantPrices) : basePrice;
+                      const maxVarPrice = variantPrices.length > 0 ? Math.max(...variantPrices) : basePrice;
+                      const displayPrice = hasVar && minVarPrice > 0 ? minVarPrice : basePrice;
                       const lowestVar = hasVar ? validVariants.find(v => v.price === displayPrice) : null;
-                      const displayRegPrice = lowestVar?.regularPrice || p.regularPrice;
+                      const displayRegPrice = Number(lowestVar?.regularPrice ?? p.regularPrice ?? 0);
 
                       return (
                         <div>
                           <div className="text-xs sm:text-sm font-extrabold text-teal-700 flex items-center gap-0.5">
-                            <span>Tk.{displayPrice.toLocaleString('bn-BD')}</span>
+                            <span>Tk.{Number(displayPrice || 0).toLocaleString('bn-BD')}</span>
                             {hasVar && minVarPrice !== maxVarPrice && (
-                              <span className="text-[10px] font-bold text-slate-500">- Tk.{maxVarPrice.toLocaleString('bn-BD')}</span>
+                              <span className="text-[10px] font-bold text-slate-500">- Tk.{Number(maxVarPrice || 0).toLocaleString('bn-BD')}</span>
                             )}
                           </div>
-                          {displayRegPrice && displayRegPrice > displayPrice && (
+                          {displayRegPrice > displayPrice && (
                             <div className="text-[10px] text-slate-400 line-through">
-                              Tk.{displayRegPrice.toLocaleString('bn-BD')}
+                              Tk.{Number(displayRegPrice || 0).toLocaleString('bn-BD')}
                             </div>
                           )}
                         </div>
@@ -1452,7 +1340,7 @@ export default function ProductManager({
                         <span>Product name and identification</span>
                       </h4>
                       <p className="text-[11px] text-slate-500">
-                        customerShown to productShiRoname, Write subtitles, brief summary and detailed description।
+                        Enter product title, category, brand, and detailed description.
                       </p>
                     </div>
 
@@ -1516,71 +1404,11 @@ export default function ProductManager({
                         </label>
                         <textarea
                           required
-                          rows={5}
-                          placeholder="Write full product description, action mechanism, and details in English and/or Bengali..."
+                          rows={8}
+                          placeholder="Write full product description and details in English and/or Bengali..."
                           value={description}
                           onChange={(e) => setDescription(e.target.value)}
                           className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-normal text-slate-900 focus:ring-2 focus:ring-teal-500 outline-none resize-y leading-relaxed font-sans"
-                        />
-                      </div>
-
-                      {/* Benefits Highlights */}
-                      <div className="md:col-span-10">
-                        <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                          <span>Benefits Highlights / প্রধান সুবিধাসমূহ ও রেটিং</span>
-                          <span className="text-slate-400 font-normal ml-1.5">(Key bullet points, overall rating breakdown)</span>
-                        </label>
-                        <textarea
-                          rows={6}
-                          placeholder={"Pure Vitamin C,\nStronger efficacy,\nGreater stability,\nEasier absorption.\n⭐ Overall\n• 🎯 Pigmentation: 8.5/10\n• 🛡️ Antioxidant: 9.5/10"}
-                          value={benefitsHighlights}
-                          onChange={(e) => setBenefitsHighlights(e.target.value)}
-                          className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-normal text-slate-900 focus:ring-2 focus:ring-teal-500 outline-none resize-y leading-relaxed font-sans"
-                        />
-                      </div>
-
-                      {/* How to use it */}
-                      <div className="md:col-span-10">
-                        <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                          <span>How to use it / ব্যবহারবিধি</span>
-                          <span className="text-slate-400 font-normal ml-1.5">(Application steps & usage frequency)</span>
-                        </label>
-                        <textarea
-                          rows={4}
-                          placeholder={"After cleansing in the morning and evening, use your fingertips to apply three pumps...\n\nব্যবহারবিধি:\nসকাল ও সন্ধ্যায় ত্বক পরিষ্কার করার পর..."}
-                          value={howToUse}
-                          onChange={(e) => setHowToUse(e.target.value)}
-                          className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-normal text-slate-900 focus:ring-2 focus:ring-teal-500 outline-none resize-y leading-relaxed font-sans"
-                        />
-                      </div>
-
-                      {/* Key Ingredients */}
-                      <div className="md:col-span-10">
-                        <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                          <span>Key Ingredients / উপাদানসমূহ</span>
-                          <span className="text-slate-400 font-normal ml-1.5">(Full INCI formula or key active ingredients)</span>
-                        </label>
-                        <textarea
-                          rows={4}
-                          placeholder={"WATER, ETHOXYDIGLYCOL, ASCORBIC ACID, PROPANEDIOL...\n\nউপাদানসমূহ: পানি, ইথোক্সিডাইগ্লাইকল..."}
-                          value={ingredients}
-                          onChange={(e) => setIngredients(e.target.value)}
-                          className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-normal text-slate-900 focus:ring-2 focus:ring-teal-500 outline-none resize-y leading-relaxed font-sans"
-                        />
-                      </div>
-
-                      {/* Short Summary (Optional excerpt) */}
-                      <div className="md:col-span-10">
-                        <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                          <span>Short Summary / সংক্ষিপ্ত বিবরণ</span>
-                          <span className="text-slate-400 font-normal ml-1.5">(Optional quick excerpt for cards/previews)</span>
-                        </label>
-                        <textarea
-                          rows={2}
-                          placeholder="Brief one-line summary..."
-                          value={shortSummary}
-                          onChange={(e) => setShortSummary(e.target.value)}
-                          className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-normal text-slate-900 focus:ring-2 focus:ring-teal-500 outline-none resize-y leading-relaxed"
                         />
                       </div>
 
@@ -2329,7 +2157,7 @@ export default function ProductManager({
                             type="text"
                             value={capacityBadge}
                             onChange={(e) => setCapacityBadge(e.target.value)}
-                            placeholder="1 pod ~24-28pcs clothes"
+                            placeholder="e.g. 500ml / 100g / 1 Pack"
                             className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs"
                           />
                         </div>
@@ -2376,22 +2204,6 @@ export default function ProductManager({
                           Add manufacturing, usage, or demonstration video for the product details page.
                         </p>
                       </div>
-
-                      {/* 1-Click Load Demo Video Button */}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setHasVideo(true);
-                          setVideoType('mp4');
-                          setVideoUrl('https://assets.mixkit.co/videos/preview/mixkit-liquid-soap-bubble-close-up-view-40763-large.mp4');
-                          setVideoTitle('Authentic 3-in-1 Triple Chamber Laundry Pods Manufacturing Video');
-                          setVideoPoster('/authentic/pod_packaging_boxes.png');
-                          setVideoDescription('Watch how Authentic manufactures 3-in-1 triple-chamber laundry pods with high-speed automated PVA film sealing, multi-stage fragrance microencapsulation, and strict 5-stage quality testing.');
-                        }}
-                        className="px-3 py-1.5 bg-blue-50 text-[#162963] hover:bg-blue-100 border border-blue-200 text-xs font-bold rounded-xl transition cursor-pointer"
-                      >
-                        ⚡ Load Demo Video
-                      </button>
                     </div>
 
                     {/* Enable Video Toggle */}
@@ -2479,7 +2291,7 @@ export default function ProductManager({
                               type="text"
                               value={videoTitle}
                               onChange={(e) => setVideoTitle(e.target.value)}
-                              placeholder="Authentic 3-in-1 Triple Chamber Laundry Pods Video"
+                              placeholder="e.g. Product Demonstration Video"
                               className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs"
                             />
                           </div>
@@ -2490,7 +2302,7 @@ export default function ProductManager({
                               type="text"
                               value={videoPoster}
                               onChange={(e) => setVideoPoster(e.target.value)}
-                              placeholder="/authentic/pod_packaging_boxes.png"
+                              placeholder="e.g. https://example.com/poster.jpg"
                               className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs"
                             />
                           </div>
@@ -2558,23 +2370,6 @@ export default function ProductManager({
                           <button
                             type="button"
                             onClick={() => {
-                              setSpecTableRows([
-                                { feature: 'Recommended Laundry Load', details: '8g: Approx. 2–4 kg\n10g: Approx. 3–5 kg\n25g: Approx. 8–12 kg' },
-                                { feature: 'Function', details: 'Deep Cleaning / Stain Removal / Antibacterial / Anti-Mite / Fabric Softening / Color Protection / Long-Lasting Fragrance / Odor Control / Hypoallergenic / Customized Functions' },
-                                { feature: 'Fragrance', details: 'Sweet Peach / green fruit / Sandhill / Rose Feast / Customized' },
-                                { feature: 'MOQ', details: 'OEM/ODM Starting from 100,000 Pcs' },
-                                { feature: 'Sample Service', details: 'Stock Samples Available; Custom Samples Developed Based on Project Requirements' },
-                                { feature: 'OEM Service', details: 'Formula + Fragrance + Pod Structure + Shape + Weight + Color + Packaging + Label' }
-                              ]);
-                            }}
-                            className="px-2.5 py-1 bg-blue-50 text-[#162963] hover:bg-blue-100 text-[11px] font-bold rounded-lg border border-blue-200 transition"
-                          >
-                            ⚡ Load Pods Spec Table
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => {
                               setSpecTableRows(prev => [...prev, { feature: '', details: '' }]);
                             }}
                             className="px-2.5 py-1 bg-teal-700 hover:bg-teal-800 text-white text-[11px] font-bold rounded-lg transition"
@@ -2607,7 +2402,7 @@ export default function ProductManager({
                                 copy[idx].details = e.target.value;
                                 setSpecTableRows(copy);
                               }}
-                              placeholder="Details (e.g. OEM/ODM Starting from 100,000 Pcs)"
+                              placeholder="Details (e.g. 100% Organic Cotton / All Skin Types)"
                               className="flex-1 px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs"
                             />
 
@@ -2641,41 +2436,6 @@ export default function ProductManager({
                           <button
                             type="button"
                             onClick={() => {
-                              setSpecificationsList([
-                                {
-                                  title: '1. Flexible 3-In-1 Laundry Solution',
-                                  description: 'Three-Chamber Laundry Pods For Brands, Importers, Distributors And Private-Label Customers. Custom Options Support Everyday Laundry, Baby Care, Pet Care, Sportswear And Commercial Use.'
-                                },
-                                {
-                                  title: '2. Multiple Pod Weights & Dosage',
-                                  description: 'Available In 8g, 10g And 25g Sizes. One 10g Pod Is Recommended For Approximately 3–5 Kg Of Laundry, With Dosage Varying By Formula, Soil Level And Washing Conditions.'
-                                },
-                                {
-                                  title: '3. Customizable Formulas & Functions',
-                                  description: 'Core Functions Include Deep Cleaning, Anti-Mite Care And Long-Lasting Fragrance. Combine Liquid, Powder Or Fragrance Beads, With Customized Additives Available For Specific Projects.'
-                                },
-                                {
-                                  title: '4. Fragrance Options',
-                                  description: 'Choose From Sweet Peach, Green Fruity, Sandhill, Rose Feast Or Custom Scents. Fragrance Direction And Intensity Can Be Tailored To Regional Preferences And Brand Positioning.'
-                                },
-                                {
-                                  title: '5. Custom Packaging & Design',
-                                  description: 'Available In Boxes, Pouches, Tubs, Jars Or Buckets, Including Child-Resistant, Recyclable And Plastic-Free Options. In-House Design Support Covers Multilingual Labels And Brand Visuals.'
-                                },
-                                {
-                                  title: '6. OEM/ODM Support & Production',
-                                  description: 'Customize Pod Structure, Shape, Weight, Color, Formula, Fragrance, Packaging And Labels. Standard Starting Quantity: 100,000 Pieces. Stock And Custom Samples Are Available; Production Takes Approximately 20–30 Days After Sample Approval And Deposit, Depending On Order Requirements.'
-                                }
-                              ]);
-                            }}
-                            className="px-2.5 py-1 bg-blue-50 text-[#162963] hover:bg-blue-100 text-[11px] font-bold rounded-lg border border-blue-200 transition"
-                          >
-                            ⚡ Load 6-Point Specs
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => {
                               setSpecificationsList(prev => [...prev, { title: `${prev.length + 1}. `, description: '' }]);
                             }}
                             className="px-2.5 py-1 bg-teal-700 hover:bg-teal-800 text-white text-[11px] font-bold rounded-lg transition"
@@ -2697,7 +2457,7 @@ export default function ProductManager({
                                   copy[idx].title = e.target.value;
                                   setSpecificationsList(copy);
                                 }}
-                                placeholder="Heading (e.g. 1. Flexible 3-In-1 Laundry Solution)"
+                                placeholder="Heading (e.g. 1. Key Feature / Specification)"
                                 className="w-full px-2.5 py-1 bg-white border border-slate-200 rounded-lg text-xs font-bold"
                               />
                               <button
@@ -2738,41 +2498,6 @@ export default function ProductManager({
                         </div>
 
                         <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setKeyFeatureCards([
-                                {
-                                  icon: 'globe',
-                                  title: 'Global Fragrance Partnerships & Custom Development',
-                                  subtitle: 'Co-Developed Fragrances with Leading Global Suppliers',
-                                  description: 'Through long-term collaboration with leading global fragrance suppliers, including Givaudan and Firmenich, our team has jointly developed a wide range of popular fragrance solutions for laundry products. From floral and fruity to fresh and sophisticated perfume-inspired profiles, fragrance type and intensity can be customized to meet different brand positioning and market preferences.'
-                                },
-                                {
-                                  icon: 'clock',
-                                  title: '72 Hours To 1 Week Fragrance Retention',
-                                  subtitle: 'Multi-Stage Testing for Long-Lasting Fragrance',
-                                  description: 'Our laboratory team conducts multiple fragrance performance and retention tests to evaluate and optimize scent performance on fabrics. Depending on the fragrance system, formula and usage conditions, fragrance retention on fabrics can reach approximately 72 hours to 1 week, supporting the development of long-lasting fragrance laundry pods for different market requirements.'
-                                },
-                                {
-                                  icon: 'box',
-                                  title: '3 Billion Pods Annual Production Capacity',
-                                  subtitle: 'Automated Manufacturing Built for High-Volume Orders',
-                                  description: 'With an annual laundry pod production capacity of up to 3 billion pieces, Authentic is equipped with fully automated production lines and automated manufacturing equipment covering key production processes. Our scalable production system supports customized OEM/ODM projects and high-volume orders for global brands, importers and distributors.'
-                                },
-                                {
-                                  icon: 'check',
-                                  title: '5-Stage Quality Control',
-                                  subtitle: 'Quality Control Throughout the Manufacturing Process',
-                                  description: 'Our 5-stage quality control process covers key stages from raw materials and production to finished product inspection. Supported by laboratory testing and 100% batch inspection, our QC system helps maintain consistent product quality across OEM/ODM production.'
-                                }
-                              ]);
-                            }}
-                            className="px-2.5 py-1 bg-blue-50 text-[#162963] hover:bg-blue-100 text-[11px] font-bold rounded-lg border border-blue-200 transition"
-                          >
-                            ⚡ Load 4 Key Features
-                          </button>
-
                           <button
                             type="button"
                             onClick={() => {
@@ -2846,7 +2571,7 @@ export default function ProductManager({
                     <div className="pt-4 border-t border-slate-100 space-y-3">
                       <h4 className="text-sm font-bold text-slate-900 flex items-center gap-1.5">
                         <MessageSquare className="h-4 w-4 text-teal-600" />
-                        <span>Quick Contact & Factory Quote Settings</span>
+                        <span>Quick Contact & WhatsApp Inquiry Settings</span>
                       </h4>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -2856,7 +2581,7 @@ export default function ProductManager({
                             type="text"
                             value={whatsappNumber}
                             onChange={(e) => setWhatsappNumber(e.target.value)}
-                            placeholder="+8618027300683"
+                            placeholder="+880 1700-000000"
                             className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs"
                           />
                         </div>
@@ -2867,7 +2592,7 @@ export default function ProductManager({
                             type="email"
                             value={contactEmail}
                             onChange={(e) => setContactEmail(e.target.value)}
-                            placeholder="authentic.factory@outlook.com"
+                            placeholder="contact@yourstore.com"
                             className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs"
                           />
                         </div>
@@ -2878,7 +2603,7 @@ export default function ProductManager({
                             type="text"
                             value={whatsappMessage}
                             onChange={(e) => setWhatsappMessage(e.target.value)}
-                            placeholder="Hello Authentic! I am interested in getting a quote for 3-in-1 Laundry Pods."
+                            placeholder="Hello! I would like to inquire about this product."
                             className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs"
                           />
                         </div>

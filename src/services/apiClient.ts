@@ -1,4 +1,4 @@
-import { Product, BookOrder, EcomSettings } from '../types';
+import { Product, BookOrder, EcomSettings, VideoReviewItem, VideoReviewsSettings } from '../types';
 //mycomment
 export class ApiClient {
   private static async request<T>(endpoint: string, options?: RequestInit): Promise<T> {
@@ -8,7 +8,7 @@ export class ApiClient {
       idToken = authService.getToken();
 
       if (!idToken) {
-        const storedEmail = localStorage.getItem('noor_admin_session_email');
+        const storedEmail = localStorage.getItem('store_admin_session_email') || localStorage.getItem('noor_admin_session_email');
         const adminEmail = import.meta.env.VITE_ADMIN_EMAIL;
         if (storedEmail && adminEmail && storedEmail === adminEmail) {
           idToken = `BypassAdmin:${storedEmail}`;
@@ -194,6 +194,38 @@ export class ApiClient {
     return this.request('/notifications/send', {
       method: 'POST',
       body: JSON.stringify(payload)
+    });
+  }
+
+  // Video Reviews Endpoints
+  static getVideoReviews(): Promise<{ enabled: boolean; items: VideoReviewItem[] }> {
+    return this.request<{ enabled: boolean; items: VideoReviewItem[] }>('/video-reviews');
+  }
+
+  static saveVideoReviews(settings: Partial<VideoReviewsSettings>): Promise<{ success: boolean; settings: VideoReviewsSettings }> {
+    return this.request<{ success: boolean; settings: VideoReviewsSettings }>('/video-reviews', {
+      method: 'PUT',
+      body: JSON.stringify(settings)
+    });
+  }
+
+  static addVideoReview(item: Partial<VideoReviewItem>): Promise<{ success: boolean; item: VideoReviewItem; settings: VideoReviewsSettings }> {
+    return this.request<{ success: boolean; item: VideoReviewItem; settings: VideoReviewsSettings }>('/video-reviews', {
+      method: 'POST',
+      body: JSON.stringify(item)
+    });
+  }
+
+  static updateVideoReview(item: VideoReviewItem): Promise<{ success: boolean; item: VideoReviewItem; settings: VideoReviewsSettings }> {
+    return this.request<{ success: boolean; item: VideoReviewItem; settings: VideoReviewsSettings }>(`/video-reviews/${item.id}`, {
+      method: 'PUT',
+      body: JSON.stringify(item)
+    });
+  }
+
+  static deleteVideoReview(id: string): Promise<{ success: boolean; settings: VideoReviewsSettings }> {
+    return this.request<{ success: boolean; settings: VideoReviewsSettings }>(`/video-reviews/${id}`, {
+      method: 'DELETE'
     });
   }
 }

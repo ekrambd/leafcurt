@@ -205,12 +205,12 @@ export default function BookLandingPage({ onNavigateHome }: BookLandingPageProps
   }, [slug, initialTargetProduct]);
 
   const fallbackProduct = {
-    title: 'FAИTIИE VB5 REPAIR SERUM',
-    subtitle: 'Provitamin B5 (D-Panthenol) Intensive Calming Essence',
-    price: 1550,
-    regularPrice: 1800,
-    image: '/uploads/file-1791830876714-429462367.jpg',
-    description: 'উচ্চ ঘনত্বের প্রো-ভিটামিন বি৫ (ডি-প্যান্থেনল) ও কোরিয়ান ভেষজ হানবাং ফর্মুলা। ত্বকের লালচে ভাব ও র‍্যাশ দূর করে স্কিন ব্যারিয়ারকে করে তোলে শক্তিশালী ও উজ্জ্বল।'
+    title: 'Leaf Curt 3-in-1 Laundry Detergent Pods',
+    subtitle: 'Modern Triple-Chamber Design - Deep Cleaning & Long-Lasting Fragrance',
+    price: 25,
+    regularPrice: 35,
+    image: '/authentic/pod_triple_chamber_main.png',
+    description: 'উন্নত ৫ বায়ো-এনজাইম সমন্বিত ৩-ইন-১ ট্রিপল চেম্বার লন্ড্রি ডিটারজেন্ট পড। কঠিন দাগ দূর করে, কাপড়ের উজ্জ্বলতা বজায় রাখে ও মনোমুগ্ধকর সতেজ সুবাস দেয়।'
   };
 
   const displayTitle = landingConfig?.bookTitle || product?.title || fallbackProduct.title;
@@ -508,8 +508,9 @@ export default function BookLandingPage({ onNavigateHome }: BookLandingPageProps
 
   const scrollToOrder = () => {
     const eventId = createEventId('initiate_checkout');
+    const chosenTitle = selectedVariant ? `${displayTitle} (${selectedVariant.name})` : displayTitle;
     trackEvent('InitiateCheckout', {
-      content_name: chosenItemTitle,
+      content_name: chosenTitle,
       content_ids: [product?.id || landingConfig?.productId || 'landing_product'],
       content_type: 'product',
       value: totalPrice || displayPrice,
@@ -685,16 +686,14 @@ export default function BookLandingPage({ onNavigateHome }: BookLandingPageProps
           {/* Top Graphic Poster Banner (Hero Top Image) */}
           <div className="relative rounded-2xl overflow-hidden border border-[#b8863b]/30 shadow-2xl bg-[#16120e]">
             <img 
-              src={heroTopImage || '/uploads/file-1791830876714-429462367.jpg'} 
+              src={heroTopImage || '/authentic/pod_triple_chamber_main.png'} 
               alt={displayTitle} 
               loading="eager"
               fetchPriority="high"
               decoding="async"
               onError={(e) => {
                 const target = e.currentTarget;
-                if (!target.src.includes('/uploads/')) {
-                  target.src = '/uploads/file-1791830876714-429462367.jpg';
-                }
+                target.src = '/authentic/pod_triple_chamber_main.png';
               }}
               className="w-full h-auto max-h-[480px] object-cover mx-auto"
             />
@@ -823,15 +822,13 @@ export default function BookLandingPage({ onNavigateHome }: BookLandingPageProps
             onTouchEnd={handleTouchEnd}
           >
             <img 
-              src={galleryImages[galleryIndex] || displayImage || '/uploads/file-1791830876714-429462367.jpg'} 
+              src={galleryImages[galleryIndex] || displayImage || '/authentic/pod_triple_chamber_main.png'} 
               alt="Product Gallery" 
               loading="lazy"
               decoding="async"
               onError={(e) => {
                 const target = e.currentTarget;
-                if (!target.src.includes('/uploads/')) {
-                  target.src = '/uploads/file-1791830876714-429462367.jpg';
-                }
+                target.src = '/authentic/pod_triple_chamber_main.png';
               }}
               className="w-full h-full object-cover transition-all duration-300"
             />
@@ -960,9 +957,7 @@ export default function BookLandingPage({ onNavigateHome }: BookLandingPageProps
                           alt={v.name} 
                           onError={(e) => {
                             const target = e.currentTarget;
-                            if (!target.src.includes('/uploads/')) {
-                              target.src = '/uploads/file-1791830876714-429462367.jpg';
-                            }
+                            target.src = '/authentic/pod_triple_chamber_main.png';
                           }}
                           className="w-6 h-6 object-contain rounded" 
                         />
@@ -987,13 +982,11 @@ export default function BookLandingPage({ onNavigateHome }: BookLandingPageProps
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="w-12 h-12 rounded-xl bg-[#0f0c08] border border-[#382d22] p-1 shrink-0 flex items-center justify-center">
                     <img
-                      src={selectedVariant?.image || displayImage || '/uploads/file-1791830876714-429462367.jpg'}
+                      src={selectedVariant?.image || displayImage || '/authentic/pod_triple_chamber_main.png'}
                       alt={selectedVariant?.name || displayTitle}
                       onError={(e) => {
                         const target = e.currentTarget;
-                        if (!target.src.includes('/uploads/')) {
-                          target.src = '/uploads/file-1791830876714-429462367.jpg';
-                        }
+                        target.src = '/authentic/pod_triple_chamber_main.png';
                       }}
                       className="w-full h-full object-contain"
                     />

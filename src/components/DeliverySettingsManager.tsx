@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { EcomSettings, DeliveryMethodItem, DeliveryAreaScope, DeliveryPricingModel } from '../types';
-import { dbService, DEFAULT_DELIVERY_METHODS } from '../lib/dbService';
+import { dbService } from '../lib/dbService';
 import { CircularProgress } from './LoadingSkeleton';
 import { 
   Truck, 
@@ -23,7 +23,6 @@ import {
 } from 'lucide-react';
 import { FeedbackDialog } from './ui/FeedbackDialog';
 import { ConfirmDialog } from './ui/ConfirmDialog';
-import { DeliveryAdvancedSettings } from './DeliveryAdvancedSettings';
 import { BD_ALL_DISTRICTS, DHAKA_SUBURBS, calculateDeliveryCharge } from '../lib/deliveryCalculator';
 
 const COURIER_PARTNERS = [
@@ -75,7 +74,7 @@ export default function DeliverySettingsManager() {
     deliveryChargeOutsideDhaka: 130,
     bkashNumber: '',
     nagadNumber: '',
-    deliveryMethods: DEFAULT_DELIVERY_METHODS
+    deliveryMethods: []
   });
 
   const [isLoading, setIsLoading] = useState(true);
@@ -153,9 +152,9 @@ export default function DeliverySettingsManager() {
     }
   };
 
-  const deliveryMethods = settings.deliveryMethods && settings.deliveryMethods.length > 0 
-    ? settings.deliveryMethods 
-    : DEFAULT_DELIVERY_METHODS;
+  const deliveryMethods = Array.isArray(settings.deliveryMethods)
+    ? settings.deliveryMethods
+    : [];
 
   const filteredDelivery = deliveryMethods.filter(dm => {
     if (logisticsFilter === 'active') return dm.status === 'Active';
@@ -316,70 +315,6 @@ export default function DeliverySettingsManager() {
 
   return (
     <div className="space-y-6 font-sans max-w-6xl mx-auto text-slate-800 pb-16">
-
-      {/* Top Header Card */}
-      <div className="bg-white border border-slate-200/90 p-5 sm:p-7 rounded-3xl shadow-xs flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div className="space-y-1">
-          <div className="flex items-center space-x-3">
-            <div className="p-3 bg-gradient-to-br from-[#0a3866] to-[#0284c7] text-white rounded-2xl shadow-sm">
-              <Truck className="h-6 w-6" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-                  Delivery Method & Area Management
-                </h2>
-                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-sky-100 text-[#0284c7]">
-                  Weight & Zone Engine
-                </span>
-              </div>
-              <p className="text-xs text-slate-500 mt-1">
-                প্রফেশনাল ই-কমার্স ডেলিভারি জোন (ঢাকা মেট্রো, উপশহর, সারাদেশ), কুরিয়ার পার্টনার এবং ওজন ভিত্তিক চার্জ ক্যালকুলেশন
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Global Save / Refresh Buttons */}
-        <div className="flex items-center space-x-2.5 w-full sm:w-auto">
-          <button
-            onClick={loadSettings}
-            className="p-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-all border border-slate-200 text-xs font-semibold flex items-center gap-1.5 cursor-pointer shadow-2xs"
-            title="রিফ্রেশ করুন"
-          >
-            <RefreshCw className="h-4 w-4" />
-            <span className="hidden sm:inline">Refresh</span>
-          </button>
-
-          <button
-            onClick={handleSaveAll}
-            disabled={isSaving}
-            className="flex-1 sm:flex-none inline-flex items-center justify-center px-6 py-2.5 bg-[#0284c7] hover:bg-[#0369a1] text-white rounded-xl text-xs font-extrabold shadow-md transition-all disabled:opacity-50 cursor-pointer"
-          >
-            {isSaving ? (
-              <span className="flex items-center gap-2">
-                <RefreshCw className="h-4 w-4 animate-spin" />
-                সংরক্ষণ হচ্ছে...
-              </span>
-            ) : saveSuccess ? (
-              <span className="flex items-center gap-1.5 text-emerald-200">
-                <Check className="h-4 w-4 text-emerald-300" />
-                সংরক্ষিত!
-              </span>
-            ) : (
-              <span className="flex items-center gap-2">
-                <Save className="h-4 w-4" />
-                Save Changes
-              </span>
-            )}
-          </button>
-        </div>
-      </div>
-
-      {/* Advanced Legacy Overrides & Cutoff Accordion */}
-      <div className="my-6">
-        <DeliveryAdvancedSettings settings={settings} onChange={setSettings} />
-      </div>
 
       {/* Editor Modal for Delivery Method */}
       {editingDelivery && (
@@ -789,7 +724,7 @@ export default function DeliverySettingsManager() {
             <div className="flex items-center space-x-2.5">
               <h3 className="text-lg font-extrabold text-slate-900">ডেলিভারি মেথড ও রেট তালিকা</h3>
               <span className="px-2.5 py-0.5 bg-sky-50 text-[#0284c7] border border-sky-200 text-[11px] font-bold rounded-lg">
-                {deliveryMethods.length}টি মেথড সক্রিয়
+                {deliveryMethods.length > 0 ? `${deliveryMethods.length}টি মেথড যোগ করা` : 'কোনো মেথড নেই'}
               </span>
             </div>
             <p className="text-xs text-slate-500 mt-0.5">
@@ -797,13 +732,40 @@ export default function DeliverySettingsManager() {
             </p>
           </div>
 
-          <button
-            onClick={handleOpenAddDelivery}
-            className="w-full sm:w-auto px-5 py-2.5 bg-[#0284c7] hover:bg-[#0369a1] text-white text-xs font-extrabold rounded-xl transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer"
-          >
-            <Plus className="h-4 w-4" />
-            <span>নতুন ডেলিভারি মেথড যোগ করুন</span>
-          </button>
+          <div className="flex items-center gap-2.5 w-full sm:w-auto">
+            <button
+              onClick={loadSettings}
+              className="p-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-all border border-slate-200 text-xs font-semibold flex items-center gap-1.5 cursor-pointer shadow-2xs"
+              title="রিফ্রেশ করুন"
+            >
+              <RefreshCw className="h-4 w-4" />
+              <span className="hidden sm:inline">Refresh</span>
+            </button>
+
+            <button
+              onClick={handleSaveAll}
+              disabled={isSaving}
+              className="p-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs disabled:opacity-50"
+              title="সব পরিবর্তন সংরক্ষণ করুন"
+            >
+              {isSaving ? (
+                <RefreshCw className="h-4 w-4 animate-spin" />
+              ) : saveSuccess ? (
+                <Check className="h-4 w-4 text-white" />
+              ) : (
+                <Save className="h-4 w-4" />
+              )}
+              <span>{saveSuccess ? 'সংরক্ষিত!' : 'Save'}</span>
+            </button>
+
+            <button
+              onClick={handleOpenAddDelivery}
+              className="flex-1 sm:flex-none px-5 py-2.5 bg-[#0284c7] hover:bg-[#0369a1] text-white text-xs font-extrabold rounded-xl transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <Plus className="h-4 w-4" />
+              <span>নতুন ডেলিভারি মেথড যোগ করুন</span>
+            </button>
+          </div>
         </div>
 
         {/* Filter Pills */}
@@ -975,8 +937,32 @@ export default function DeliverySettingsManager() {
 
               {filteredDelivery.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-4 py-12 text-center text-slate-500">
-                    কোনো ডেলিভারি মেথড পাওয়া যায়নি। নতুন মেথড যোগ করুন।
+                  <td colSpan={7} className="px-4 py-16 text-center">
+                    <div className="flex flex-col items-center justify-center max-w-md mx-auto space-y-3">
+                      <div className="p-4 bg-sky-50 text-[#0284c7] rounded-2xl border border-sky-100">
+                        <Truck className="h-8 w-8 text-[#0284c7]" />
+                      </div>
+                      <div className="space-y-1">
+                        <h4 className="text-sm font-bold text-slate-800">
+                          {logisticsFilter !== 'all' 
+                            ? 'এই ফিল্টারে কোনো ডেলিভারি মেথড নেই'
+                            : 'এখনও কোনো ডেলিভারি মেথড যোগ করা হয়নি (Not added yet)'}
+                        </h4>
+                        <p className="text-xs text-slate-500 max-w-sm">
+                          {logisticsFilter !== 'all'
+                            ? 'অন্য ফিল্টার নির্বাচন করুন অথবা নতুন ডেলিভারি মেথড তৈরি করুন।'
+                            : 'চেকআউটে শিপিং চার্জ ও কুরিয়ার নির্ধারণের জন্য আপনার স্টোরের ডেলিভারি মেথড যোগ করুন।'}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleOpenAddDelivery}
+                        className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#0284c7] hover:bg-[#0369a1] text-white rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer mt-1"
+                      >
+                        <Plus className="h-4 w-4" />
+                        <span>নতুন মেথড যোগ করুন (Add one)</span>
+                      </button>
+                    </div>
                   </td>
                 </tr>
               )}

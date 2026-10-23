@@ -30,7 +30,7 @@ import {
 interface ProductReviewsSectionProps {
   product: Product;
   onOpenLoginModal?: () => void;
-  accentColor?: string; // e.g. '#162963' for Authentic or '#f97316' for Fantine
+  accentColor?: string; // e.g. '#162963' or '#0284c7'
 }
 
 export default function ProductReviewsSection({
@@ -311,6 +311,73 @@ export default function ProductReviewsSection({
     }
   };
 
+  const renderCalloutBox = () => (
+    <div className="p-5 bg-gradient-to-br from-slate-50 to-amber-50/40 rounded-2xl border border-slate-200 space-y-3">
+      {/* CASE 1: NOT LOGGED IN */}
+      {!customerSession ? (
+        <div className="space-y-3 text-center sm:text-left">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-900 text-white rounded-lg text-xs font-bold">
+            <Lock className="w-3.5 h-3.5 text-amber-400" />
+            <span>লগইন আবশ্যক</span>
+          </div>
+          <h3 className="font-bold text-slate-900 text-sm">
+            রিভিউ দিতে দয়া করে ওয়েবসাইটে লগইন করুন
+          </h3>
+          <p className="text-xs text-slate-600 leading-relaxed">
+            পণ্যটির গুণগত মান সম্পর্কে রিভিউ লিখতে গ্রাহককে অবশ্যই ওয়েবসাইটে লগইন করতে হবে।
+          </p>
+          <button
+            type="button"
+            onClick={() => (onOpenLoginModal ? onOpenLoginModal() : setIsQuickLoginOpen(true))}
+            className="w-full py-2.5 px-4 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+          >
+            <User className="w-4 h-4" />
+            <span>লগইন করে রিভিউ দিন</span>
+          </button>
+        </div>
+      ) : !eligibility.canReview ? (
+        /* CASE 2: LOGGED IN BUT HAS NOT PLACED AN ORDER */
+        <div className="space-y-3 text-center sm:text-left">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-100 text-amber-800 rounded-lg text-xs font-bold">
+            <AlertCircle className="w-3.5 h-3.5 text-amber-700" />
+            <span>অর্ডার যাচাইকরণ</span>
+          </div>
+          <h3 className="font-bold text-slate-900 text-sm">
+            শুধুমাত্র অর্ডারকারী গ্রাহক রিভিউ দিতে পারবেন
+          </h3>
+          <p className="text-xs text-slate-600 leading-relaxed">
+            আপনার নম্বর <strong className="font-mono text-slate-800">{customerSession.phone}</strong> দিয়ে এখনো কোনো সফল অর্ডার পাওয়া যায়নি। রিভিউ দেওয়ার জন্য প্রথমে পণ্যটি অর্ডার করুন।
+          </p>
+          <div className="text-[11px] text-slate-500 bg-white p-2.5 rounded-xl border border-slate-200">
+            💡 আপনি যদি পূর্বে অন্য নম্বর দিয়ে অর্ডার করে থাকেন, দয়া করে সেই নম্বর দিয়ে লগইন করুন।
+          </div>
+        </div>
+      ) : (
+        /* CASE 3: LOGGED IN AND VERIFIED ORDER FOUND */
+        <div className="space-y-3 text-center sm:text-left">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-100 text-emerald-800 rounded-lg text-xs font-bold">
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700" />
+            <span>ভেরিফাইড ক্রেতা পাওয়া গেছে</span>
+          </div>
+          <h3 className="font-bold text-slate-900 text-sm">
+            স্বাগতম, {customerSession.name || 'সম্মানিত ক্রেতা'}!
+          </h3>
+          <p className="text-xs text-slate-600 leading-relaxed">
+            আপনার অর্ডারকৃত পণ্যের অভিজ্ঞতা সবার সাথে শেয়ার করুন এবং অন্যান্য ক্রেতাদের সঠিক পণ্য বেছে নিতে সহায়তা করুন।
+          </p>
+          <button
+            type="button"
+            onClick={() => setIsFormOpen(!isFormOpen)}
+            className="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+          >
+            <Sparkles className="w-4 h-4" />
+            <span>{isFormOpen ? 'ফর্ম বন্ধ করুন' : 'আপনার রিভিউ লিখুন'}</span>
+          </button>
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <div className="space-y-8 font-sans" id="reviews-section">
       
@@ -393,135 +460,79 @@ export default function ProductReviewsSection({
       </div>
 
       {/* Review Summary Overview & "Write Review" Hero Card */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-xs">
-        
-        {/* Left: Overall Score */}
-        <div className="lg:col-span-4 flex flex-col items-center justify-center text-center p-4 bg-slate-50 rounded-2xl border border-slate-100 space-y-2">
-          <span className="text-5xl sm:text-6xl font-black text-slate-900 tracking-tight">
-            {stats.avgRating}
-          </span>
-          <div className="flex items-center gap-1 text-amber-400">
-            {[1, 2, 3, 4, 5].map((s) => (
-              <Star
-                key={s}
-                className={`w-5 h-5 ${
-                  s <= Math.round(stats.avgRating)
-                    ? 'fill-amber-400 text-amber-400'
-                    : 'text-slate-300'
-                }`}
-              />
-            ))}
-          </div>
-          <p className="text-xs font-semibold text-slate-600">
-            {stats.total > 0 ? `${stats.total} টি ভেরিফাইড ক্রেতার মতামতের ভিত্তিতে` : 'এখনো কোনো রেটিং জমা হয়নি'}
-          </p>
-          <div className="pt-2">
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg text-[11px] font-bold">
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-              <span>১০০% ভেরিফাইড ক্রয় যাচাইকৃত</span>
-            </span>
-          </div>
-        </div>
-
-        {/* Middle: Star Breakdown Distribution */}
-        <div className="lg:col-span-4 flex flex-col justify-center space-y-2 py-2">
-          {[5, 4, 3, 2, 1].map((star) => {
-            const count = stats.distribution[star] || 0;
-            const pct = stats.total > 0 ? Math.round((count / stats.total) * 100) : 0;
-            return (
-              <button
-                key={star}
-                onClick={() => setSelectedStarFilter(selectedStarFilter === star ? 'all' : star)}
-                className={`flex items-center gap-2.5 text-xs text-slate-600 hover:text-slate-900 transition-colors w-full cursor-pointer p-1 rounded-lg ${
-                  selectedStarFilter === star ? 'bg-amber-50 font-bold' : ''
-                }`}
-              >
-                <span className="w-7 font-bold text-slate-700 flex items-center gap-0.5">
-                  {star} <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
-                </span>
-                <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-amber-400 rounded-full transition-all duration-500"
-                    style={{ width: `${pct}%` }}
-                  />
-                </div>
-                <span className="w-8 text-right text-[11px] text-slate-400 font-mono">
-                  {pct}%
-                </span>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Right: Write Review Callout Action Box (Enforcing Login & Verified Order) */}
-        <div className="lg:col-span-4 flex flex-col justify-center p-5 bg-gradient-to-br from-slate-50 to-amber-50/40 rounded-2xl border border-slate-200 space-y-3">
+      {reviews.length > 0 ? (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-xs">
           
-          {/* CASE 1: NOT LOGGED IN */}
-          {!customerSession ? (
-            <div className="space-y-3 text-center sm:text-left">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-900 text-white rounded-lg text-xs font-bold">
-                <Lock className="w-3.5 h-3.5 text-amber-400" />
-                <span>লগইন আবশ্যক</span>
-              </div>
-              <h3 className="font-bold text-slate-900 text-sm">
-                রিভিউ দিতে দয়া করে ওয়েবসাইটে লগইন করুন
-              </h3>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                পণ্যটির গুণগত মান সম্পর্কে রিভিউ লিখতে গ্রাহককে অবশ্যই ওয়েবসাইটে লগইন করতে হবে।
-              </p>
-              <button
-                type="button"
-                onClick={() => (onOpenLoginModal ? onOpenLoginModal() : setIsQuickLoginOpen(true))}
-                className="w-full py-2.5 px-4 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <User className="w-4 h-4" />
-                <span>লগইন করে রিভিউ দিন</span>
-              </button>
+          {/* Left: Overall Score */}
+          <div className="lg:col-span-4 flex flex-col items-center justify-center text-center p-4 bg-slate-50 rounded-2xl border border-slate-100 space-y-2">
+            <span className="text-5xl sm:text-6xl font-black text-slate-900 tracking-tight">
+              {stats.avgRating}
+            </span>
+            <div className="flex items-center gap-1 text-amber-400">
+              {[1, 2, 3, 4, 5].map((s) => (
+                <Star
+                  key={s}
+                  className={`w-5 h-5 ${
+                    s <= Math.round(stats.avgRating)
+                      ? 'fill-amber-400 text-amber-400'
+                      : 'text-slate-300'
+                  }`}
+                />
+              ))}
             </div>
-          ) : !eligibility.canReview ? (
-            /* CASE 2: LOGGED IN BUT HAS NOT PLACED AN ORDER */
-            <div className="space-y-3 text-center sm:text-left">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-100 text-amber-800 rounded-lg text-xs font-bold">
-                <AlertCircle className="w-3.5 h-3.5 text-amber-700" />
-                <span>অর্ডার যাচাইকরণ</span>
-              </div>
-              <h3 className="font-bold text-slate-900 text-sm">
-                শুধুমাত্র অর্ডারকারী গ্রাহক রিভিউ দিতে পারবেন
-              </h3>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                আপনার নম্বর <strong className="font-mono text-slate-800">{customerSession.phone}</strong> দিয়ে এখনো কোনো সফল অর্ডার পাওয়া যায়নি। রিভিউ দেওয়ার জন্য প্রথমে পণ্যটি অর্ডার করুন।
-              </p>
-              <div className="text-[11px] text-slate-500 bg-white p-2.5 rounded-xl border border-slate-200">
-                💡 আপনি যদি পূর্বে অন্য নম্বর দিয়ে অর্ডার করে থাকেন, দয়া করে সেই নম্বর দিয়ে লগইন করুন।
-              </div>
+            <p className="text-xs font-semibold text-slate-600">
+              {stats.total > 0 ? `${stats.total} টি ভেরিফাইড ক্রেতার মতামতের ভিত্তিতে` : 'এখনো কোনো রেটিং জমা হয়নি'}
+            </p>
+            <div className="pt-2">
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg text-[11px] font-bold">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                <span>১০০% ভেরিফাইড ক্রয় যাচাইকৃত</span>
+              </span>
             </div>
-          ) : (
-            /* CASE 3: LOGGED IN AND VERIFIED ORDER FOUND */
-            <div className="space-y-3 text-center sm:text-left">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-100 text-emerald-800 rounded-lg text-xs font-bold">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700" />
-                <span>ভেরিফাইড ক্রেতা পাওয়া গেছে</span>
-              </div>
-              <h3 className="font-bold text-slate-900 text-sm">
-                স্বাগতম, {customerSession.name || 'সম্মানিত ক্রেতা'}!
-              </h3>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                আপনার অর্ডারকৃত পণ্যের অভিজ্ঞতা সবার সাথে শেয়ার করুন এবং অন্যান্য ক্রেতাদের সঠিক পণ্য বেছে নিতে সহায়তা করুন।
-              </p>
-              <button
-                type="button"
-                onClick={() => setIsFormOpen(!isFormOpen)}
-                className="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <Sparkles className="w-4 h-4" />
-                <span>{isFormOpen ? 'ফর্ম বন্ধ করুন' : 'আপনার রিভিউ লিখুন'}</span>
-              </button>
-            </div>
-          )}
+          </div>
+
+          {/* Middle: Star Breakdown Distribution */}
+          <div className="lg:col-span-4 flex flex-col justify-center space-y-2 py-2">
+            {[5, 4, 3, 2, 1].map((star) => {
+              const count = stats.distribution[star] || 0;
+              const pct = stats.total > 0 ? Math.round((count / stats.total) * 100) : 0;
+              return (
+                <button
+                  key={star}
+                  onClick={() => setSelectedStarFilter(selectedStarFilter === star ? 'all' : star)}
+                  className={`flex items-center gap-2.5 text-xs text-slate-600 hover:text-slate-900 transition-colors w-full cursor-pointer p-1 rounded-lg ${
+                    selectedStarFilter === star ? 'bg-amber-50 font-bold' : ''
+                  }`}
+                >
+                  <span className="w-7 font-bold text-slate-700 flex items-center gap-0.5">
+                    {star} <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+                  </span>
+                  <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-amber-400 rounded-full transition-all duration-500"
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                  <span className="w-8 text-right text-[11px] text-slate-400 font-mono">
+                    {pct}%
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Right: Write Review Callout Action Box */}
+          <div className="lg:col-span-4 flex flex-col justify-center">
+            {renderCalloutBox()}
+          </div>
 
         </div>
-
-      </div>
+      ) : (
+        /* WHEN NO REVIEWS DATA: Show marked feature 1 (Write Review / Login Callout only) */
+        <div className="max-w-xl mx-auto">
+          {renderCalloutBox()}
+        </div>
+      )}
 
       {/* ============================================================
           INTERACTIVE REVIEW SUBMISSION FORM (When Eligible & Toggled)
@@ -687,43 +698,45 @@ export default function ProductReviewsSection({
       )}
 
       {/* ============================================================
-          FILTER PILLS & SORT BAR
+          FILTER PILLS & SORT BAR (Shown only when reviews exist)
           ============================================================ */}
-      <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
-        
-        {/* Star Filter Pills */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
-          <button
-            onClick={() => setSelectedStarFilter('all')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
-              selectedStarFilter === 'all'
-                ? 'bg-slate-900 text-white shadow-xs'
-                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-            }`}
-          >
-            সব ({reviews.length})
-          </button>
-          {[5, 4, 3, 2, 1].map((star) => (
+      {reviews.length > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
+          
+          {/* Star Filter Pills */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
             <button
-              key={star}
-              onClick={() => setSelectedStarFilter(selectedStarFilter === star ? 'all' : star)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1 ${
-                selectedStarFilter === star
-                  ? 'bg-amber-400 text-slate-950 shadow-xs'
+              onClick={() => setSelectedStarFilter('all')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+                selectedStarFilter === 'all'
+                  ? 'bg-slate-900 text-white shadow-xs'
                   : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
               }`}
             >
-              <span>{star}</span>
-              <Star className="w-3 h-3 fill-current" />
-              <span>({stats.distribution[star] || 0})</span>
+              সব ({reviews.length})
             </button>
-          ))}
-        </div>
+            {[5, 4, 3, 2, 1].map((star) => (
+              <button
+                key={star}
+                onClick={() => setSelectedStarFilter(selectedStarFilter === star ? 'all' : star)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1 ${
+                  selectedStarFilter === star
+                    ? 'bg-amber-400 text-slate-950 shadow-xs'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                <span>{star}</span>
+                <Star className="w-3 h-3 fill-current" />
+                <span>({stats.distribution[star] || 0})</span>
+              </button>
+            ))}
+          </div>
 
-        <span className="text-xs text-slate-400">
-          মোট {filteredReviews.length} টি রিভিউ প্রদর্শিত
-        </span>
-      </div>
+          <span className="text-xs text-slate-400">
+            মোট {filteredReviews.length} টি রিভিউ প্রদর্শিত
+          </span>
+        </div>
+      )}
 
       {/* ============================================================
           CUSTOMER REVIEWS CARDS LIST

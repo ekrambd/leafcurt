@@ -12,8 +12,8 @@ import { FacebookCapiService } from '../services/facebookCapiService';
 
 export const orderRouter = Router();
 
-// GET All Orders with cache & Eager Loading (Zero N+1 queries)
-orderRouter.get('/', cacheResponse({ ttlSeconds: 15, staleWhileRevalidateSeconds: 30, tag: 'orders' }), async (req, res) => {
+// GET All Orders with cache & Eager Loading (Zero N+1 queries) - Requires Admin Privileges
+orderRouter.get('/', requireAdmin, cacheResponse({ ttlSeconds: 15, staleWhileRevalidateSeconds: 30, tag: 'orders' }), async (req, res) => {
   const includeCustomer = req.query.include === 'customer' || req.query.withCustomer === 'true';
 
   let orders = [...storeOrders];
@@ -142,7 +142,7 @@ orderRouter.post('/checkout', checkoutRateLimiter, async (req, res) => {
     let couponDiscount = 0;
     if (couponCode && typeof couponCode === 'string') {
       const cleanCoupon = couponCode.trim().toUpperCase();
-      if (cleanCoupon === 'WELCOME10' || cleanCoupon === 'FANTINE10') {
+      if (cleanCoupon === 'WELCOME10' || cleanCoupon === 'SAVE10') {
         couponDiscount = Math.round(calculatedSubtotal * 0.10);
       } else if (cleanCoupon === 'FLAT50') {
         couponDiscount = 50;
@@ -212,7 +212,7 @@ orderRouter.post('/checkout', checkoutRateLimiter, async (req, res) => {
 
       FacebookCapiService.sendEvent('Purchase', {
         eventId: confirmedOrder.id,
-        eventSourceUrl: req.header('referer') || 'https://fantinebd.com/checkout',
+        eventSourceUrl: req.header('referer') || `${req.protocol}://${req.get('host') || 'store.com'}/checkout`,
         userAgent: req.header('user-agent'),
         testEventCode: testEventCode || undefined,
         customData: {
@@ -285,8 +285,8 @@ orderRouter.post('/', checkoutRateLimiter, (req, res) => {
   res.status(201).json(newOrder);
 });
 
-// PUT Update Order
-orderRouter.put('/:id', (req, res) => {
+// PUT Update Order - Requires Admin Privileges
+orderRouter.put('/:id', requireAdmin, (req, res) => {
   const { id } = req.params;
   const index = storeOrders.findIndex(o => o.id === id);
   if (index !== -1) {

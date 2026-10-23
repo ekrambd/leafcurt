@@ -23,7 +23,7 @@ export function extractYouTubeVideoId(url?: string): string | null {
   return null;
 }
 
-const IMAGE_ONLY_DESIGNER_GUIDELINE = `ZinniaMart — Only Image Slider Design Guideline
+const IMAGE_ONLY_DESIGNER_GUIDELINE = `Storefront — Only Image Slider Design Guideline
 
 Recommended canvas: 1600 × 400 px (4:1 ratio)
 Format: WebP or JPG
@@ -184,14 +184,23 @@ export default function SliderManager() {
   const handleSaveModalSlide = () => {
     if (!editingBanner) return;
 
+    const bannerToSave: HeroBannerItem = {
+      ...editingBanner,
+      imageOnly: editingBanner.mediaType === 'video' ? true : editingBanner.imageOnly,
+      title: editingBanner.mediaType === 'video' ? '' : editingBanner.title,
+      subtitle: editingBanner.mediaType === 'video' ? '' : editingBanner.subtitle,
+      badge: editingBanner.mediaType === 'video' ? '' : editingBanner.badge,
+      discountText: editingBanner.mediaType === 'video' ? '' : editingBanner.discountText,
+    };
+
     const currentList = settings.heroBanners || [];
-    const exists = currentList.some(b => b.id === editingBanner.id);
+    const exists = currentList.some(b => b.id === bannerToSave.id);
 
     let updatedList: HeroBannerItem[];
     if (exists) {
-      updatedList = currentList.map(b => b.id === editingBanner.id ? editingBanner : b);
+      updatedList = currentList.map(b => b.id === bannerToSave.id ? bannerToSave : b);
     } else {
-      updatedList = [...currentList, editingBanner];
+      updatedList = [...currentList, bannerToSave];
     }
 
     setSettings(prev => ({ ...prev, heroBanners: updatedList }));
@@ -568,8 +577,9 @@ export default function SliderManager() {
                     onClick={() => setEditingBanner({
                       ...editingBanner,
                       mediaType: 'video',
-                      videoType: editingBanner.videoType || 'youtube',
-                      youtubeUrl: editingBanner.youtubeUrl || 'https://youtu.be/KkAAlMOrzaA?si=h_WJSRTJn-f_SBTLv'
+                      videoType: editingBanner.videoType || 'file',
+                      youtubeUrl: editingBanner.youtubeUrl || '',
+                      imageOnly: true
                     })}
                     className={`flex items-center justify-center gap-2 p-3 rounded-xl border font-bold text-xs transition-all cursor-pointer ${
                       editingBanner.mediaType === 'video'
@@ -578,7 +588,7 @@ export default function SliderManager() {
                     }`}
                   >
                     <Video className="h-4 w-4" />
-                    <span>Video / YouTube</span>
+                    <span>Video (MP4 / YouTube)</span>
                   </button>
                 </div>
               </div>
@@ -825,8 +835,22 @@ export default function SliderManager() {
                 </div>
               )}
 
-              {/* 4. BANNER TEXT & OVERLAY SETTINGS (Optional / Clearable) */}
-              <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-4">
+              {/* 4. BANNER TEXT & OVERLAY SETTINGS (Only for Image slides — Videos are clean without overlays) */}
+              {editingBanner.mediaType === 'video' ? (
+                <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-3">
+                  <div className="p-2.5 bg-emerald-100 text-emerald-700 rounded-xl shrink-0">
+                    <Video className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-emerald-950 text-xs">Clean Video Display Active</h4>
+                    <p className="text-[11px] text-emerald-700 mt-0.5">
+                      When a video banner is selected, the storefront slider displays only the pure video player without buttons, titles, or dark overlays.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-4">
                 <div className="flex items-center justify-between border-b border-slate-200/80 pb-2.5">
                   <div>
                     <label className="block font-bold text-slate-900 text-xs">
@@ -1019,6 +1043,8 @@ export default function SliderManager() {
                   </div>
                 )}
               </div>
+            </>
+          )}
             </div>
 
             {/* Modal Footer */}

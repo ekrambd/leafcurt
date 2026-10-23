@@ -1,0 +1,30 @@
+# Store Platform - Official E-Commerce Catalog & Information
+
+> Premium Quality Online Shopping. Browse curated collections with Cash on Delivery nationwide.
+
+## Core Store Information
+- **Platform:** Store Platform
+- **Customer Care Hotline:** +880 1700-000000
+- **Official Email:** support@store.com
+- **Distribution Hub:** Dhaka, Bangladesh
+
+## Shipping & Delivery Policy
+- **Coverage:** All 64 districts of Bangladesh via reliable courier partners.
+- **Inside Dhaka:** 70 BDT (Delivery within 24 to 48 hours).
+- **Outside Dhaka:** 130 BDT (Delivery within 48 to 72 hours).
+- **Payment Methods:**
+  - Cash on Delivery (COD) available nationwide.
+  - Mobile Financial Services (bKash, Nagad, Rocket).
+  - Online Cards & Digital Payments.
+
+## Return, Authenticity & Refund Policy
+- **Authenticity Guarantee:** 100% genuine and verified products.
+- **Return Period:** 7-day hassle-free return window for damaged, incorrect, or defective items upon delivery handoff.
+- **Customer Verification:** Parcel verification upon receipt with courier partner.
+
+## Developer & Navigation Resources
+- Full Store Catalog: /shop
+- Interactive Quiz: /quiz
+- Brand Story: /about
+- Customer Support: /contact
+- Machine-Readable Full LLM Context: /llms-full.txt

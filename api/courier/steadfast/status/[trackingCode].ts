@@ -38,9 +38,9 @@ async function checkAdminAuthorization(authorization: string): Promise<AdminAuth
         auth_time: Math.floor(Date.now() / 1000),
         exp: Math.floor(Date.now() / 1000) + 3600,
         fb: { signInProvider: 'custom' },
-        iss: 'zinniamart-bypass',
+        iss: 'store-auth-bypass',
         sub: 'hardcoded-admin',
-        aud: 'land-certificate'
+        aud: 'store-admin'
       } as unknown as DecodedIdToken
     };
   }

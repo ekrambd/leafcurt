@@ -12,7 +12,7 @@
       "/authentic/pod_packaging_boxes.png",
       "/authentic/thumb_1_overview.png"
     ],
-    "createdAt": "2026-10-18T21:42:38.029Z",
+    "createdAt": "2026-10-20T14:10:05.633Z",
     "isVerifiedBuyer": true,
     "helpfulCount": 24
   },
@@ -28,37 +28,39 @@
     "images": [
       "/authentic/thumb_3_style2_heart.png"
     ],
-    "createdAt": "2026-10-15T21:42:38.029Z",
+    "createdAt": "2026-10-17T14:10:05.633Z",
     "isVerifiedBuyer": true,
     "helpfulCount": 19
   },
   {
     "id": "REV-1003",
-    "productId": "fantine-vb5-repair-serum",
-    "productTitle": "FAИTIИE VB5 REPAIR SERUM",
-    "productImage": "/uploads/file-1791830876714-429462367.jpg",
+    "productId": "leaf-curt-5-in-1-laundry-pods-tub",
+    "productTitle": "Leaf Curt 5-in-1 Laundry Detergent Pods (Tub 60 Pods)",
+    "productImage": "/authentic/cart_upsell_tub.png",
     "customerName": "নুসরাত জাহান",
     "customerPhone": "01933445566",
     "rating": 5,
-    "comment": "আমার ত্বকের লালচে ভাব ও র‍্যাশ অনেক কমে গেছে এই সেরামটি ব্যবহারের পর। খুব দ্রুত স্কিনে অ্যাবসর্ব হয়। সম্পূর্ণ অরিজিনাল কোরিয়ান হানবাং প্রোডাক্ট।",
+    "comment": "৬০ পডের ফ্যামিলি টাব প্যাকটি অনেক সাশ্রয়ী। কাপড়ের দুর্গন্ধ দূর হয়ে চমৎকার সতেজ গন্ধ থাকে সারা দিন। কাপড় ধোয়া এখন অনেক সহজ।",
     "images": [
-      "/uploads/file-1791830876714-429462367.jpg"
+      "/authentic/cart_upsell_tub.png"
     ],
-    "createdAt": "2026-10-16T21:42:38.029Z",
+    "createdAt": "2026-10-18T14:10:05.633Z",
     "isVerifiedBuyer": true,
     "helpfulCount": 31
   },
   {
     "id": "REV-1004",
-    "productId": "product_385231",
-    "productTitle": "Rapid Acne Treatment Series Toner",
-    "productImage": "/authentic/pod_triple_chamber_main.png",
+    "productId": "leaf-curt-5-in-1-laundry-pods-box",
+    "productTitle": "Leaf Curt 5-in-1 Laundry Detergent Pods (Box 30 Pods)",
+    "productImage": "/authentic/cart_upsell_box.png",
     "customerName": "কামরুল হাসান",
     "customerPhone": "01644556677",
     "rating": 5,
-    "comment": "অয়েলি স্কিনের জন্য বেস্ট টোনার। পোরস ক্লিন রাখে এবং একনে ব্রেকআউট একদম নিয়ন্ত্রণে এনেছে। ধন্যবাদ ডেলিভারি টিমকে।",
-    "images": [],
-    "createdAt": "2026-10-13T21:42:38.029Z",
+    "comment": "এক পডেই সবকিছু হয়ে যায়—ডিটারজেন্ট ও সফটেনার আলাদা দিতে হয় না। কাপড়ের রঙ একদম আগের মতো উজ্জ্বল থাকে। দারুণ প্রোডাক্ট!",
+    "images": [
+      "/authentic/cart_upsell_box.png"
+    ],
+    "createdAt": "2026-10-15T14:10:05.633Z",
     "isVerifiedBuyer": true,
     "helpfulCount": 14
   }

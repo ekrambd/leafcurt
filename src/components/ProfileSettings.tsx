@@ -8,6 +8,7 @@ import { dbService } from '../lib/dbService';
 import { CircularProgress } from './LoadingSkeleton';
 import { uploadFileToStorage } from '../lib/storageService';
 import { authService } from '../lib/authService';
+import { FeedbackDialog } from './ui/FeedbackDialog';
 
 interface ProfileSettingsProps {
   adminEmail: string;
@@ -26,23 +27,23 @@ const BRAND_COLOR_PRESETS = [
 
 export default function ProfileSettings({ adminEmail }: ProfileSettingsProps) {
   // Store Details state
-  const [storeName, setStoreName] = useState('F A И T I И E');
-  const [companyName, setCompanyName] = useState('Brandini Co., Ltd.');
-  const [storeTagline, setStoreTagline] = useState('Brandini Co., Ltd. • Seoul, Republic of Korea. Clinical Hanbang Skincare & Botanical Whitening Solutions.');
-  const [topAnnouncementText, setTopAnnouncementText] = useState('WELCOME TO BRANDINI CO.,LTD');
-  const [phone, setPhone] = useState('+82 (02) 884-9021');
-  const [email, setEmail] = useState('FANTINE@BRANDINI.CO.KR');
-  const [street, setStreet] = useState('9F, Gangnamjeil Bldg, 109, Teheran-ro, Gangnam-gu, Seoul, Republic of Korea');
-  const [industry, setIndustry] = useState('Cosmetics & Skincare');
+  const [storeName, setStoreName] = useState('Store');
+  const [companyName, setCompanyName] = useState('Store Ltd.');
+  const [storeTagline, setStoreTagline] = useState('Premium Quality Online Shopping • Fast Delivery Nationwide.');
+  const [topAnnouncementText, setTopAnnouncementText] = useState('WELCOME TO OUR STORE • FAST HOME DELIVERY NATIONWIDE');
+  const [phone, setPhone] = useState('+880 1700-000000');
+  const [email, setEmail] = useState(adminEmail || 'contact@store.com');
+  const [street, setStreet] = useState('Dhaka, Bangladesh');
+  const [industry, setIndustry] = useState('Retail & E-Commerce');
 
-  // Social Media Links state
+  // Social Media Links state (dynamic from admin, no static fallbacks)
   const [facebookUrl, setFacebookUrl] = useState('');
-  const [instagramUrl, setInstagramUrl] = useState('https://instagram.com');
-  const [youtubeUrl, setYoutubeUrl] = useState('https://youtube.com');
-  const [twitterUrl, setTwitterUrl] = useState('https://twitter.com');
-  const [tiktokUrl, setTiktokUrl] = useState('https://tiktok.com');
-  const [linkedinUrl, setLinkedinUrl] = useState('https://linkedin.com');
-  const [whatsappNumber, setWhatsappNumber] = useState('+82 (02) 884-9021');
+  const [instagramUrl, setInstagramUrl] = useState('');
+  const [youtubeUrl, setYoutubeUrl] = useState('');
+  const [twitterUrl, setTwitterUrl] = useState('');
+  const [tiktokUrl, setTiktokUrl] = useState('');
+  const [linkedinUrl, setLinkedinUrl] = useState('');
+  const [whatsappNumber, setWhatsappNumber] = useState('');
 
   // Store Identity & Branding state
   const [storeLogo, setStoreLogo] = useState('');
@@ -55,15 +56,26 @@ export default function ProfileSettings({ adminEmail }: ProfileSettingsProps) {
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [successMsg, setSuccessMsg] = useState('');
-  const [errorMsg, setErrorMsg] = useState('');
+  const [feedback, setFeedback] = useState<{
+    isOpen: boolean;
+    type: 'success' | 'error' | 'info';
+    title: string;
+    message: string;
+  }>({
+    isOpen: false,
+    type: 'success',
+    title: '',
+    message: ''
+  });
 
   // Password change state
+  const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isChangingPass, setIsChangingPass] = useState(false);
 
   const [displayName, setDisplayName] = useState('');
+  const [activeTab, setActiveTab] = useState<'identity' | 'contact' | 'social' | 'security'>('identity');
 
   useEffect(() => {
     async function loadData() {
@@ -96,14 +108,15 @@ export default function ProfileSettings({ adminEmail }: ProfileSettingsProps) {
           if (ecomSettings.storeAddress) setStreet(ecomSettings.storeAddress);
           if (ecomSettings.primaryColor) setPrimaryColor(ecomSettings.primaryColor);
           if (ecomSettings.maintenanceMode !== undefined) setMaintenanceMode(ecomSettings.maintenanceMode);
-          if (ecomSettings.socialLinks) {
-            if (ecomSettings.socialLinks.facebook !== undefined) setFacebookUrl(ecomSettings.socialLinks.facebook);
-            if (ecomSettings.socialLinks.instagram !== undefined) setInstagramUrl(ecomSettings.socialLinks.instagram);
-            if (ecomSettings.socialLinks.youtube !== undefined) setYoutubeUrl(ecomSettings.socialLinks.youtube);
-            if (ecomSettings.socialLinks.twitter !== undefined) setTwitterUrl(ecomSettings.socialLinks.twitter);
-            if (ecomSettings.socialLinks.tiktok !== undefined) setTiktokUrl(ecomSettings.socialLinks.tiktok);
-            if (ecomSettings.socialLinks.linkedin !== undefined) setLinkedinUrl(ecomSettings.socialLinks.linkedin);
-            if (ecomSettings.socialLinks.whatsapp !== undefined) setWhatsappNumber(ecomSettings.socialLinks.whatsapp);
+          const loadedSocial = ecomSettings.socialLinks || ecomSettings.headerSettings?.socialLinks;
+          if (loadedSocial) {
+            setFacebookUrl(loadedSocial.facebook || '');
+            setInstagramUrl(loadedSocial.instagram || '');
+            setYoutubeUrl(loadedSocial.youtube || '');
+            setTwitterUrl(loadedSocial.twitter || '');
+            setTiktokUrl(loadedSocial.tiktok || '');
+            setLinkedinUrl(loadedSocial.linkedin || '');
+            setWhatsappNumber(loadedSocial.whatsapp || '');
           }
         }
 
@@ -128,13 +141,22 @@ export default function ProfileSettings({ adminEmail }: ProfileSettingsProps) {
 
     try {
       setIsUploadingLogo(true);
-      setErrorMsg('');
       const downloadUrl = await uploadFileToStorage(file, 'store_assets/logo');
       setStoreLogo(downloadUrl);
-      setSuccessMsg('Logo uploaded successfully! Click "Update Settings" to apply changes.');
+      setFeedback({
+        isOpen: true,
+        type: 'success',
+        title: 'Logo Uploaded',
+        message: 'Logo uploaded successfully! Click "Update Settings" to apply changes.'
+      });
     } catch (err: any) {
       console.error('Error uploading logo:', err);
-      setErrorMsg('Logo upload failed: ' + (err.message || 'Please check file format.'));
+      setFeedback({
+        isOpen: true,
+        type: 'error',
+        title: 'Upload Failed',
+        message: 'Logo upload failed: ' + (err.message || 'Please check file format.')
+      });
     } finally {
       setIsUploadingLogo(false);
     }
@@ -143,8 +165,6 @@ export default function ProfileSettings({ adminEmail }: ProfileSettingsProps) {
   const handleSaveSettings = async (e: FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
-    setSuccessMsg('');
-    setErrorMsg('');
 
     try {
       const oldInst = await dbService.getInstituteInfo() || {} as any;
@@ -160,6 +180,16 @@ export default function ProfileSettings({ adminEmail }: ProfileSettingsProps) {
         industry,
         bearingRollLocation
       });
+
+      const socialLinksPayload = {
+        facebook: facebookUrl.trim(),
+        instagram: instagramUrl.trim(),
+        youtube: youtubeUrl.trim(),
+        twitter: twitterUrl.trim(),
+        tiktok: tiktokUrl.trim(),
+        linkedin: linkedinUrl.trim(),
+        whatsapp: whatsappNumber.trim()
+      };
 
       const oldEcom = await dbService.getEcomSettings() || {} as any;
       await dbService.saveEcomSettings({
@@ -180,17 +210,13 @@ export default function ProfileSettings({ adminEmail }: ProfileSettingsProps) {
           logoUrl: storeLogo || oldEcom.headerSettings?.logoUrl,
           brandName: storeName || oldEcom.headerSettings?.brandName,
           phone: phone || oldEcom.headerSettings?.phone,
-          email: email || oldEcom.headerSettings?.email
+          email: email || oldEcom.headerSettings?.email,
+          socialLinks: {
+            ...(oldEcom.headerSettings?.socialLinks || {}),
+            ...socialLinksPayload
+          }
         },
-        socialLinks: {
-          facebook: facebookUrl,
-          instagram: instagramUrl,
-          youtube: youtubeUrl,
-          twitter: twitterUrl,
-          tiktok: tiktokUrl,
-          linkedin: linkedinUrl,
-          whatsapp: whatsappNumber
-        }
+        socialLinks: socialLinksPayload
       });
 
       // Dynamically update favicon based on store logo
@@ -206,27 +232,44 @@ export default function ProfileSettings({ adminEmail }: ProfileSettingsProps) {
 
 
       setIsSaving(false);
-      setSuccessMsg('Store identity, company details, footer & contact info updated successfully!');
-      setTimeout(() => setSuccessMsg(''), 4000);
+      setFeedback({
+        isOpen: true,
+        type: 'success',
+        title: 'Settings Saved Successfully',
+        message: 'Store identity, company details, footer branding, and contact information have been updated!'
+      });
     } catch (err: any) {
       console.error('Error saving profile settings:', err);
-      setErrorMsg(err.message || 'Failed to save settings.');
       setIsSaving(false);
+      setFeedback({
+        isOpen: true,
+        type: 'error',
+        title: 'Save Failed',
+        message: err.message || 'Failed to save settings. Please try again.'
+      });
     }
   };
 
   const handleChangePassword = async (e: FormEvent) => {
     e.preventDefault();
-    setSuccessMsg('');
-    setErrorMsg('');
 
     if (!newPassword || newPassword.length < 6) {
-      setErrorMsg('New password must be at least 6 characters.');
+      setFeedback({
+        isOpen: true,
+        type: 'error',
+        title: 'Invalid Password',
+        message: 'New password must be at least 6 characters.'
+      });
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      setErrorMsg('New password and confirmation password do not match.');
+      setFeedback({
+        isOpen: true,
+        type: 'error',
+        title: 'Password Mismatch',
+        message: 'New password and confirmation password do not match.'
+      });
       return;
     }
 
@@ -253,12 +296,22 @@ export default function ProfileSettings({ adminEmail }: ProfileSettingsProps) {
         throw new Error(msg);
       }
 
-      setSuccessMsg('Password changed successfully!');
+      setFeedback({
+        isOpen: true,
+        type: 'success',
+        title: 'Password Changed Successfully',
+        message: 'Your administrator password has been updated successfully.'
+      });
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
     } catch (err: any) {
-      setErrorMsg('Password change failed: ' + (err.message || 'Please try again.'));
+      setFeedback({
+        isOpen: true,
+        type: 'error',
+        title: 'Password Change Failed',
+        message: err.message || 'Please try again.'
+      });
     } finally {
       setIsChangingPass(false);
     }
@@ -272,169 +325,293 @@ export default function ProfileSettings({ adminEmail }: ProfileSettingsProps) {
 
   return (
     <div className="space-y-6 font-sans">
-      {/* Top Header */}
-      <div>
-        <h2 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">Admin Profile & Store Settings</h2>
-        <p className="text-slate-500 text-xs mt-0.5">Manage your store branding, footer info, contact details and admin info</p>
+      {/* Tab Navigation */}
+      <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
+        {[
+          { id: 'identity' as const, label: 'Store & Identity', icon: Store },
+          { id: 'contact' as const, label: 'Contact & Header', icon: Phone },
+          { id: 'social' as const, label: 'Social Media', icon: Share2 },
+          { id: 'security' as const, label: 'Security & Password', icon: Lock }
+        ].map((tab) => {
+          const Icon = tab.icon;
+          const isActive = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveTab(tab.id)}
+              className={`px-4 py-2.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-2 cursor-pointer ${
+                isActive
+                  ? 'bg-slate-900 text-white shadow-xs'
+                  : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+              }`}
+            >
+              <Icon className={`h-4 w-4 ${isActive ? 'text-blue-400' : 'text-slate-400'}`} />
+              <span>{tab.label}</span>
+            </button>
+          );
+        })}
       </div>
 
-      {successMsg && (
-        <div className="p-4 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold rounded-2xl flex items-center gap-2 animate-fadeIn">
-          <CheckCircle className="h-5 w-5 text-emerald-600 shrink-0" />
-          <span>{successMsg}</span>
-        </div>
-      )}
-
-      {errorMsg && (
-        <div className="p-4 bg-rose-50 border border-rose-200 text-rose-800 text-xs font-bold rounded-2xl flex items-center gap-2 animate-fadeIn">
-          <X className="h-5 w-5 text-rose-600 shrink-0" />
-          <span>{errorMsg}</span>
-        </div>
-      )}
-
-      <div className="max-w-4xl mx-auto space-y-6">
-        <form onSubmit={handleSaveSettings} noValidate className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-7 shadow-xs space-y-6">
-          <div>
-            <h3 className="text-xl font-bold text-slate-900 tracking-tight">Store & Footer Identity</h3>
-            <p className="text-slate-500 text-xs mt-1">Changes here will immediately appear in the website header, footer, and Contact Us page.</p>
-            <div className="h-px bg-slate-100 mt-4 mb-6" />
-          </div>
-
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-700">Store Name</label>
-                <div className="relative rounded-xl border border-slate-300 focus-within:border-blue-600 focus-within:ring-1 focus-within:ring-blue-600 bg-white">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Store className="h-5 w-5 text-slate-400" />
+      <div className="w-full">
+        {/* TAB 1: STORE & IDENTITY */}
+        {activeTab === 'identity' && (
+          <form onSubmit={handleSaveSettings} noValidate className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-7 shadow-xs space-y-6">
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700">Store Name</label>
+                  <div className="relative rounded-xl border border-slate-300 focus-within:border-blue-600 focus-within:ring-1 focus-within:ring-blue-600 bg-white">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <Store className="h-5 w-5 text-slate-400" />
+                    </div>
+                    <input
+                      type="text"
+                      value={storeName}
+                      onChange={(e) => setStoreName(e.target.value)}
+                      className="block w-full pl-10 pr-4 py-3 bg-transparent text-sm text-slate-900 focus:outline-none font-semibold"
+                      placeholder="e.g. livewellfresh"
+                    />
                   </div>
-                  <input
-                    type="text"
-                    value={storeName}
-                    onChange={(e) => setStoreName(e.target.value)}
-                    className="block w-full pl-10 pr-4 py-3 bg-transparent text-sm text-slate-900 focus:outline-none font-semibold"
-                    placeholder="e.g. F A И T I И E"
-                  />
                 </div>
-              </div>
 
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-700">Company Name</label>
-                <div className="relative rounded-xl border border-slate-300 focus-within:border-blue-600 focus-within:ring-1 focus-within:ring-blue-600 bg-white">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Building2 className="h-5 w-5 text-slate-400" />
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700">Company Name</label>
+                  <div className="relative rounded-xl border border-slate-300 focus-within:border-blue-600 focus-within:ring-1 focus-within:ring-blue-600 bg-white">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <Building2 className="h-5 w-5 text-slate-400" />
+                    </div>
+                    <input
+                      type="text"
+                      value={companyName}
+                      onChange={(e) => setCompanyName(e.target.value)}
+                      className="block w-full pl-10 pr-4 py-3 bg-transparent text-sm text-slate-900 focus:outline-none font-semibold"
+                      placeholder="e.g. livewellfresh Ltd."
+                    />
                   </div>
-                  <input
-                    type="text"
-                    value={companyName}
-                    onChange={(e) => setCompanyName(e.target.value)}
-                    className="block w-full pl-10 pr-4 py-3 bg-transparent text-sm text-slate-900 focus:outline-none font-semibold"
-                    placeholder="e.g. Brandini Co., Ltd."
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-xs font-bold text-slate-700">Footer & Store Tagline</label>
-              <div className="relative rounded-xl border border-slate-300 focus-within:border-blue-600 focus-within:ring-1 focus-within:ring-blue-600 bg-white">
-                <div className="absolute inset-y-0 left-0 pl-3 pt-3 pointer-events-none">
-                  <Sparkles className="h-5 w-5 text-slate-400" />
-                </div>
-                <textarea
-                  value={storeTagline}
-                  onChange={(e) => setStoreTagline(e.target.value)}
-                  className="block w-full pl-10 pr-4 py-3 bg-transparent text-sm text-slate-900 focus:outline-none min-h-[80px] resize-y"
-                  placeholder="e.g. Brandini Co., Ltd. • Seoul, Republic of Korea. Clinical Hanbang Skincare & Botanical Whitening Solutions."
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-700">Customer Care Phone</label>
-                <div className="relative rounded-xl border border-slate-300 focus-within:border-blue-600 focus-within:ring-1 focus-within:ring-blue-600 bg-white">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Phone className="h-5 w-5 text-slate-400" />
-                  </div>
-                  <input
-                    type="text"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    className="block w-full pl-10 pr-4 py-3 bg-transparent text-sm text-slate-900 focus:outline-none font-mono"
-                    placeholder="e.g. +82 (02) 884-9021"
-                  />
                 </div>
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-700">Contact Email</label>
+                <label className="text-xs font-bold text-slate-700">Footer & Store Tagline</label>
                 <div className="relative rounded-xl border border-slate-300 focus-within:border-blue-600 focus-within:ring-1 focus-within:ring-blue-600 bg-white">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Mail className="h-5 w-5 text-slate-400" />
+                  <div className="absolute inset-y-0 left-0 pl-3 pt-3 pointer-events-none">
+                    <Sparkles className="h-5 w-5 text-slate-400" />
                   </div>
-                  <input
-                    type="text"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="block w-full pl-10 pr-4 py-3 bg-transparent text-sm text-slate-900 focus:outline-none font-mono"
-                    placeholder="e.g. FANTINE@BRANDINI.CO.KR"
+                  <textarea
+                    value={storeTagline}
+                    onChange={(e) => setStoreTagline(e.target.value)}
+                    className="block w-full pl-10 pr-4 py-3 bg-transparent text-sm text-slate-900 focus:outline-none min-h-[80px] resize-y"
+                    placeholder="e.g. livewellfresh • Innovative 3-in-1 Triple Chamber Laundry Pods & Eco Detergent Care."
                   />
                 </div>
               </div>
-            </div>
 
-            <div className="space-y-1">
-              <label className="text-xs font-bold text-slate-700">Top Bar Announcement Text</label>
-              <div className="relative rounded-xl border border-slate-300 focus-within:border-blue-600 focus-within:ring-1 focus-within:ring-blue-600 bg-white">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Sparkles className="h-5 w-5 text-slate-400" />
-                </div>
-                <input
-                  type="text"
-                  value={topAnnouncementText}
-                  onChange={(e) => setTopAnnouncementText(e.target.value)}
-                  className="block w-full pl-10 pr-4 py-3 bg-transparent text-sm text-slate-900 focus:outline-none font-semibold uppercase tracking-wider"
-                  placeholder="e.g. WELCOME TO BRANDINI CO.,LTD"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-xs font-bold text-slate-700">Address</label>
-              <div className="relative rounded-xl border border-slate-300 focus-within:border-blue-600 focus-within:ring-1 focus-within:ring-blue-600 bg-white">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <MapPin className="h-5 w-5 text-slate-400" />
-                </div>
-                <input
-                  type="text"
-                  value={street}
-                  onChange={(e) => setStreet(e.target.value)}
-                  className="block w-full pl-10 pr-4 py-3 bg-transparent text-sm text-slate-900 focus:outline-none"
-                  placeholder="e.g. 9F, Gangnamjeil Bldg, 109, Teheran-ro, Gangnam-gu, Seoul, Republic of Korea"
-                />
-              </div>
-            </div>
-
-            {/* Social Media Links Section */}
-            <div className="pt-6 border-t border-slate-100 space-y-4">
               <div>
-                <h4 className="text-sm font-bold text-slate-800 flex items-center gap-2">
-                  <Share2 className="h-4 w-4 text-blue-600" />
-                  Social Media Links
+                <h4 className="text-sm font-bold text-slate-800 mb-3 flex items-center gap-2">
+                  <ImageIcon className="h-4 w-4 text-blue-600" />
+                  Store Logo
                 </h4>
-                <p className="text-xs text-slate-500 mt-0.5">These links will be directly added to the top announcement bar and footer social icons.</p>
+                <div className="space-y-3">
+                  <div className="flex flex-wrap items-center gap-4">
+                    {storeLogo ? (
+                      <div className="relative group">
+                        <img 
+                          src={storeLogo} 
+                          alt="Store Logo" 
+                          className="h-16 w-auto max-w-[14rem] object-contain bg-slate-50 border border-slate-200 rounded-lg p-2 shadow-xs"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setStoreLogo('')}
+                          className="absolute -top-2 -right-2 p-1.5 bg-rose-500 hover:bg-rose-600 text-white rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                          title="Delete Logo"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="h-16 w-36 bg-slate-100 border border-dashed border-slate-300 rounded-xl flex items-center justify-center text-[10px] text-slate-400 font-bold">
+                        No Logo Uploaded
+                      </div>
+                    )}
+
+                    <label className="inline-flex items-center gap-2 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl cursor-pointer transition-colors border border-slate-200">
+                      <Upload className="h-3.5 w-3.5 text-slate-600" />
+                      <span>{isUploadingLogo ? 'Uploading...' : 'Upload Logo File'}</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleLogoUpload}
+                        disabled={isUploadingLogo}
+                        className="hidden"
+                      />
+                    </label>
+                  </div>
+
+                  <div className="space-y-1 max-w-lg">
+                    <label className="text-[11px] font-semibold text-slate-500">Or Direct Logo Image URL / Path:</label>
+                    <input
+                      type="text"
+                      value={storeLogo}
+                      onChange={(e) => setStoreLogo(e.target.value)}
+                      placeholder="/livewellfresh_logo.png or https://example.com/logo.png"
+                      className="block w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-900 focus:outline-none focus:border-blue-500 font-mono"
+                    />
+                  </div>
+                </div>
               </div>
-              
+
+              <div className="pt-2">
+                <div className="flex items-center justify-between p-4 bg-slate-50 border border-slate-200 rounded-xl">
+                  <div className="space-y-0.5">
+                    <h4 className="text-sm font-bold text-slate-800">Maintenance Mode</h4>
+                    <p className="text-[11px] text-slate-500">
+                      When enabled, a maintenance banner will be displayed to storefront visitors.
+                    </p>
+                  </div>
+                  <div className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      id="maintenance_toggle"
+                      checked={maintenanceMode}
+                      onChange={(e) => setMaintenanceMode(e.target.checked)}
+                      className="sr-only peer"
+                    />
+                    <label 
+                      htmlFor="maintenance_toggle" 
+                      className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-rose-600 cursor-pointer" 
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-4 border-t border-slate-100">
+              <button 
+                type="submit"
+                disabled={isSaving}
+                className="px-7 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs rounded-xl shadow-md transition-all cursor-pointer disabled:opacity-50 inline-flex items-center gap-2"
+              >
+                <Check className="h-4 w-4" />
+                {isSaving ? 'Updating...' : 'Update Settings'}
+              </button>
+            </div>
+          </form>
+        )}
+
+        {/* TAB 2: CONTACT & HEADER */}
+        {activeTab === 'contact' && (
+          <form onSubmit={handleSaveSettings} noValidate className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-7 shadow-xs space-y-6">
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700">Customer Care Phone</label>
+                  <div className="relative rounded-xl border border-slate-300 focus-within:border-blue-600 focus-within:ring-1 focus-within:ring-blue-600 bg-white">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <Phone className="h-5 w-5 text-slate-400" />
+                    </div>
+                    <input
+                      type="text"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      className="block w-full pl-10 pr-4 py-3 bg-transparent text-sm text-slate-900 focus:outline-none font-mono"
+                      placeholder="e.g. +86 18027300683"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700">Contact Email</label>
+                  <div className="relative rounded-xl border border-slate-300 focus-within:border-blue-600 focus-within:ring-1 focus-within:ring-blue-600 bg-white">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <Mail className="h-5 w-5 text-slate-400" />
+                    </div>
+                    <input
+                      type="text"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="block w-full pl-10 pr-4 py-3 bg-transparent text-sm text-slate-900 focus:outline-none font-mono"
+                      placeholder="e.g. authentic.factory@outlook.com"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-700">Top Bar Announcement Text</label>
+                <div className="relative rounded-xl border border-slate-300 focus-within:border-blue-600 focus-within:ring-1 focus-within:ring-blue-600 bg-white">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Sparkles className="h-5 w-5 text-slate-400" />
+                  </div>
+                  <input
+                    type="text"
+                    value={topAnnouncementText}
+                    onChange={(e) => setTopAnnouncementText(e.target.value)}
+                    className="block w-full pl-10 pr-4 py-3 bg-transparent text-sm text-slate-900 focus:outline-none font-semibold uppercase tracking-wider"
+                    placeholder="e.g. WELCOME TO LIVEWELLFRESH • FRESH CLOTHES. BETTER LIFE"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-700">Office / Store Address</label>
+                <div className="relative rounded-xl border border-slate-300 focus-within:border-blue-600 focus-within:ring-1 focus-within:ring-blue-600 bg-white">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <MapPin className="h-5 w-5 text-slate-400" />
+                  </div>
+                  <input
+                    type="text"
+                    value={street}
+                    onChange={(e) => setStreet(e.target.value)}
+                    className="block w-full pl-10 pr-4 py-3 bg-transparent text-sm text-slate-900 focus:outline-none"
+                    placeholder="e.g. No. 88 Industrial Avenue, High-Tech Manufacturing Zone"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-4 border-t border-slate-100">
+              <button 
+                type="submit"
+                disabled={isSaving}
+                className="px-7 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs rounded-xl shadow-md transition-all cursor-pointer disabled:opacity-50 inline-flex items-center gap-2"
+              >
+                <Check className="h-4 w-4" />
+                {isSaving ? 'Updating...' : 'Update Settings'}
+              </button>
+            </div>
+          </form>
+        )}
+
+        {/* TAB 3: SOCIAL MEDIA */}
+        {activeTab === 'social' && (
+          <form onSubmit={handleSaveSettings} noValidate className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-7 shadow-xs space-y-6">
+            <div className="space-y-4">
+              <p className="text-xs text-slate-500">
+                Non-empty social media links will automatically display in the top announcement bar and website footer. Empty links are automatically hidden.
+              </p>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700">Facebook Page URL</label>
+                  <input
+                    type="text"
+                    value={facebookUrl}
+                    onChange={(e) => setFacebookUrl(e.target.value)}
+                    placeholder="https://facebook.com/yourbrand"
+                    className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-blue-500 font-mono"
+                  />
+                </div>
+
                 <div className="space-y-1">
                   <label className="text-xs font-bold text-slate-700">Instagram Profile URL</label>
                   <input
                     type="text"
                     value={instagramUrl}
                     onChange={(e) => setInstagramUrl(e.target.value)}
-                    placeholder="https://instagram.com/fantine"
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-blue-500 font-mono"
+                    placeholder="https://instagram.com/yourbrand"
+                    className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-blue-500 font-mono"
                   />
                 </div>
 
@@ -444,8 +621,8 @@ export default function ProfileSettings({ adminEmail }: ProfileSettingsProps) {
                     type="text"
                     value={youtubeUrl}
                     onChange={(e) => setYoutubeUrl(e.target.value)}
-                    placeholder="https://youtube.com/@fantine"
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-blue-500 font-mono"
+                    placeholder="https://youtube.com/@yourbrand"
+                    className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-blue-500 font-mono"
                   />
                 </div>
 
@@ -455,8 +632,8 @@ export default function ProfileSettings({ adminEmail }: ProfileSettingsProps) {
                     type="text"
                     value={twitterUrl}
                     onChange={(e) => setTwitterUrl(e.target.value)}
-                    placeholder="https://twitter.com/fantine"
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-blue-500 font-mono"
+                    placeholder="https://twitter.com/yourbrand"
+                    className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-blue-500 font-mono"
                   />
                 </div>
 
@@ -466,125 +643,124 @@ export default function ProfileSettings({ adminEmail }: ProfileSettingsProps) {
                     type="text"
                     value={tiktokUrl}
                     onChange={(e) => setTiktokUrl(e.target.value)}
-                    placeholder="https://tiktok.com/@fantine"
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-blue-500 font-mono"
+                    placeholder="https://tiktok.com/@yourbrand"
+                    className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-blue-500 font-mono"
                   />
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-700">Facebook Page URL</label>
-                  <input
-                    type="text"
-                    value={facebookUrl}
-                    onChange={(e) => setFacebookUrl(e.target.value)}
-                    placeholder="https://facebook.com/fantine"
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-blue-500 font-mono"
-                  />
-                </div>
-
-                <div className="space-y-1 sm:col-span-2">
-                  <label className="text-xs font-bold text-slate-700">WhatsApp Contact / Number</label>
+                  <label className="text-xs font-bold text-slate-700">WhatsApp Contact / Link</label>
                   <input
                     type="text"
                     value={whatsappNumber}
                     onChange={(e) => setWhatsappNumber(e.target.value)}
-                    placeholder="+82 (02) 884-9021 or https://wa.me/..."
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-blue-500 font-mono"
+                    placeholder="+86 18027300683 or https://wa.me/..."
+                    className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-blue-500 font-mono"
                   />
                 </div>
               </div>
             </div>
-            
-            <div className="pt-6">
-              <div className="flex items-center justify-between p-4 bg-slate-50 border border-slate-200 rounded-[6px]">
-                <div className="space-y-0.5">
-                  <h4 className="text-sm font-bold text-slate-800 flex items-center gap-2">
-                    Maintenance Mode
-                  </h4>
-                  <p className="text-[10px] text-slate-500 font-medium">
-                    When enabled, a maintenance notice will be displayed to all customers.
-                  </p>
-                </div>
-                <div className="relative inline-flex items-center cursor-pointer">
+
+            <div className="flex justify-end pt-4 border-t border-slate-100">
+              <button 
+                type="submit"
+                disabled={isSaving}
+                className="px-7 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs rounded-xl shadow-md transition-all cursor-pointer disabled:opacity-50 inline-flex items-center gap-2"
+              >
+                <Check className="h-4 w-4" />
+                {isSaving ? 'Updating...' : 'Update Settings'}
+              </button>
+            </div>
+          </form>
+        )}
+
+        {/* TAB 4: SECURITY & PASSWORD */}
+        {activeTab === 'security' && (
+          <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-7 shadow-xs space-y-6">
+            <div className="flex items-center gap-3 p-4 bg-slate-50 border border-slate-200 rounded-xl">
+              <div className="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center font-bold text-sm">
+                <User className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="text-xs text-slate-500">Active Admin Account</p>
+                <p className="text-sm font-bold text-slate-900">{displayName || email || adminEmail}</p>
+              </div>
+            </div>
+
+            <form onSubmit={handleChangePassword} className="space-y-5">
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-700">Current Password</label>
+                <div className="relative rounded-xl border border-slate-300 focus-within:border-blue-600 focus-within:ring-1 focus-within:ring-blue-600 bg-white">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <KeyRound className="h-4 w-4 text-slate-400" />
+                  </div>
                   <input
-                    type="checkbox"
-                    id="maintenance_toggle"
-                    checked={maintenanceMode}
-                    onChange={(e) => setMaintenanceMode(e.target.checked)}
-                    className="sr-only peer"
+                    type="password"
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    className="block w-full pl-10 pr-4 py-2.5 bg-transparent text-sm text-slate-900 focus:outline-none"
+                    placeholder="Enter current password"
                   />
-                  <label htmlFor="maintenance_toggle" className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-350 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-rose-600 cursor-pointer" />
                 </div>
               </div>
-            </div>
 
-            <div className="pt-6">
-              <h4 className="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
-                <ImageIcon className="h-4 w-4 text-blue-600" />
-                Store Logo
-              </h4>
-              <div className="space-y-3">
-                <div className="flex items-center gap-6">
-                  {storeLogo ? (
-                    <div className="relative group">
-                      <img 
-                        src={storeLogo} 
-                        alt="Store Logo" 
-                        className="h-16 w-auto max-w-[12rem] object-contain bg-slate-50 border border-slate-200 rounded-lg p-2 shadow-sm"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setStoreLogo('')}
-                        className="absolute -top-2 -right-2 p-1.5 bg-rose-500 hover:bg-rose-600 text-white rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
-                        title="Delete Logo"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700">New Password</label>
+                  <div className="relative rounded-xl border border-slate-300 focus-within:border-blue-600 focus-within:ring-1 focus-within:ring-blue-600 bg-white">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <Lock className="h-4 w-4 text-slate-400" />
                     </div>
-                  ) : (
-                    <div className="h-14 w-32 bg-slate-100 border border-dashed border-slate-300 rounded-xl flex items-center justify-center text-[10px] text-slate-400 font-bold">
-                      No Logo
-                    </div>
-                  )}
-
-                  <label className="inline-flex items-center gap-2 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl cursor-pointer transition-colors border border-slate-200">
-                    <Upload className="h-3.5 w-3.5 text-slate-600" />
-                    <span>{isUploadingLogo ? 'Uploading...' : 'Upload Logo File'}</span>
                     <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleLogoUpload}
-                      disabled={isUploadingLogo}
-                      className="hidden"
+                      type="password"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      className="block w-full pl-10 pr-4 py-2.5 bg-transparent text-sm text-slate-900 focus:outline-none"
+                      placeholder="Minimum 6 characters"
                     />
-                  </label>
+                  </div>
                 </div>
 
-                <div className="space-y-1 max-w-lg">
-                  <label className="text-[11px] font-semibold text-slate-500">Or Direct Logo Image Link / Path (Optional):</label>
-                  <input
-                    type="text"
-                    value={storeLogo}
-                    onChange={(e) => setStoreLogo(e.target.value)}
-                    placeholder="/logo_transparent.webp or https://example.com/logo.png"
-                    className="block w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-900 focus:outline-none focus:border-blue-500 font-mono"
-                  />
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700">Confirm New Password</label>
+                  <div className="relative rounded-xl border border-slate-300 focus-within:border-blue-600 focus-within:ring-1 focus-within:ring-blue-600 bg-white">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <ShieldCheck className="h-4 w-4 text-slate-400" />
+                    </div>
+                    <input
+                      type="password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      className="block w-full pl-10 pr-4 py-2.5 bg-transparent text-sm text-slate-900 focus:outline-none"
+                      placeholder="Repeat new password"
+                    />
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
 
-          <div className="flex justify-end pt-4">
-            <button 
-              type="submit"
-              disabled={isSaving}
-              className="px-7 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm rounded-xl shadow-md transition-all cursor-pointer disabled:opacity-50 inline-flex items-center gap-2"
-            >
-              {isSaving ? 'Updating...' : 'Update Settings'}
-            </button>
+              <div className="flex justify-end pt-3 border-t border-slate-100">
+                <button
+                  type="submit"
+                  disabled={isChangingPass}
+                  className="px-6 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs rounded-xl shadow-md transition-all cursor-pointer disabled:opacity-50 inline-flex items-center gap-2"
+                >
+                  <Lock className="h-3.5 w-3.5" />
+                  {isChangingPass ? 'Updating Password...' : 'Update Password'}
+                </button>
+              </div>
+            </form>
           </div>
-        </form>
+        )}
       </div>
+
+      {/* Feedback Dialog on Save */}
+      <FeedbackDialog
+        isOpen={feedback.isOpen}
+        type={feedback.type}
+        title={feedback.title}
+        message={feedback.message}
+        onClose={() => setFeedback(prev => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 }

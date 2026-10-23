@@ -87,7 +87,7 @@ export class FacebookCapiService {
           event_name: eventName,
           event_time: Math.floor(Date.now() / 1000),
           event_id: eventData.eventId,
-          event_source_url: eventData.eventSourceUrl || 'https://fantinebd.com',
+          event_source_url: eventData.eventSourceUrl || process.env.VITE_STORE_URL || 'https://store.com',
           action_source: 'website',
           user_data: formattedUserData,
           custom_data: customData

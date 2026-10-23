@@ -57,7 +57,7 @@ export default function LandingPageManager() {
         : (lpSettings.isEnabled !== undefined ? lpSettings.isEnabled : true);
       
       // Ensure fallbacks are properly set
-      const prodImg = prod.image || prod.coverImage || (prod.images && prod.images[0]) || '/uploads/file-1791830876714-429462367.jpg';
+      const prodImg = prod.image || prod.coverImage || (prod.images && prod.images[0]) || '/authentic/pod_triple_chamber_main.png';
       setData({
         ...lpSettings,
         isEnabled,
@@ -281,7 +281,7 @@ export default function LandingPageManager() {
                     const pSlug = prod.slug || getProductSlug(prod);
                     const isEnabled = landingStatusMap[prod.id] !== false;
                     const isCopied = copiedSlug === pSlug;
-                    const prodThumbnail = prod.image || prod.coverImage || (prod.images && prod.images[0]) || '/uploads/file-1791830876714-429462367.jpg';
+                    const prodThumbnail = prod.image || prod.coverImage || (prod.images && prod.images[0]) || '/authentic/pod_triple_chamber_main.png';
 
                     return (
                       <tr key={prod.id} className="hover:bg-slate-50/80 transition-colors">
@@ -293,7 +293,7 @@ export default function LandingPageManager() {
                               alt={prod.title} 
                               onError={(e) => {
                                 const t = e.currentTarget;
-                                if (!t.src.includes('/uploads/')) t.src = '/uploads/file-1791830876714-429462367.jpg';
+                                t.src = '/authentic/pod_triple_chamber_main.png';
                               }}
                               className="w-12 h-12 rounded-xl object-cover border border-slate-200 bg-slate-50 shrink-0"
                             />
@@ -544,7 +544,7 @@ export default function LandingPageManager() {
               </label>
               <div className="flex items-center gap-2">
                 <span className="text-xs text-slate-400 font-mono bg-slate-100 px-3 py-2 rounded-lg border border-slate-200">
-                  {typeof window !== 'undefined' ? window.location.host : 'fantinebd.com'}/
+                  {typeof window !== 'undefined' ? window.location.host : 'yourstore.com'}/
                 </span>
                 <input
                   type="text"
@@ -672,11 +672,11 @@ export default function LandingPageManager() {
               </label>
               <div className="flex items-center space-x-3">
                 <img 
-                  src={data.heroBookImage || data.mainBookImage || selectedProduct.image || selectedProduct.coverImage || '/uploads/file-1791830876714-429462367.jpg'} 
+                  src={data.heroBookImage || data.mainBookImage || selectedProduct.image || selectedProduct.coverImage || '/authentic/pod_triple_chamber_main.png'} 
                   alt="Hero Preview" 
                   onError={(e) => {
                     const t = e.currentTarget;
-                    if (!t.src.includes('/uploads/')) t.src = '/uploads/file-1791830876714-429462367.jpg';
+                    t.src = '/authentic/pod_triple_chamber_main.png';
                   }}
                   className="h-20 w-20 rounded-xl object-cover border border-slate-200 bg-slate-50 p-1 shadow-xs shrink-0" 
                 />
@@ -695,7 +695,7 @@ export default function LandingPageManager() {
                     <button
                       type="button"
                       onClick={() => {
-                        const defaultImg = selectedProduct.image || selectedProduct.coverImage || '/uploads/file-1791830876714-429462367.jpg';
+                        const defaultImg = selectedProduct.image || selectedProduct.coverImage || '/authentic/pod_triple_chamber_main.png';
                         setData(prev => ({ ...prev, heroBookImage: defaultImg, mainBookImage: defaultImg }));
                       }}
                       className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium rounded-lg transition-colors border border-slate-200"

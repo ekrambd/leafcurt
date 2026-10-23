@@ -9,19 +9,19 @@ import {
   POPULAR_SEARCH_KEYWORDS, 
   SKIN_CONCERN_TABS 
 } from '../lib/searchIndex';
-import { FantineProductItem } from './FantineStorePage';
+import { StoreProductItem } from './StorefrontPage';
 
 interface AdvancedSearchModalProps {
   isOpen: boolean;
   onClose: () => void;
   products: Product[];
-  onSelectProduct: (product: FantineProductItem) => void;
+  onSelectProduct: (product: StoreProductItem) => void;
   onAddToCart: (product: Product) => void;
   formatPrice: (price: number) => string;
   initialQuery?: string;
 }
 
-const RECENT_SEARCHES_KEY = 'fantine_recent_searches';
+const RECENT_SEARCHES_KEY = 'store_recent_searches';
 
 export default function AdvancedSearchModal({
   isOpen,
@@ -129,7 +129,7 @@ export default function AdvancedSearchModal({
         e.preventDefault();
         const selected = searchOutput.results[selectedIndex].product;
         saveSearchTerm(searchTerm || selected.title);
-        onSelectProduct(selected as FantineProductItem);
+        onSelectProduct(selected as StoreProductItem);
         onClose();
       }
     };
@@ -346,7 +346,7 @@ export default function AdvancedSearchModal({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {searchOutput.results.map((res, index) => {
                   const isSelected = selectedIndex === index;
-                  const prod = res.product as FantineProductItem;
+                  const prod = res.product as StoreProductItem;
                   const isAdded = addedToastId === prod.id;
 
                   return (

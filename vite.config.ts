@@ -5,6 +5,7 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig(() => {
   return {
+    root: __dirname,
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {
@@ -15,15 +16,25 @@ export default defineConfig(() => {
       // HMR is disabledd in AI Studio via DISABLE_HMR env var.
       // Do not modifyâfile watching is disabled to prevent flickering during agent edits.
       
-      allowedHosts: [
-        'fantinebd.com',
-        'www.fantinebd.com',
-      ],
+      allowedHosts: true,
       
-      //hmr: process.env.DISABLE_HMR !== 'true',
-      hmr: false,
+      hmr: process.env.DISABLE_HMR !== 'true',
       // Disable file watching when DISABLE_HMR is true to save CPU during agent edits.
-      watch: process.env.DISABLE_HMR === 'true' ? null : {},
+      watch: process.env.DISABLE_HMR === 'true' ? null : {
+        ignored: [
+          '**/prisma/**',
+          '**/*.db',
+          '**/*.db-*',
+          '**/*.sqlite*',
+          '**/*.json',
+          '**/.backups/**',
+          '**/.agents/**',
+          '**/dist/**',
+          '**/public/uploads/**',
+          '**/.git/**',
+          '**/node_modules/**'
+        ]
+      },
     },
     build: {
       target: 'es2020',
