@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Star, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Star, ChevronLeft, ChevronRight, MapPin, CheckCircle2 } from 'lucide-react';
 import { TestimonialSectionSettings, TestimonialItem } from '../types';
 import { DEFAULT_TESTIMONIAL_SETTINGS } from '../lib/constants';
 
@@ -91,17 +91,54 @@ export default function CustomerTestimonialsSection({ settings }: CustomerTestim
   return (
     <section 
       id="customer-testimonials-section" 
-      className="py-14 sm:py-20 bg-white border-b border-slate-100 overflow-hidden relative select-none"
+      className="pt-5 pb-6 sm:pt-7 sm:pb-8 lg:pt-7 lg:pb-8 bg-white border-b border-slate-100 overflow-hidden relative select-none"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
-        {/* Section Header matching reference design */}
-        <div className="text-center max-w-2xl mx-auto mb-10 sm:mb-12">
-          <h2 className="font-sans text-2xl sm:text-3xl lg:text-[34px] font-extrabold text-[#0f172a] tracking-tight">
-            {title}
-          </h2>
+        {/* Section Header with Signature Curved Line */}
+        <div className="text-center max-w-2xl mx-auto mb-5 sm:mb-7">
+          <div className="inline-block relative">
+            <h2 className="font-sans text-2xl sm:text-3xl lg:text-4xl font-extrabold text-[#0f172a] tracking-tight pb-1">
+              {title && title !== 'What our customers say' ? title : 'সম্মানিত গ্রাহকদের বাস্তব অভিজ্ঞতা'}
+            </h2>
+            {/* Colorful curved underline matching storefront brand */}
+            <svg 
+              className="w-full h-3.5 sm:h-5 max-w-[240px] sm:max-w-[290px] mx-auto mt-0.5 overflow-visible" 
+              viewBox="0 0 250 20" 
+              fill="none" 
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <defs>
+                <linearGradient id="testimCurveGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stopColor="#0284c7" />
+                  <stop offset="25%" stopColor="#06b6d4" />
+                  <stop offset="55%" stopColor="#8b5cf6" />
+                  <stop offset="80%" stopColor="#ec4899" />
+                  <stop offset="100%" stopColor="#f59e0b" />
+                </linearGradient>
+                <filter id="testimCurveGlow" x="-10%" y="-10%" width="120%" height="120%">
+                  <feGaussianBlur stdDeviation="1.5" result="glow" />
+                  <feComposite in="SourceGraphic" in2="glow" operator="over" />
+                </filter>
+              </defs>
+              <path 
+                d="M6 13 C 48 4, 96 16, 146 9 C 184 3.5, 218 7, 244 11" 
+                stroke="url(#testimCurveGradient)" 
+                strokeWidth="3.5" 
+                strokeLinecap="round" 
+                filter="url(#testimCurveGlow)"
+              />
+              <path 
+                d="M18 16 C 62 8, 112 17, 162 11 C 196 6.5, 222 9, 238 12" 
+                stroke="url(#testimCurveGradient)" 
+                strokeWidth="1.8" 
+                strokeLinecap="round" 
+                opacity="0.85"
+              />
+            </svg>
+          </div>
           {subtitle ? (
             <p className="mt-2 text-xs sm:text-sm text-slate-600 font-normal">
               {subtitle}
@@ -138,35 +175,35 @@ export default function CustomerTestimonialsSection({ settings }: CustomerTestim
                   className="px-2.5 sm:px-3 shrink-0 flex flex-col"
                   style={{ width: `${100 / itemsPerView}%` }}
                 >
-                  <div className="bg-white border border-slate-200/90 rounded-2xl p-6 sm:p-7 flex flex-col justify-between shadow-xs hover:shadow-md transition-all h-full min-h-[290px]">
-                    
+                  <div className="bg-white border border-slate-200/90 rounded-2xl p-5 sm:p-6 flex flex-col justify-between shadow-xs hover:shadow-md transition-all h-full min-h-[250px]">
                     <div>
-                      {/* Logo / Brand Header */}
-                      <div className="h-10 flex items-center mb-3.5">
-                        {item.avatarOrLogo ? (
-                          <img
-                            src={item.avatarOrLogo}
-                            alt={item.name}
-                            className="max-h-8 max-w-[130px] object-contain object-left"
-                            onError={(e) => {
-                              e.currentTarget.style.display = 'none';
-                            }}
-                          />
-                        ) : (
-                          <div className="w-8 h-8 rounded-full bg-slate-100 text-slate-700 flex items-center justify-center font-bold text-xs">
-                            {item.name ? item.name.charAt(0).toUpperCase() : '★'}
+                      {/* Top: Avatar, Name, Location & Verified Badge */}
+                      <div className="flex items-center justify-between gap-2 mb-3">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-sky-500/15 to-emerald-500/20 text-[#007ba8] font-black text-sm flex items-center justify-center border border-sky-200 shrink-0 shadow-2xs">
+                            {item.name ? item.name.charAt(0) : '★'}
                           </div>
-                        )}
+                          <div className="min-w-0">
+                            <h4 className="text-[13.5px] sm:text-[14.5px] font-bold text-[#0f172a] leading-tight truncate">
+                              {item.name}
+                            </h4>
+                            {item.designation?.trim() && (
+                              <p className="text-[11px] text-slate-500 font-medium flex items-center gap-1 mt-0.5 truncate">
+                                <MapPin className="w-3 h-3 text-[#0093d0] shrink-0" />
+                                <span>{item.designation.trim()}</span>
+                              </p>
+                            )}
+                          </div>
+                        </div>
+
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 shrink-0">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                          <span>ভেরিফাইড</span>
+                        </span>
                       </div>
 
-                      {/* Author Name & Company / Designation */}
-                      <h4 className="text-[14px] sm:text-[15px] font-bold text-[#0f172a] leading-snug mb-2">
-                        {item.name}
-                        {item.designation?.trim() ? `, ${item.designation.trim()}` : ''}
-                      </h4>
-
-                      {/* 5-Star Rating (Gold & Light Gray) */}
-                      <div className="flex items-center gap-0.5 mb-3.5">
+                      {/* 5-Star Rating */}
+                      <div className="flex items-center gap-0.5 mb-2.5">
                         {[1, 2, 3, 4, 5].map((starNum) => (
                           <Star
                             key={starNum}
@@ -180,11 +217,10 @@ export default function CustomerTestimonialsSection({ settings }: CustomerTestim
                       </div>
 
                       {/* Testimonial Quote */}
-                      <p className="text-[13px] sm:text-[13.5px] text-slate-700 leading-relaxed font-normal">
+                      <p className="text-[12.5px] sm:text-[13px] text-slate-700 leading-relaxed font-normal">
                         "{item.quote}"
                       </p>
                     </div>
-
                   </div>
                 </div>
               ))}

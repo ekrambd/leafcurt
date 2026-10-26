@@ -11,18 +11,22 @@ import {
   Play, Pause, Volume2, VolumeX, Menu, CheckCircle2, AlertCircle, Info, Trash2
 } from 'lucide-react';
 import { trackEvent, createEventId } from '../lib/pixelGtmService';
-import { Product, BookOrder, EcomSettings, InstituteInfo, ContactMessage, AboutPageSettings, DeliveryMethodItem, PaymentGatewayItem, Coupon, HeaderSettings, HeroBannerItem } from '../types';
+import { Product, BookOrder, EcomSettings, InstituteInfo, ContactMessage, AboutPageSettings, DeliveryMethodItem, PaymentGatewayItem, Coupon, HeaderSettings, HeroBannerItem, Brand } from '../types';
 import { publicStoreService, optimizeImageUrl, readStorefrontCache } from '../lib/publicStoreService';
-import { DEFAULT_ABOUT_SETTINGS, DEFAULT_DELIVERY_METHODS, DEFAULT_PAYMENT_GATEWAYS, DEFAULT_HEADER_SETTINGS, DEFAULT_HERO_BANNERS, DEFAULT_PRODUCTS, BANGLADESHI_FEMALE_CART_REVIEWS } from '../lib/constants';
+import { 
+  DEFAULT_ABOUT_SETTINGS, DEFAULT_DELIVERY_METHODS, DEFAULT_PAYMENT_GATEWAYS, 
+  DEFAULT_HEADER_SETTINGS, DEFAULT_HERO_BANNERS, DEFAULT_PRODUCTS, 
+  BANGLADESHI_FEMALE_CART_REVIEWS,
+  DEFAULT_CLIENT_LOGOS_SETTINGS, DEFAULT_BEFORE_AFTER_SETTINGS,
+  DEFAULT_PHOTO_REVIEWS_SETTINGS, DEFAULT_TESTIMONIAL_SETTINGS
+} from '../lib/constants';
 import { ProductSearchEngine } from '../lib/searchIndex';
 import { useAppStore } from '../store/useAppStore';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { updateMetaTags, updateProductSchema, getProductSlug } from '../lib/seoUtils';
 import ResponsiveImage from './ResponsiveImage';
-import CheckoutPage from './CheckoutPage';
 import { DoctorFloatingTrigger } from './ai/DoctorFloatingTrigger';
 import { FeedbackDialog } from './ui/FeedbackDialog';
-import AuthenticProductDetailPage from './AuthenticProductDetailPage';
 import ProductReviewsSection from './ProductReviewsSection';
 import { getCustomerSession, clearCustomerSession, type CustomerSession } from '../lib/customerAuth';
 import { calculateCartTotalWeight, calculateDeliveryCharge } from '../lib/deliveryCalculator';
@@ -30,11 +34,15 @@ import BeforeAfterSection from './BeforeAfterSection';
 import BrandLogosSection from './BrandLogosSection';
 import PhotoReviewsSection from './PhotoReviewsSection';
 import VideoReviewsSection from './VideoReviewsSection';
+import CustomerTestimonialsSection from './CustomerTestimonialsSection';
 import FaqSection from './FaqSection';
-import BlogPage from './BlogPage';
-import BlogPostPage from './BlogPostPage';
-import AboutUsPage from './AboutUsPage';
+import AmbientSoapBubbles from './AmbientSoapBubbles';
+import WashingComparisonSection from './WashingComparisonSection';
 
+const CheckoutPage = React.lazy(() => import('./CheckoutPage'));
+const BlogPage = React.lazy(() => import('./BlogPage'));
+const BlogPostPage = React.lazy(() => import('./BlogPostPage'));
+const AboutUsPage = React.lazy(() => import('./AboutUsPage'));
 const StoreFooter = React.lazy(() => import('./StoreFooter'));
 
 interface StorefrontPageProps {
@@ -162,6 +170,18 @@ function extractYouTubeVideoId(url?: string): string | null {
 }
 
 
+const DEFAULT_PODS_SPEC_TABLE = [
+  { feature: 'Product Name', details: 'Laundry Detergent Pods' },
+  { feature: 'Product Type', details: 'All-in-1 / 3-in-1 / 4-in-1 / 5-in-1 Laundry Pods' },
+  { feature: 'Pod Weight', details: '8g / 10g / 12g / 15g / 25g per Pod' },
+  { feature: 'Recommended Laundry Load', details: 'Approx. 2–12kg per Pod, Depending on Pod Weight, Formula Concentration and Washing Conditions' },
+  { feature: 'Chamber Structure', details: 'Single Chamber / 3 Chambers / 4 Chambers / 5 Chambers' },
+  { feature: 'Formula Type', details: 'Liquid / Powder / Fragrance Beads / Multi-Formula Combination' },
+  { feature: 'Functions', details: 'Deep Cleaning / Stain Removal / Antibacterial Care / Anti-Mite Care / Fabric Softening / Color Protection / Long-Lasting Fragrance / Odor Control' },
+  { feature: 'Fragrance Options', details: 'Lavender / Lemon / Rose / Jasmine / Ocean Breeze / Fresh Cotton / Green Tea / Floral / Fruity / Woody / Fragrance-Free' },
+  { feature: 'Specialized Solutions', details: 'Baby & Sensitive Care / Pet Odor and Stain Care / Sportswear Odor Control / Hospitality and Commercial Linen' }
+];
+
 export default function StorefrontPage({ onGoToLogin, onGoToLanding }: StorefrontPageProps) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -204,6 +224,12 @@ export default function StorefrontPage({ onGoToLogin, onGoToLanding }: Storefron
   });
   const [instituteInfo, setInstituteInfo] = useState<InstituteInfo | null>(() => {
     return readStorefrontCache<InstituteInfo>('noor_institute_info', null);
+  });
+  const [realBrands, setRealBrands] = useState<Brand[]>(() => {
+    return readStorefrontCache<Brand[]>('noor_brands', []) || [];
+  });
+  const [realCategories, setRealCategories] = useState<string[]>(() => {
+    return readStorefrontCache<string[]>('noor_categories', []) || [];
   });
   const [activeSlideIndex, setActiveSlideIndex] = useState<number>(0);
 
@@ -327,15 +353,19 @@ export default function StorefrontPage({ onGoToLogin, onGoToLanding }: Storefron
   }, []);
 
 
-  // Sync Live Settings from server API / publicStoreService
+  // Sync Live Settings, Categories & Brands from server API / publicStoreService
   const loadLiveSettings = async () => {
     try {
-      const [settings, info] = await Promise.all([
+      const [settings, info, brandsList, catsList] = await Promise.all([
         publicStoreService.getEcomSettings().catch(() => null),
-        publicStoreService.getInstituteInfo().catch(() => null)
+        publicStoreService.getInstituteInfo().catch(() => null),
+        publicStoreService.getBrands().catch(() => []),
+        publicStoreService.getCategories().catch(() => [])
       ]);
       if (settings) setEcomSettings(settings);
       if (info) setInstituteInfo(info);
+      setRealBrands(Array.isArray(brandsList) ? brandsList : []);
+      setRealCategories(Array.isArray(catsList) ? catsList : []);
     } catch (err) {
       console.warn('Failed loading storefront settings:', err);
     }
@@ -621,15 +651,29 @@ export default function StorefrontPage({ onGoToLogin, onGoToLanding }: Storefron
 
   const [isSliderPaused, setIsSliderPaused] = useState<boolean>(false);
 
-  // Slider Autoplay Effect (5s Interval)
+  // Slider Autoplay Effect with dynamic interval per slide (supports video + image slides)
   useEffect(() => {
-    const currentIsVideo = activeHeroBanners[activeSlideIndex]?.mediaType === 'video';
-    if (isSliderPaused || activeHeroBanners.length <= 1 || currentIsVideo) return;
+    if (isSliderPaused || activeHeroBanners.length <= 1) return;
+
+    const currentBanner = activeHeroBanners[activeSlideIndex];
+    const isVideo = currentBanner?.mediaType === 'video';
+    const customSec = currentBanner?.durationSeconds;
+    const defaultVideoSec = ecomSettings?.heroVideoInterval || 10;
+    const defaultImageSec = ecomSettings?.heroSliderInterval || 5;
+    const durationMs = (customSec || (isVideo ? defaultVideoSec : defaultImageSec)) * 1000;
+
     const interval = setInterval(() => {
       setActiveSlideIndex(prev => (prev + 1) % activeHeroBanners.length);
-    }, 5000);
+    }, durationMs);
+
     return () => clearInterval(interval);
-  }, [isSliderPaused, activeHeroBanners.length, activeSlideIndex, activeHeroBanners]);
+  }, [isSliderPaused, activeHeroBanners.length, activeSlideIndex, activeHeroBanners, ecomSettings?.heroSliderInterval, ecomSettings?.heroVideoInterval]);
+
+  const handleVideoEnded = useCallback(() => {
+    if (activeHeroBanners.length > 1) {
+      setActiveSlideIndex(prev => (prev + 1) % activeHeroBanners.length);
+    }
+  }, [activeHeroBanners.length]);
 
   const handlePrevSlide = () => {
     setActiveSlideIndex(prev => (prev - 1 + activeHeroBanners.length) % activeHeroBanners.length);
@@ -877,7 +921,7 @@ export default function StorefrontPage({ onGoToLogin, onGoToLanding }: Storefron
   // Bangladeshi Taka BDT Currency Formatter (Exclusive)
   const formatPrice = (priceVal: number) => {
     if (!priceVal && priceVal !== 0) return 'Tk.0';
-    const bdtAmount = priceVal < 100 ? Math.round(priceVal * 120) : Math.round(priceVal);
+    const bdtAmount = Math.round(priceVal);
     return `Tk.${bdtAmount.toLocaleString('en-US')}`;
   };
 
@@ -971,24 +1015,38 @@ export default function StorefrontPage({ onGoToLogin, onGoToLanding }: Storefron
     return filteredCatalog.slice(startIndex, startIndex + itemsPerPage);
   }, [filteredCatalog, currentPage]);
 
+  // Real Categories from API / settings (if no real categories exist, empty array)
   const shopCategories = useMemo(() => {
-    const set = new Set<string>();
-    if (ecomSettings?.categories && Array.isArray(ecomSettings.categories)) {
+    const list: string[] = [];
+    if (realCategories.length > 0) {
+      realCategories.forEach(c => {
+        if (typeof c === 'string' && c.trim() && !list.includes(c.trim())) {
+          list.push(c.trim());
+        }
+      });
+    } else if (ecomSettings?.categories && Array.isArray(ecomSettings.categories) && ecomSettings.categories.length > 0) {
       ecomSettings.categories.forEach(c => {
-        if (typeof c === 'string' && c.trim()) set.add(c.trim());
+        if (typeof c === 'string' && c.trim() && !list.includes(c.trim())) {
+          list.push(c.trim());
+        }
       });
     }
-    products.forEach(p => {
-      if (p.category && p.category.trim()) set.add(p.category.trim());
-      if (p.series && p.series.trim()) set.add(p.series.trim());
-    });
-    const custom = Array.from(set);
-    return custom.length > 0 ? ['All', ...custom] : DEFAULT_SHOP_CATEGORIES;
-  }, [ecomSettings?.categories, products]);
+    return list;
+  }, [realCategories, ecomSettings?.categories]);
 
+  // Real Brands from API (if no real brands exist in /api/brands, empty array)
   const shopBrands = useMemo(() => {
-    return ['All', ...Array.from(new Set(products.map(p => p.brand).filter(Boolean)))];
-  }, [products]);
+    const list: string[] = [];
+    if (realBrands && realBrands.length > 0) {
+      realBrands.forEach(b => {
+        const name = (b.name || '').trim();
+        if (name && !list.includes(name)) {
+          list.push(name);
+        }
+      });
+    }
+    return list;
+  }, [realBrands]);
 
   const totalPages = Math.ceil(filteredCatalog.length / itemsPerPage) || 1;
 
@@ -1247,7 +1305,7 @@ export default function StorefrontPage({ onGoToLogin, onGoToLanding }: Storefron
       if (!orderCreatedViaServer) {
         await dbService.addBookOrder(orderPayload);
       } else {
-        await dbService.saveBookOrder(confirmedOrder);
+        await dbService.saveBookOrderLocally(confirmedOrder);
       }
 
       // Track Purchase event before clearing cart
@@ -1376,44 +1434,8 @@ export default function StorefrontPage({ onGoToLogin, onGoToLanding }: Storefron
       : [activeProductDetail.coverImage || DEFAULT_PRODUCT_FALLBACK_IMAGE];
   }, [activeProductDetail]);
 
-  const isAuthenticDetail = activeNav === 'product_detail' && Boolean(
-    activeProductDetail?.id && (
-      (activeProductDetail.specTable && activeProductDetail.specTable.length > 0) ||
-      (activeProductDetail.specificationsList && activeProductDetail.specificationsList.length > 0) ||
-      activeProductDetail.hasVideo
-    )
-  );
-
-  if (isAuthenticDetail) {
-    return (
-      <AuthenticProductDetailPage
-        product={activeProductDetail}
-        headerSettings={ecomSettings?.headerSettings}
-        onNavigateHome={() => {
-          navigateTo('home');
-          navigate('/');
-        }}
-        onNavigateCategory={(cat) => {
-          setSelectedCategoryCheckbox(cat);
-          navigateTo('shop');
-          navigate('/shop');
-        }}
-        onAddToCart={handleAddToCart}
-        onBuyNow={(prod, qty) => {
-          handleAddToCart(prod, qty);
-          setIsCartOpen(false);
-          navigateTo('checkout');
-        }}
-        formatPrice={formatPrice}
-        onRequestQuote={(prod) => {
-          showToast(`Quote request received for ${prod.title}! Our sales team will reach out via WhatsApp & email shortly.`, 'success');
-        }}
-      />
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-[#faf9f6] text-slate-900 font-sans relative selection:bg-rose-100 selection:text-rose-900">
+    <div className="min-h-screen bg-[#faf9f6] text-slate-900 font-sans relative selection:bg-rose-100 selection:text-rose-900 pb-16 md:pb-0">
       
       {/* Toast Notification */}
       {showNotificationToast.show && (
@@ -1440,96 +1462,6 @@ export default function StorefrontPage({ onGoToLogin, onGoToLanding }: Storefron
           >
             <X className="w-3.5 h-3.5" />
           </button>
-        </div>
-      )}
-
-      {/* ============================================================
-          TOP CONTACT & SOCIAL BAR (Dynamic from Admin Panel)
-          ============================================================ */}
-      {liveHeaderSettings.showTopBar !== false && (headerPhone || headerEmail || Object.values(activeSocialLinks).some(hasValidLink)) && (
-        <div className="bg-[#1c2850] text-white text-xs py-2 px-4 sm:px-8 transition-colors">
-          <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
-            {/* Left: Phone & Email */}
-            <div className="flex items-center gap-6 text-[13px] tracking-wide">
-              {headerPhone && (
-                <a 
-                  href={`tel:${headerPhone.replace(/\s+/g, '')}`} 
-                  className="flex items-center gap-2 hover:text-blue-200 transition-colors"
-                >
-                  <Phone className="w-3.5 h-3.5 fill-current" />
-                  <span>{headerPhone}</span>
-                </a>
-              )}
-              {headerEmail && (
-                <a 
-                  href={`mailto:${headerEmail}`} 
-                  className="flex items-center gap-2 hover:text-blue-200 transition-colors"
-                >
-                  <Mail className="w-3.5 h-3.5 fill-current" />
-                  <span>{headerEmail}</span>
-                </a>
-              )}
-            </div>
-
-            {/* Right: Dynamic Social Media Icons (Only show if configured in Admin) */}
-            <div className="flex items-center gap-4 text-white">
-              {hasValidLink(activeSocialLinks.facebook) && (
-                <a href={activeSocialLinks.facebook} target="_blank" rel="noopener noreferrer" className="hover:text-blue-200 transition-colors" title="Facebook">
-                  <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
-                    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-                  </svg>
-                </a>
-              )}
-              {hasValidLink(activeSocialLinks.instagram) && (
-                <a href={activeSocialLinks.instagram} target="_blank" rel="noopener noreferrer" className="hover:text-blue-200 transition-colors" title="Instagram">
-                  <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
-                    <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
-                  </svg>
-                </a>
-              )}
-              {hasValidLink(activeSocialLinks.youtube) && (
-                <a href={activeSocialLinks.youtube} target="_blank" rel="noopener noreferrer" className="hover:text-blue-200 transition-colors" title="YouTube">
-                  <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
-                    <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
-                  </svg>
-                </a>
-              )}
-              {hasValidLink(activeSocialLinks.twitter) && (
-                <a href={activeSocialLinks.twitter} target="_blank" rel="noopener noreferrer" className="hover:text-blue-200 transition-colors" title="X (Twitter)">
-                  <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
-                    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
-                  </svg>
-                </a>
-              )}
-              {hasValidLink(activeSocialLinks.tiktok) && (
-                <a href={activeSocialLinks.tiktok} target="_blank" rel="noopener noreferrer" className="hover:text-blue-200 transition-colors" title="TikTok">
-                  <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
-                    <path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.24 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z"/>
-                  </svg>
-                </a>
-              )}
-              {hasValidLink(activeSocialLinks.linkedin) && (
-                <a href={activeSocialLinks.linkedin} target="_blank" rel="noopener noreferrer" className="hover:text-blue-200 transition-colors" title="LinkedIn">
-                  <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
-                    <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/>
-                  </svg>
-                </a>
-              )}
-              {hasValidLink(activeSocialLinks.whatsapp) && (
-                <a 
-                  href={activeSocialLinks.whatsapp.startsWith('http') ? activeSocialLinks.whatsapp : `https://wa.me/${activeSocialLinks.whatsapp.replace(/[^0-9]/g, '')}`} 
-                  target="_blank" 
-                  rel="noopener noreferrer" 
-                  className="hover:text-emerald-300 transition-colors" 
-                  title="WhatsApp"
-                >
-                  <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
-                    <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/>
-                  </svg>
-                </a>
-              )}
-            </div>
-          </div>
         </div>
       )}
 
@@ -1926,97 +1858,98 @@ export default function StorefrontPage({ onGoToLogin, onGoToLanding }: Storefron
                 ))}
               </div>
 
-              {/* Main Product Frame with Water Drop / Ripple Green Background + Interactive Zoom */}
+              {/* Main Product Frame with Gentle Hover & Click-to-Zoom */}
               <div 
-                onMouseMove={(e) => {
-                  const rect = e.currentTarget.getBoundingClientRect();
-                  const x = ((e.clientX - rect.left) / rect.width) * 100;
-                  const y = ((e.clientY - rect.top) / rect.height) * 100;
-                  setZoomPos({ x, y });
-                  setIsHoverZooming(true);
-                }}
-                onMouseLeave={() => setIsHoverZooming(false)}
                 onClick={() => setIsZoomModalOpen(true)}
-                className="relative flex-1 aspect-square max-h-[500px] bg-[#e8f5e9]/30 rounded-none overflow-hidden border border-slate-100 flex items-center justify-center group cursor-zoom-in"
+                className="relative flex-1 aspect-square max-h-[500px] bg-[#e8f5e9]/30 rounded-xl overflow-hidden border border-slate-100 flex items-center justify-center group cursor-pointer"
+                title="Click to view full image"
               >
                 <img fetchPriority="high" width={500} height={500} src={currentProductImages[activeImageIndex] || activeProductDetail.coverImage} alt={activeProductDetail.title} 
                   onError={(e) => {
                     e.currentTarget.onerror = null;
                     e.currentTarget.src = DEFAULT_STORE_FALLBACK_IMAGE;
                   }}
-                  style={{
-                    transformOrigin: `${zoomPos.x}% ${zoomPos.y}%`,
-                    transform: isHoverZooming ? 'scale(2.2)' : 'scale(1)'
-                  }}
-                  className="w-4/5 h-4/5 object-contain transition-transform duration-200 pointer-events-none select-none"
+                  className="w-4/5 h-4/5 object-contain select-none transition-transform duration-300 group-hover:scale-105"
                 />
 
                 {/* Left/Right Carousel Arrows */}
                 {currentProductImages.length > 1 && (
                   <>
                     <button 
+                      type="button"
                       onClick={(e) => {
                         e.stopPropagation();
                         setActiveImageIndex(prev => (prev === 0 ? currentProductImages.length - 1 : prev - 1));
                       }}
-                      className="absolute left-2 sm:left-3 top-1/2 -translate-y-1/2 w-8 h-8 bg-black/30 hover:bg-black/60 text-white rounded-none flex items-center justify-center transition-colors cursor-pointer z-10"
+                      className="absolute left-2 sm:left-3 top-1/2 -translate-y-1/2 w-8 h-8 bg-black/30 hover:bg-black/60 text-white rounded-full flex items-center justify-center transition-colors cursor-pointer z-10"
+                      aria-label="Previous image"
                     >
                       <ChevronLeft className="w-5 h-5" />
                     </button>
                     <button 
+                      type="button"
                       onClick={(e) => {
                         e.stopPropagation();
                         setActiveImageIndex(prev => (prev === currentProductImages.length - 1 ? 0 : prev + 1));
                       }}
-                      className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 w-8 h-8 bg-black/30 hover:bg-black/60 text-white rounded-none flex items-center justify-center transition-colors cursor-pointer z-10"
+                      className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 w-8 h-8 bg-black/30 hover:bg-black/60 text-white rounded-full flex items-center justify-center transition-colors cursor-pointer z-10"
+                      aria-label="Next image"
                     >
                       <ChevronRight className="w-5 h-5" />
                     </button>
                   </>
                 )}
 
-                {/* Zoom Icon Button */}
+                {/* Magnified Zoom Icon Button (Click to Zoom Fullscreen) */}
                 <button
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
                     setIsZoomModalOpen(true);
                   }}
-                  className="absolute bottom-2.5 right-2.5 sm:bottom-3 sm:right-3 p-2 bg-slate-900/60 hover:bg-slate-900 text-white rounded-full transition-colors cursor-pointer z-10"
+                  className="absolute bottom-2.5 right-2.5 sm:bottom-3 sm:right-3 px-2.5 py-1.5 bg-slate-900/80 hover:bg-slate-950 text-white text-xs font-semibold rounded-lg flex items-center gap-1.5 transition-all shadow-md active:scale-95 cursor-pointer z-10 backdrop-blur-xs"
                   title="Click to Zoom Fullscreen"
+                  aria-label="Zoom Fullscreen"
                 >
-                  <ZoomIn className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                  <ZoomIn className="w-3.5 h-3.5" />
+                  <span>Zoom</span>
                 </button>
               </div>
 
             </div>
 
-            {/* Right Side: Title, Description, Benefits, How-To-Use */}
-            <div className="lg:col-span-6 space-y-4 sm:space-y-6">
-              <h1 className="font-sans text-2xl sm:text-3xl lg:text-4xl text-slate-900 font-semibold tracking-tight leading-snug">
-                {activeProductDetail.title}
-              </h1>
+            {/* Right Side: Title, Price, Actions, Key Highlights */}
+            <div className="lg:col-span-6 space-y-4 sm:space-y-5">
+              <div>
+                <span className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-sky-600 bg-sky-50 px-2.5 py-1 rounded-md">
+                  {activeProductDetail.series || 'Premium Laundry Care'}
+                </span>
+                <h1 className="font-sans text-2xl sm:text-3xl lg:text-4xl text-slate-900 font-bold tracking-tight leading-snug mt-2">
+                  {activeProductDetail.title}
+                </h1>
+              </div>
 
               {/* Price Row */}
               <div className="flex flex-wrap items-baseline gap-2.5 sm:gap-3">
-                <span className="text-xl sm:text-2xl font-bold text-slate-900">{formatPrice(activeProductDetail.price)}</span>
+                <span className="text-2xl sm:text-3xl font-extrabold text-slate-900">{formatPrice(activeProductDetail.price)}</span>
                 {activeProductDetail.regularPrice && (
-                  <span className="text-sm sm:text-base text-slate-500 line-through">{formatPrice(activeProductDetail.regularPrice)}</span>
+                  <span className="text-base sm:text-lg text-slate-400 line-through">{formatPrice(activeProductDetail.regularPrice)}</span>
                 )}
                 {activeProductDetail.discountPercentage && (
-                  <span className="text-xs bg-rose-50 text-rose-700 font-bold px-2 py-0.5 border border-rose-200">
+                  <span className="text-xs bg-rose-50 text-rose-700 font-bold px-2.5 py-1 rounded-md border border-rose-200">
                     SAVE {activeProductDetail.discountPercentage}%
                   </span>
                 )}
               </div>
 
-              {/* Actions (ADD TO BAG & BUY NOW) */}
-              <div className="pt-1 flex flex-col sm:flex-row gap-2.5 sm:gap-3">
+              {/* Actions (ADD TO BAG & BUY NOW Horizontally) */}
+              <div className="pt-1 grid grid-cols-2 gap-2.5 sm:gap-3">
                 <button 
                   onClick={() => handleAddToCart(activeProductDetail)}
-                  className="flex-1 bg-slate-950 hover:bg-slate-800 text-white font-semibold py-3 sm:py-3.5 px-6 text-xs uppercase tracking-widest transition-all shadow-md active:scale-95 cursor-pointer"
+                  className="bg-slate-900 hover:bg-slate-800 text-white font-bold py-3.5 px-4 text-xs sm:text-sm uppercase tracking-wider transition-all shadow-md active:scale-95 cursor-pointer rounded-xl flex items-center justify-center gap-2"
                 >
-                  ADD TO BAG
+                  <ShoppingBag className="w-4 h-4 shrink-0" />
+                  <span>ADD TO BAG</span>
                 </button>
                 <button 
                   onClick={() => {
@@ -2024,64 +1957,304 @@ export default function StorefrontPage({ onGoToLogin, onGoToLanding }: Storefron
                     setIsCartOpen(false);
                     navigateTo('checkout');
                   }}
-                  className="flex-1 bg-gradient-to-r from-[#0284c7] to-[#16a34a] hover:from-[#0369a1] hover:to-[#15803d] text-white font-bold py-3.5 px-6 text-xs uppercase tracking-widest transition-all shadow-md active:scale-95 cursor-pointer rounded-xl"
+                  className="bg-gradient-to-r from-[#0093d0] to-[#00a651] hover:from-[#0082b8] hover:to-[#008f45] text-white font-bold py-3.5 px-4 text-xs sm:text-sm uppercase tracking-wider transition-all shadow-md active:scale-95 cursor-pointer rounded-xl flex items-center justify-center gap-2"
                 >
-                  BUY NOW
+                  <Zap className="w-4 h-4 fill-current shrink-0" />
+                  <span>BUY NOW</span>
                 </button>
               </div>
 
-              {/* Product Description */}
-              {(activeProductDetail.description || activeProductDetail.shortSummary) && (
-                <div className="space-y-2 pt-3 border-t border-slate-100">
-                  <h2 className="font-sans text-base font-semibold text-slate-900 tracking-wide">Product Description :</h2>
-                  <p className="text-xs sm:text-sm text-slate-700 leading-relaxed font-normal whitespace-pre-line">
-                    {activeProductDetail.description || activeProductDetail.shortSummary}
-                  </p>
+              {/* Trust Assurances */}
+              <div className="grid grid-cols-3 gap-2 py-3 border-y border-slate-100 text-[11px] sm:text-xs text-slate-700">
+                <div className="flex items-center gap-1.5 justify-center sm:justify-start">
+                  <Truck className="w-4 h-4 text-sky-600 shrink-0" />
+                  <span>হোম ডেলিভারি</span>
                 </div>
-              )}
+                <div className="flex items-center gap-1.5 justify-center sm:justify-start">
+                  <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>১০০% ড্রাম সেফ</span>
+                </div>
+                <div className="flex items-center gap-1.5 justify-center sm:justify-start">
+                  <CheckCircle2 className="w-4 h-4 text-indigo-600 shrink-0" />
+                  <span>ক্যাশ অন ডেলিভারি</span>
+                </div>
+              </div>
 
-              {/* Benefits Highlights */}
-              {activeProductDetail.benefitsHighlights && (
-                <div className="space-y-2 pt-3 border-t border-slate-100">
-                  <h2 className="font-sans text-base font-semibold text-slate-900 tracking-wide">Benefits Highlights :</h2>
-                  <p className="text-xs sm:text-sm text-slate-700 leading-relaxed font-normal whitespace-pre-line">
-                    {activeProductDetail.benefitsHighlights}
-                  </p>
+              {/* Clean Key Highlights */}
+              <div className="space-y-2 pt-1">
+                <h3 className="text-xs sm:text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                  <span>এক নজরে মূল সুবিধাসমূহ (Key Highlights)</span>
+                </h3>
+                <div className="space-y-1.5 text-xs sm:text-sm text-slate-700 bg-slate-50/70 p-3 sm:p-4 rounded-xl border border-slate-100">
+                  <div className="flex items-start gap-2">
+                    <span className="text-emerald-600 font-bold">✓</span>
+                    <span><strong>৫-ইন-১ মাল্টি-অ্যাকশন:</strong> ডিটারজেন্ট, দাগ তোলা, সফটনার, রঙ সুরক্ষা ও ৩০ দিনের ফ্রেঞ্চ সুবাস।</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-emerald-600 font-bold">✓</span>
+                    <span><strong>১০০% মেশিনের ড্রাম সেফ:</strong> গুঁড়া সাবানের মতো ড্রাম, পাইপ বা সেন্সরে আঠালো তলানি ফেলে না।</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-emerald-600 font-bold">✓</span>
+                    <span><strong>৫টি বায়ো-এনজাইম:</strong> কঠিন ময়লা, ঘামের গন্ধ ও দাগ নিখুঁতভাবে দূর করে।</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-emerald-600 font-bold">✓</span>
+                    <span><strong>জিরো অপচয় ও সাশ্রয়ী:</strong> প্রতি ওয়াশে ১টি ক্যাপসুলই যথেষ্ট, অতিরিক্ত ঢালার সুযোগ নেই।</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-emerald-600 font-bold">✓</span>
+                    <span><strong>ত্বকবান্ধব Neutral pH:</strong> ব্লিচ ও ফসফরাস মুক্ত, শিশুদের কাপড় ও স্পর্শকাতর ত্বকেও নিরাপদ।</span>
+                  </div>
                 </div>
-              )}
-
-              {/* How to use it */}
-              {(activeProductDetail.howToUse || (activeProductDetail as any).howToUseIt) && (
-                <div className="space-y-2 pt-3 border-t border-slate-100">
-                  <h2 className="font-sans text-base font-semibold text-slate-900 tracking-wide">How to use it :</h2>
-                  <p className="text-xs sm:text-sm text-slate-700 leading-relaxed font-normal whitespace-pre-line">
-                    {activeProductDetail.howToUse || (activeProductDetail as any).howToUseIt}
-                  </p>
-                </div>
-              )}
-
-              {/* Ingredients */}
-              {activeProductDetail.ingredients && (
-                <div className="space-y-2 pt-3 border-t border-slate-100">
-                  <h2 className="font-sans text-base font-semibold text-slate-900 tracking-wide">INGREDIENT :</h2>
-                  <p className="text-xs sm:text-sm text-slate-700 leading-relaxed font-normal whitespace-pre-line">
-                    {activeProductDetail.ingredients}
-                  </p>
-                </div>
-              )}
+              </div>
 
             </div>
 
           </div>
 
-          {/* Customer Reviews Section (Requires Customer Login + Placed Order) */}
-          <div className="mt-14 pt-10 border-t border-slate-200">
-            <ProductReviewsSection 
-              product={activeProductDetail} 
-              onOpenLoginModal={onGoToLogin} 
-              accentColor="#0284c7" 
-            />
+          {/* ============================================================
+              FULL-WIDTH DETAILS SECTION: SPECIFICATIONS & FEATURES
+              ============================================================ */}
+          <div className="mt-12 sm:mt-16 pt-10 border-t border-slate-200 space-y-12 sm:space-y-16">
+            
+            {/* 1. PRODUCT SPECIFICATIONS TABLE (MATCHING IMAGE EXACTLY) */}
+            <div className="max-w-4xl mx-auto">
+              <div className="text-center sm:text-left mb-6">
+                <span className="text-xs uppercase tracking-wider font-bold text-sky-600 bg-sky-50 px-3 py-1 rounded-full">
+                  Detailed Specifications
+                </span>
+                <h2 className="text-xl sm:text-2xl font-bold text-slate-900 mt-2 flex items-center justify-center sm:justify-start gap-2">
+                  <Sparkles className="w-5 h-5 text-sky-600" />
+                  Product Specifications (পণ্যের বিশদ বিবরণ)
+                </h2>
+                <p className="text-xs sm:text-sm text-slate-500 mt-1">
+                  Leaf Curt প্রিমিয়াম পডসের টেকনিক্যাল স্পেসিফিকেশন ও ব্যবহারের নির্দেশিকা
+                </p>
+              </div>
+
+              <div className="overflow-hidden rounded-xl border border-slate-200 shadow-xs bg-white">
+                <table className="w-full text-left border-collapse text-xs sm:text-sm">
+                  <thead>
+                    <tr className="bg-slate-100/90 border-b border-slate-200 text-slate-800 font-bold uppercase text-[11px] sm:text-xs tracking-wider">
+                      <th className="py-3 px-3 sm:px-5 w-2/5 sm:w-1/3 border-r border-slate-200">Feature</th>
+                      <th className="py-3 px-3 sm:px-5">Details</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {((activeProductDetail as any).specTable?.length > 0 ? (activeProductDetail as any).specTable : DEFAULT_PODS_SPEC_TABLE).map((row: any, idx: number) => (
+                      <tr key={idx} className={idx % 2 === 0 ? 'bg-white hover:bg-slate-50/60' : 'bg-slate-50/40 hover:bg-slate-50/70'}>
+                        <td className="py-3 px-3 sm:px-5 font-semibold text-slate-900 border-r border-slate-200/80 align-top">
+                          {row.feature || row.label}
+                        </td>
+                        <td className="py-3 px-3 sm:px-5 text-slate-700 leading-relaxed align-top">
+                          {row.details || row.value}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* 2. PROPERLY SEPARATED PRODUCT OVERVIEW & ADVANTAGES */}
+            <div className="max-w-4xl mx-auto">
+              <div className="text-center max-w-2xl mx-auto mb-8">
+                <span className="text-xs font-bold uppercase tracking-wider text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full">
+                  Smart Laundry Solution
+                </span>
+                <h3 className="text-xl sm:text-2xl font-bold text-slate-900 mt-2">
+                  কঠিন লন্ড্রি সমস্যার আধুনিক সমাধান
+                </h3>
+                <p className="text-xs sm:text-sm text-slate-600 mt-1">
+                  ঘামের দুর্গন্ধ কিংবা কঠিন দাগ—Leaf Curt Pods আপনার কাপড়কে রাখে ১০০% পরিষ্কার ও ড্রাম রাখে সুরক্ষিত।
+                </p>
+              </div>
+
+              {/* 3 Highlight Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-emerald-50/60 to-white border border-emerald-100 shadow-2xs">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-lg mb-3">
+                    🌿
+                  </div>
+                  <h4 className="font-bold text-slate-900 text-sm sm:text-base mb-1.5">দুর্গন্ধকে বলুন বিদায়!</h4>
+                  <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+                    উন্নত Odor-Fighting Technology কাপড়ের দুর্গন্ধের মূল কারণ দূর করে পোশাকে এনে দেয় ফ্রেঞ্চ ফ্রেশ সুবাস।
+                  </p>
+                </div>
+
+                <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-sky-50/60 to-white border border-sky-100 shadow-2xs">
+                  <div className="w-10 h-10 rounded-xl bg-sky-100 text-sky-700 flex items-center justify-center font-bold text-lg mb-3">
+                    ✨
+                  </div>
+                  <h4 className="font-bold text-slate-900 text-sm sm:text-base mb-1.5">কঠিন দাগ দূরীকরণ</h4>
+                  <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+                    ৫ ধরনের সক্রিয় এনজাইম কাপড়ের তন্তুর গভীরে প্রবেশ করে তেল, চা ও কালির জেদি দাগ নিমেষেই পরিষ্কার করে।
+                  </p>
+                </div>
+
+                <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-indigo-50/60 to-white border border-indigo-100 shadow-2xs">
+                  <div className="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-lg mb-3">
+                    💧
+                  </div>
+                  <h4 className="font-bold text-slate-900 text-sm sm:text-base mb-1.5">কম পানিতে বেশি পরিষ্কার</h4>
+                  <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+                    সুপার-কনসেন্ট্রেটেড ফর্মুলা পানির অপচয় কমায়, কম ফোম হওয়ায় দ্রুত ধুয়ে যায় এবং ড্রামে কোনো তলানি জমতে দেয় না।
+                  </p>
+                </div>
+              </div>
+
+              {/* 6 Unbeatable Advantages Grid */}
+              <div className="bg-slate-50/80 rounded-2xl p-5 sm:p-7 border border-slate-200">
+                <h4 className="font-bold text-slate-900 text-base sm:text-lg mb-4 text-center">
+                  Leaf Curt পডসের ৬টি অনন্য সুবিধা
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+                  <div className="bg-white p-3.5 rounded-xl border border-slate-200/80 shadow-2xs">
+                    <div className="font-bold text-xs sm:text-sm text-slate-900 mb-1 flex items-center gap-1.5">
+                      <span>🛡️</span> <span>উন্নত হাইজিন ও জীবাণুমুক্ত</span>
+                    </div>
+                    <p className="text-xs text-slate-600">কাপড়ের ব্যাকটেরিয়া ও ক্ষতিকর জীবাণু দূর করে স্বাস্থ্যসম্মত লন্ড্রি নিশ্চিত করে।</p>
+                  </div>
+                  <div className="bg-white p-3.5 rounded-xl border border-slate-200/80 shadow-2xs">
+                    <div className="font-bold text-xs sm:text-sm text-slate-900 mb-1 flex items-center gap-1.5">
+                      <span>🌱</span> <span>গভীর পরিষ্কার, কাপড়ে কোমল</span>
+                    </div>
+                    <p className="text-xs text-slate-600">প্রাকৃতিক বায়ো-এনজাইম কাপড়ের সুতা ও রঙের ক্ষতি না করে নিখুঁতভাবে পরিষ্কার রাখে।</p>
+                  </div>
+                  <div className="bg-white p-3.5 rounded-xl border border-slate-200/80 shadow-2xs">
+                    <div className="font-bold text-xs sm:text-sm text-slate-900 mb-1 flex items-center gap-1.5">
+                      <span>🧪</span> <span>নিরাপদ ও ক্ষতিকর ক্যামিক্যালমুক্ত</span>
+                    </div>
+                    <p className="text-xs text-slate-600">ফসফরাস ও ব্লিচিং এজেন্ট মুক্ত, কাপড়ে ক্ষতিকর রাসায়নিক অবশিষ্টাংশ তৈরি করে না।</p>
+                  </div>
+                  <div className="bg-white p-3.5 rounded-xl border border-slate-200/80 shadow-2xs">
+                    <div className="font-bold text-xs sm:text-sm text-slate-900 mb-1 flex items-center gap-1.5">
+                      <span>🤍</span> <span>ত্বকবান্ধব Neutral pH</span>
+                    </div>
+                    <p className="text-xs text-slate-600">হাতে মৃদু এবং পরিবারের ছোট শিশু ও সংবেদনশীল ত্বকের জন্য সম্পূর্ণ নিরাপদ।</p>
+                  </div>
+                  <div className="bg-white p-3.5 rounded-xl border border-slate-200/80 shadow-2xs">
+                    <div className="font-bold text-xs sm:text-sm text-slate-900 mb-1 flex items-center gap-1.5">
+                      <span>💦</span> <span>সহজে ড্রামে গলে যায়</span>
+                    </div>
+                    <p className="text-xs text-slate-600">১০০% পানিতে দ্রবণীয় জাপানি ফিল্ম—ড্রাম ও পাইপলাইনে কোনো শক্ত তলানি জমতে দেয় না।</p>
+                  </div>
+                  <div className="bg-white p-3.5 rounded-xl border border-slate-200/80 shadow-2xs">
+                    <div className="font-bold text-xs sm:text-sm text-slate-900 mb-1 flex items-center gap-1.5">
+                      <span>📦</span> <span>শক্ত ও টেকসই ডিজাইন</span>
+                    </div>
+                    <p className="text-xs text-slate-600">600N চাপ সহনশীল ফিল্ম হওয়ায় সংরক্ষণ বা ডেলিভারির সময় সহজে ফেটে যায় না।</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
           </div>
+
+          {/* Related / Other Products Section */}
+          {products.filter(p => p.id !== activeProductDetail.id).length > 0 && (
+            <div className="mt-14 pt-10 border-t border-slate-200">
+              <div className="flex items-center justify-between mb-6 sm:mb-8">
+                <div>
+                  <span className="text-xs uppercase tracking-wider font-bold text-sky-600 bg-sky-50 px-3 py-1 rounded-full">
+                    Explore More
+                  </span>
+                  <h2 className="text-xl sm:text-2xl font-bold text-slate-900 mt-2">
+                    সম্পর্কিত অন্যান্য প্রোডাক্টসমূহ
+                  </h2>
+                </div>
+                <button 
+                  onClick={() => {
+                    navigateTo('shop');
+                    navigate('/shop');
+                  }}
+                  className="text-xs sm:text-sm font-semibold text-sky-600 hover:text-sky-700 flex items-center gap-1 group transition cursor-pointer"
+                >
+                  View All <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
+                {products.filter(p => p.id !== activeProductDetail.id).slice(0, 4).map((item) => (
+                  <div 
+                    key={item.id}
+                    onClick={() => openProductDetail(item)}
+                    className="group bg-white rounded-xl sm:rounded-2xl border border-slate-200/80 hover:border-slate-300 p-2.5 sm:p-4 flex flex-col justify-between transition-all duration-300 hover:shadow-lg cursor-pointer"
+                  >
+                    <div>
+                      {/* Product Image */}
+                      <div className="relative aspect-square w-full rounded-lg sm:rounded-xl bg-[#e8f5e9]/20 overflow-hidden mb-2.5 sm:mb-3 flex items-center justify-center">
+                        <img 
+                          src={item.image || item.coverImage || DEFAULT_STORE_FALLBACK_IMAGE} 
+                          alt={item.title}
+                          className="w-4/5 h-4/5 object-contain transition-transform duration-300 group-hover:scale-105"
+                          onError={(e) => {
+                            e.currentTarget.onerror = null;
+                            e.currentTarget.src = DEFAULT_STORE_FALLBACK_IMAGE;
+                          }}
+                        />
+                        {item.discountPercentage && (
+                          <span className="absolute top-2 left-2 bg-rose-600 text-white font-bold text-[9px] sm:text-[10px] px-1.5 py-0.5 rounded shadow-xs">
+                            -{item.discountPercentage}%
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Title */}
+                      <h3 className="font-bold text-xs sm:text-sm text-slate-900 line-clamp-2 group-hover:text-sky-600 transition-colors">
+                        {item.title}
+                      </h3>
+
+                      {/* Price */}
+                      <div className="flex items-baseline gap-1.5 mt-1 sm:mt-1.5">
+                        <span className="text-xs sm:text-sm font-bold text-slate-900">
+                          {formatPrice(item.price)}
+                        </span>
+                        {item.regularPrice && (
+                          <span className="text-[10px] sm:text-xs text-slate-400 line-through">
+                            {formatPrice(item.regularPrice)}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Horizontal Action Buttons */}
+                    <div className="pt-2.5 sm:pt-3 grid grid-cols-2 gap-1 sm:gap-1.5 w-full">
+                      <button 
+                        type="button"
+                        onClick={(e) => { 
+                          e.stopPropagation(); 
+                          handleAddToCart(item); 
+                        }}
+                        className="w-full bg-slate-900 hover:bg-slate-800 text-white py-1.5 sm:py-2 px-1 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-bold tracking-tight uppercase flex items-center justify-center gap-1 transition-all active:scale-95 cursor-pointer shadow-xs"
+                        title="Add to Cart"
+                      >
+                        <ShoppingBag className="w-3 h-3 shrink-0" />
+                        <span className="truncate">Add to Cart</span>
+                      </button>
+                      
+                      <button 
+                        type="button"
+                        onClick={(e) => { 
+                          e.stopPropagation(); 
+                          handleAddToCart(item);
+                          setIsCartOpen(false);
+                          navigateTo('checkout');
+                        }}
+                        className="w-full bg-gradient-to-r from-[#0093d0] to-[#00a651] hover:from-[#0082b8] hover:to-[#008f45] text-white py-1.5 sm:py-2 px-1 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-bold tracking-tight uppercase flex items-center justify-center gap-1 transition-all active:scale-95 cursor-pointer shadow-xs"
+                        title="Buy Now"
+                      >
+                        <Zap className="w-3 h-3 fill-current shrink-0" />
+                        <span className="truncate">Buy Now</span>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
         )
       )}
@@ -2349,39 +2522,43 @@ export default function StorefrontPage({ onGoToLogin, onGoToLanding }: Storefron
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8">
             
             <div className="lg:col-span-3 space-y-6">
-              <div className="bg-white p-5 sm:p-6 border border-slate-200/80 shadow-xs">
-                <h2 className="font-sans text-base sm:text-lg font-bold text-slate-900 mb-3 sm:mb-4 pb-2 border-b border-slate-100">
-                  Shop Categories
-                </h2>
-                
-                <div className="grid grid-cols-2 lg:grid-cols-1 gap-2.5 sm:gap-3">
-                  {shopCategories.map((cat) => (
-                    <label 
-                      key={cat}
-                      className="flex items-center gap-2.5 cursor-pointer text-xs text-slate-700 hover:text-slate-950 select-none"
-                    >
-                      <input 
-                        type="checkbox"
-                        checked={selectedCategoryCheckbox === cat}
-                        onChange={() => {
-                          setSelectedCategoryCheckbox(cat);
-                          setCurrentPage(1);
-                        }}
-                        className="w-4 h-4 rounded text-slate-900 focus:ring-slate-900 border-slate-300 cursor-pointer"
-                      />
-                      <span className="truncate">{cat}</span>
-                    </label>
-                  ))}
+              {/* Shop Categories Filter Card — Only show if real categories exist */}
+              {shopCategories.length > 0 && (
+                <div className="bg-white p-5 sm:p-6 border border-slate-200/80 shadow-xs">
+                  <h2 className="font-sans text-base sm:text-lg font-bold text-slate-900 mb-3 sm:mb-4 pb-2 border-b border-slate-100">
+                    Shop Categories
+                  </h2>
+                  
+                  <div className="grid grid-cols-2 lg:grid-cols-1 gap-2.5 sm:gap-3">
+                    {['All', ...shopCategories].map((cat) => (
+                      <label 
+                        key={cat}
+                        className="flex items-center gap-2.5 cursor-pointer text-xs text-slate-700 hover:text-slate-950 select-none"
+                      >
+                        <input 
+                          type="checkbox"
+                          checked={selectedCategoryCheckbox === cat}
+                          onChange={() => {
+                            setSelectedCategoryCheckbox(cat);
+                            setCurrentPage(1);
+                          }}
+                          className="w-4 h-4 rounded text-slate-900 focus:ring-slate-900 border-slate-300 cursor-pointer"
+                        />
+                        <span className="truncate">{cat}</span>
+                      </label>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
 
-              {shopBrands.length > 1 && (
+              {/* Brands Filter Card — Only show if real brands exist */}
+              {shopBrands.length > 0 && (
                 <div className="bg-white p-5 sm:p-6 border border-slate-200/80 shadow-xs">
                   <h2 className="font-sans text-base sm:text-lg font-bold text-slate-900 mb-3 sm:mb-4 pb-2 border-b border-slate-100">
                     Brands
                   </h2>
                   <div className="grid grid-cols-2 lg:grid-cols-1 gap-2.5 sm:gap-3">
-                    {shopBrands.map((brand: any) => (
+                    {['All', ...shopBrands].map((brand: any) => (
                       <label 
                         key={brand}
                         className="flex items-center gap-2.5 cursor-pointer text-xs text-slate-700 hover:text-slate-950 select-none"
@@ -2449,45 +2626,82 @@ export default function StorefrontPage({ onGoToLogin, onGoToLanding }: Storefron
                 </div>
               </div>
 
-              {/* Product Grid or Empty State (2-cols on mobile, 3-cols on tablet/desktop) */}
+              {/* Product Grid: Zero-Gap Luxury Grid with Hover Selected Border */}
               {paginatedProducts.length > 0 ? (
-                <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-6">
-                  {paginatedProducts.map((product) => (
-                    <div 
-                      key={product.id}
-                      className="group bg-white border border-slate-200/80 hover:shadow-lg transition-all p-2.5 sm:p-3 flex flex-col justify-between"
-                    >
-                      <div className="relative aspect-square w-full bg-[#f6f5f2] overflow-hidden mb-2.5 sm:mb-3 cursor-pointer" onClick={() => openProductDetail(product)}>
-                        <ResponsiveImage width={286} height={286} src={product.coverImage} alt={product.title} 
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                          sizes="(max-width: 640px) 50vw, 33vw"
-                        />
-                      </div>
+                <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 gap-0 border-t border-l border-slate-200/90 rounded-2xl overflow-hidden bg-white shadow-xs">
+                  {paginatedProducts.map((product) => {
+                    const isDiscounted = product.regularPrice && product.regularPrice > product.price;
+                    const discountPct = isDiscounted 
+                      ? Math.round(((product.regularPrice! - product.price) / product.regularPrice!) * 100) 
+                      : 0;
 
-                      <div className="text-center space-y-1 sm:space-y-1.5">
-                        <h4 
-                          onClick={() => openProductDetail(product)}
-                          className="font-sans text-xs sm:text-sm font-medium text-slate-900 hover:text-amber-800 transition-colors cursor-pointer truncate"
-                        >
-                          {product.title}
-                        </h4>
+                    return (
+                      <div 
+                        key={product.id}
+                        onClick={() => openProductDetail(product)}
+                        className="group relative flex flex-col bg-white border-r border-b border-slate-200/90 transition-all duration-200 cursor-pointer hover:z-20 hover:ring-2 hover:ring-[#0093d0] hover:shadow-2xl select-none justify-between"
+                      >
+                        <div className="relative aspect-square w-full bg-[#f8f7f5] overflow-hidden">
+                          <ResponsiveImage width={286} height={286} src={product.coverImage} alt={product.title} 
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
+                            sizes="(max-width: 640px) 50vw, 33vw"
+                          />
 
-                        <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 font-sans text-xs">
-                          <span className="text-rose-600 font-semibold">{formatPrice(product.price)}</span>
-                          {product.regularPrice && (
-                            <span className="text-slate-500 line-through text-[11px] sm:text-xs">{formatPrice(product.regularPrice)}</span>
+                          {isDiscounted && discountPct > 0 && (
+                            <div className="absolute top-2.5 left-2.5 z-10 bg-rose-600 text-white text-[9px] sm:text-[10px] font-black uppercase px-2 py-0.5 rounded-full shadow-md tracking-wider">
+                              SAVE {discountPct}%
+                            </div>
                           )}
                         </div>
 
-                        <button 
-                          onClick={() => handleAddToCart(product)}
-                          className="mt-2 w-full bg-slate-900 hover:bg-slate-800 text-white text-[10px] sm:text-[11px] font-bold py-2 uppercase tracking-wider transition-colors cursor-pointer"
-                        >
-                          ADD TO BAG
-                        </button>
+                        <div className="p-2.5 sm:p-3.5 text-center flex-1 flex flex-col justify-between bg-white">
+                          <div className="space-y-1">
+                            <h4 className="font-sans text-xs sm:text-sm font-semibold text-slate-800 group-hover:text-[#0093d0] transition-colors truncate">
+                              {product.title}
+                            </h4>
+
+                            <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 font-sans text-xs">
+                              <span className="text-slate-900 font-extrabold text-xs sm:text-sm">{formatPrice(product.price)}</span>
+                              {isDiscounted && (
+                                <span className="text-slate-400 line-through text-[11px] sm:text-xs">{formatPrice(product.regularPrice!)}</span>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Horizontal Action Buttons: Add to Cart & Buy Now */}
+                          <div className="pt-2 sm:pt-2.5 grid grid-cols-2 gap-1 sm:gap-1.5 w-full">
+                            <button 
+                              type="button"
+                              onClick={(e) => { 
+                                e.stopPropagation(); 
+                                handleAddToCart(product); 
+                              }}
+                              className="w-full bg-slate-900 hover:bg-slate-800 text-white py-1.5 sm:py-2 px-1 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-bold tracking-tight uppercase flex items-center justify-center gap-1 transition-all active:scale-95 cursor-pointer shadow-xs"
+                              title="Add to Cart"
+                            >
+                              <ShoppingBag className="w-3 h-3 shrink-0" />
+                              <span className="truncate">Add to Cart</span>
+                            </button>
+                            
+                            <button 
+                              type="button"
+                              onClick={(e) => { 
+                                e.stopPropagation(); 
+                                handleAddToCart(product);
+                                setIsCartOpen(false);
+                                navigateTo('checkout');
+                              }}
+                              className="w-full bg-gradient-to-r from-[#0093d0] to-[#00a651] hover:from-[#0082b8] hover:to-[#008f45] text-white py-1.5 sm:py-2 px-1 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-bold tracking-tight uppercase flex items-center justify-center gap-1 transition-all active:scale-95 cursor-pointer shadow-xs"
+                              title="Buy Now"
+                            >
+                              <Zap className="w-3 h-3 fill-current shrink-0" />
+                              <span className="truncate">Buy Now</span>
+                            </button>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               ) : (
                 <div className="bg-white p-12 text-center rounded-2xl border border-slate-200 space-y-4">
@@ -2567,30 +2781,42 @@ export default function StorefrontPage({ onGoToLogin, onGoToLanding }: Storefron
           VIEW 4: DEDICATED ABOUT US PAGE (Exact NeuAura Style & Rich Laundry Pod Content)
           ============================================================ */}
       {activeNav === 'about' && (
-        <AboutUsPage 
-          onNavigateHome={() => navigateTo('home')}
-          onNavigateShop={() => navigateTo('shop')}
-          onNavigateContact={() => navigateTo('contact')}
-          brandName={displayStoreName || 'Leaf Curt'}
-          brandLogo={displayStoreLogo}
-          products={products}
-        />
+        <React.Suspense fallback={
+          <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+            <div className="w-10 h-10 border-4 border-[#004d40] border-t-transparent rounded-full animate-spin"></div>
+          </div>
+        }>
+          <AboutUsPage 
+            onNavigateHome={() => navigateTo('home')}
+            onNavigateShop={() => navigateTo('shop')}
+            onNavigateContact={() => navigateTo('contact')}
+            brandName={displayStoreName || 'Leaf Curt'}
+            brandLogo={displayStoreLogo}
+            products={products}
+          />
+        </React.Suspense>
       )}
 
       {/* ============================================================
           VIEW 5: DEDICATED CHECKOUT PAGE (Exact UX from User Design)
           ============================================================ */}
       {activeNav === 'checkout' && (
-        <CheckoutPage
-          cart={cart}
-          onUpdateQuantity={handleUpdateQuantity}
-          onRemoveItem={handleRemoveFromCart}
-          onClearCart={() => clearCartAction()}
-          ecomSettings={ecomSettings || (DEFAULT_ABOUT_SETTINGS as any)}
-          onNavigateHome={() => navigateTo('home')}
-          onNavigateShop={() => navigateTo('shop')}
-          onOpenLoginModal={onGoToLogin}
-        />
+        <React.Suspense fallback={
+          <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+            <div className="w-10 h-10 border-4 border-[#004d40] border-t-transparent rounded-full animate-spin"></div>
+          </div>
+        }>
+          <CheckoutPage
+            cart={cart}
+            onUpdateQuantity={handleUpdateQuantity}
+            onRemoveItem={handleRemoveFromCart}
+            onClearCart={() => clearCartAction()}
+            ecomSettings={ecomSettings || (DEFAULT_ABOUT_SETTINGS as any)}
+            onNavigateHome={() => navigateTo('home')}
+            onNavigateShop={() => navigateTo('shop')}
+            onOpenLoginModal={onGoToLogin}
+          />
+        </React.Suspense>
       )}
 
       {/* VIEW 6: HOME VIEW (Default Storefront) */}
@@ -2600,7 +2826,7 @@ export default function StorefrontPage({ onGoToLogin, onGoToLanding }: Storefron
               1. FULL-WIDTH DYNAMIC HERO CAROUSEL SLIDER (Admin Panel Dynamic)
               ============================================================ */}
           <section 
-            className="relative w-full overflow-hidden bg-slate-950 text-white select-none min-h-[460px] sm:min-h-[560px] lg:min-h-[640px] xl:min-h-[700px] flex items-center"
+            className="relative z-30 w-full overflow-hidden bg-slate-950 text-white select-none min-h-[460px] sm:min-h-[560px] lg:min-h-[640px] xl:min-h-[700px] flex items-center"
             onMouseEnter={() => setIsSliderPaused(true)}
             onMouseLeave={() => setIsSliderPaused(false)}
           >
@@ -2656,17 +2882,30 @@ export default function StorefrontPage({ onGoToLogin, onGoToLanding }: Storefron
                           <iframe
                             src={`https://www.youtube-nocookie.com/embed/${ytId}?autoplay=1&mute=1&controls=1&loop=1&playlist=${ytId}&playsinline=1&rel=0&modestbranding=1`}
                             title={banner.title || "Hero Video"}
+                            loading="lazy"
                             className="w-full h-full border-0 aspect-video pointer-events-auto"
                             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                             allowFullScreen
                           />
                         ) : directVideoUrl ? (
                           <video
+                            ref={(el) => {
+                              if (el) {
+                                if (isActive) {
+                                  el.play().catch(() => {});
+                                } else {
+                                  el.pause();
+                                  el.currentTime = 0;
+                                }
+                              }
+                            }}
                             autoPlay
-                            loop
+                            loop={activeHeroBanners.length <= 1}
                             muted
                             playsInline
                             preload="auto"
+                            onEnded={handleVideoEnded}
+                            poster={banner.imageUrl || '/authentic/about_hero_pods.png'}
                             className="w-full h-full object-cover pointer-events-auto"
                           >
                             <source src={directVideoUrl} type="video/mp4" />
@@ -2795,29 +3034,35 @@ export default function StorefrontPage({ onGoToLogin, onGoToLanding }: Storefron
                   <ChevronRight className="w-6 h-6" />
                 </button>
 
-                {/* Dot Pagination Indicators (Hidden when video is active) */}
-                {activeHeroBanners[activeSlideIndex]?.mediaType !== 'video' && (
-                  <div className="absolute bottom-5 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2.5">
-                    {activeHeroBanners.map((_, dotIdx) => (
-                      <button
-                        key={dotIdx}
-                        type="button"
-                        onClick={() => setActiveSlideIndex(dotIdx)}
-                        className={`transition-all rounded-full cursor-pointer ${
-                          dotIdx === activeSlideIndex
-                            ? 'w-8 h-2.5 bg-gradient-to-r from-[#0093d0] to-[#00a651] shadow-md'
-                            : 'w-2.5 h-2.5 bg-white/50 hover:bg-white/80'
-                        }`}
-                        aria-label={`Slide ${dotIdx + 1}`}
-                      />
-                    ))}
-                  </div>
-                )}
+                {/* Dot Pagination Indicators (Always visible when multiple banners exist) */}
+                <div className="absolute bottom-5 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/40 backdrop-blur-md border border-white/10 shadow-lg">
+                  {activeHeroBanners.map((b, dotIdx) => (
+                    <button
+                      key={dotIdx}
+                      type="button"
+                      onClick={() => setActiveSlideIndex(dotIdx)}
+                      className={`transition-all rounded-full cursor-pointer flex items-center justify-center ${
+                        dotIdx === activeSlideIndex
+                          ? 'w-8 h-2.5 bg-gradient-to-r from-[#0093d0] to-[#00a651] shadow-md'
+                          : 'w-2.5 h-2.5 bg-white/50 hover:bg-white/80'
+                      }`}
+                      aria-label={`Slide ${dotIdx + 1} (${b.mediaType === 'video' ? 'Video' : 'Image'})`}
+                      title={`Slide ${dotIdx + 1}: ${b.mediaType === 'video' ? 'Video Slide' : 'Image Slide'}`}
+                    />
+                  ))}
+                </div>
               </>
             )}
           </section>
 
-          {/* ============================================================
+          {/* Ambient Rising Soap Bubbles Layer (Floating from bottom to top across all sections below hero slider) */}
+          <AmbientSoapBubbles />
+
+          {/* 2. Brand Partner / Commercial Client Logos Trust Bar */}
+          <BrandLogosSection 
+            settings={ecomSettings?.clientLogos || DEFAULT_CLIENT_LOGOS_SETTINGS}
+          />
+
           {/* ============================================================
               3. EMPTY STATE OR FEATURED PRODUCTS (Dynamic from Admin & DB)
               ============================================================ */}
@@ -2854,9 +3099,9 @@ export default function StorefrontPage({ onGoToLogin, onGoToLanding }: Storefron
           ) : (
             <>
               {/* FEATURED PRODUCTS */}
-              <section className="py-12 sm:py-20 lg:py-24 bg-white border-b border-slate-100">
+              <section className="pt-4 pb-6 sm:pt-6 sm:pb-8 lg:pt-7 lg:pb-8 bg-white border-b border-slate-100">
                 <div className="max-w-7xl mx-auto px-4 sm:px-8">
-                  <div className="text-center max-w-3xl mx-auto mb-10 sm:mb-16">
+                  <div className="text-center max-w-3xl mx-auto mb-5 sm:mb-7">
                     <div className="inline-block relative">
                       <h2 className="font-sans text-2xl sm:text-3xl lg:text-4xl text-slate-900 font-bold tracking-tight pb-1">
                         {ecomSettings?.featuredSectionTitle && ecomSettings.featuredSectionTitle !== `${displayStoreName} Featured Products`
@@ -2900,60 +3145,104 @@ export default function StorefrontPage({ onGoToLogin, onGoToLanding }: Storefron
                         />
                       </svg>
                     </div>
-                    <p className="text-slate-600 text-[11px] sm:text-sm tracking-wider uppercase font-medium mt-3 sm:mt-4">
-                      {ecomSettings?.featuredSectionSubtitle || 'Premium Quality • Verified Assurance • Fast Home Delivery'}
-                    </p>
                   </div>
 
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-3.5 sm:gap-6 lg:gap-8">
-                    {products.slice(0, 6).map((product) => (
-                      <div 
-                        key={product.id}
-                        className="group flex flex-col bg-white rounded-none border border-transparent hover:border-slate-200 transition-all duration-300 p-1.5 sm:p-2"
-                      >
-                        <div className="relative aspect-square w-full bg-[#f6f5f2] rounded-none overflow-hidden mb-2.5 sm:mb-4 cursor-pointer" onClick={() => openProductDetail(product)}>
-                          <img 
-                            loading="lazy" 
-                            decoding="async"
-                            width={286} 
-                            height={286} 
-                            src={optimizeImageUrl(product.coverImage, 400)} 
-                            srcSet={`${optimizeImageUrl(product.coverImage, 360)} 360w, ${optimizeImageUrl(product.coverImage, 600)} 600w`}
-                            sizes="(max-width: 640px) 50vw, 286px"
-                            alt={product.title}
-                            onError={(e) => {
-                              e.currentTarget.onerror = null;
-                              e.currentTarget.src = DEFAULT_PRODUCT_FALLBACK_IMAGE;
-                            }}
-                            className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500"
-                          />
-                          <div className="absolute inset-x-0 bottom-0 p-2 sm:p-3 bg-gradient-to-t from-slate-950/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                            <button 
-                              onClick={(e) => { e.stopPropagation(); handleAddToCart(product); }}
-                              className="w-full bg-white text-slate-950 hover:bg-slate-100 py-1.5 sm:py-2 rounded-none text-[10px] sm:text-xs font-semibold tracking-wider uppercase shadow-md transition-colors"
-                            >
-                              ADD TO BAG
-                            </button>
-                          </div>
-                        </div>
+                  {/* Seamless Zero-Gap Luxury Product Grid with Hover Selected Border */}
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-0 border-t border-l border-slate-200/90 rounded-2xl sm:rounded-3xl overflow-hidden bg-white shadow-sm">
+                    {products.slice(0, 6).map((product) => {
+                      const isDiscounted = product.regularPrice && product.regularPrice > product.price;
+                      const discountPct = isDiscounted 
+                        ? Math.round(((product.regularPrice! - product.price) / product.regularPrice!) * 100) 
+                        : 0;
 
-                        <div className="text-center flex-1 flex flex-col justify-between space-y-1 sm:space-y-1.5">
-                          <h3 
-                            onClick={() => openProductDetail(product)}
-                            className="font-sans text-xs sm:text-base text-slate-900 hover:text-amber-800 transition-colors cursor-pointer font-medium line-clamp-1"
-                          >
-                            {product.title}
-                          </h3>
-                          
-                          <div className="font-sans text-xs sm:text-sm font-semibold text-slate-700">
-                            {formatPrice(product.price)}
+                      return (
+                        <div 
+                          key={product.id}
+                          onClick={() => openProductDetail(product)}
+                          className="group relative flex flex-col bg-white border-r border-b border-slate-200/90 transition-all duration-200 cursor-pointer hover:z-20 hover:ring-2 hover:ring-[#0093d0] hover:shadow-2xl select-none"
+                        >
+                          {/* Aspect-Square Edge-to-Edge Image Container (Zero Gap) */}
+                          <div className="relative aspect-square w-full bg-[#f8f7f5] overflow-hidden">
+                            <img 
+                              loading="lazy" 
+                              decoding="async"
+                              width={380} 
+                              height={380} 
+                              src={optimizeImageUrl(product.coverImage, 400)} 
+                              srcSet={`${optimizeImageUrl(product.coverImage, 360)} 360w, ${optimizeImageUrl(product.coverImage, 600)} 600w`}
+                              sizes="(max-width: 640px) 50vw, 33vw"
+                              alt={product.title}
+                              onError={(e) => {
+                                e.currentTarget.onerror = null;
+                                e.currentTarget.src = DEFAULT_PRODUCT_FALLBACK_IMAGE;
+                              }}
+                              className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500 ease-out"
+                            />
+
+                            {/* Top-Left Discount Badge */}
+                            {isDiscounted && discountPct > 0 && (
+                              <div className="absolute top-2.5 left-2.5 z-10 bg-rose-600 text-white text-[9px] sm:text-[10px] font-black uppercase px-2 py-0.5 rounded-full shadow-md tracking-wider">
+                                SAVE {discountPct}%
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Product Details (Below Image) */}
+                          <div className="p-2.5 sm:p-3.5 text-center flex-1 flex flex-col justify-between bg-white">
+                            <div className="space-y-1">
+                              <h3 className="font-sans text-xs sm:text-sm font-semibold text-slate-800 group-hover:text-[#0093d0] transition-colors line-clamp-1">
+                                {product.title}
+                              </h3>
+                              
+                              <div className="flex items-center justify-center gap-1.5 font-sans">
+                                <span className="text-xs sm:text-sm font-extrabold text-slate-900">
+                                  {formatPrice(product.price)}
+                                </span>
+                                {isDiscounted && (
+                                  <span className="text-[11px] sm:text-xs text-slate-400 line-through font-normal">
+                                    {formatPrice(product.regularPrice!)}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Horizontal Action Buttons: Add to Cart & Buy Now */}
+                            <div className="pt-2 sm:pt-2.5 grid grid-cols-2 gap-1 sm:gap-1.5 w-full">
+                              <button 
+                                type="button"
+                                onClick={(e) => { 
+                                  e.stopPropagation(); 
+                                  handleAddToCart(product); 
+                                }}
+                                className="w-full bg-slate-900 hover:bg-slate-800 text-white py-1.5 sm:py-2 px-1 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-bold tracking-tight uppercase flex items-center justify-center gap-1 transition-all active:scale-95 cursor-pointer shadow-xs"
+                                title="Add to Cart"
+                              >
+                                <ShoppingBag className="w-3 h-3 shrink-0" />
+                                <span className="truncate">Add to Cart</span>
+                              </button>
+                              
+                              <button 
+                                type="button"
+                                onClick={(e) => { 
+                                  e.stopPropagation(); 
+                                  handleAddToCart(product);
+                                  setIsCartOpen(false);
+                                  navigateTo('checkout');
+                                }}
+                                className="w-full bg-gradient-to-r from-[#0093d0] to-[#00a651] hover:from-[#0082b8] hover:to-[#008f45] text-white py-1.5 sm:py-2 px-1 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-bold tracking-tight uppercase flex items-center justify-center gap-1 transition-all active:scale-95 cursor-pointer shadow-xs"
+                                title="Buy Now"
+                              >
+                                <Zap className="w-3 h-3 fill-current shrink-0" />
+                                <span className="truncate">Buy Now</span>
+                              </button>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
 
-                  <div className="flex items-center justify-center mt-8 sm:mt-10">
+                  <div className="flex items-center justify-center mt-5 sm:mt-6">
                     <div 
                       onClick={() => navigateTo('shop')}
                       className="flex items-center gap-2 sm:gap-3 text-slate-900 bg-[#f9f8f6] px-4 sm:px-5 py-2 rounded-full border border-slate-200 cursor-pointer hover:bg-slate-100 transition-colors shadow-xs"
@@ -2965,22 +3254,65 @@ export default function StorefrontPage({ onGoToLogin, onGoToLanding }: Storefron
                 </div>
               </section>
 
+              {/* 4. Interactive Before & After Stain Removal Demonstration */}
+              <BeforeAfterSection 
+                settings={ecomSettings?.beforeAfter || DEFAULT_BEFORE_AFTER_SETTINGS}
+                onNavigateShop={() => navigateTo('shop')}
+              />
+
+              {/* 5. Colorful Smart Comparison Chart: Why Laundry Pods Win vs Powder & Liquid */}
+              <WashingComparisonSection 
+                onNavigateShop={() => navigateTo('shop')}
+                brandName={displayStoreName || 'Leaf Curt'}
+              />
+
               {/* BEST SELLERS SECTION (ALGORITHM-BASED WITH THREE TABS: THIS WEEK / THIS MONTH / ALL TIME) */}
               {/* If no products have sales (total sales is 0), this whole section is completely hidden */}
               {bestSellers.totalSales > 0 && (bestSellers.week.length > 0 || bestSellers.month.length > 0 || bestSellers.all.length > 0) ? (
-                <section className="py-12 sm:py-20 lg:py-24 bg-[#faf8f5] border-b border-slate-200/70">
+                <section className="pt-5 pb-6 sm:pt-7 sm:pb-8 lg:pt-7 lg:pb-8 bg-[#faf8f5] border-b border-slate-200/70">
                   <div className="max-w-7xl mx-auto px-4 sm:px-8">
-                    <div className="text-center mb-8 sm:mb-12">
-                      <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-50 border border-amber-200/70 text-amber-800 text-[11px] sm:text-xs font-semibold uppercase tracking-wider mb-3">
-                        <Flame className="w-3.5 h-3.5 text-amber-600" />
-                        Top Ranked By Sales
+                    <div className="text-center max-w-3xl mx-auto mb-4 sm:mb-6">
+                      <div className="inline-block relative">
+                        <h2 className="font-sans text-xl sm:text-2xl lg:text-3xl text-slate-900 font-bold tracking-tight pb-1">
+                          {ecomSettings?.bestSellersSectionSubtitle || ecomSettings?.bundlesSectionSubtitle || 'Discover our top-performing products ranked by customer orders'}
+                        </h2>
+                        {/* Hand-drawn colorful curved underline */}
+                        <svg 
+                          className="w-full h-3.5 sm:h-5 max-w-[280px] sm:max-w-[340px] mx-auto mt-0.5 overflow-visible" 
+                          viewBox="0 0 250 20" 
+                          fill="none" 
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <defs>
+                            <linearGradient id="bestSellersCurveGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                              <stop offset="0%" stopColor="#0284c7" />
+                              <stop offset="25%" stopColor="#06b6d4" />
+                              <stop offset="55%" stopColor="#8b5cf6" />
+                              <stop offset="80%" stopColor="#ec4899" />
+                              <stop offset="100%" stopColor="#f59e0b" />
+                            </linearGradient>
+                            <filter id="curveSoftGlowBS" x="-10%" y="-10%" width="120%" height="120%">
+                              <feGaussianBlur stdDeviation="1.5" result="glow" />
+                              <feComposite in="SourceGraphic" in2="glow" operator="over" />
+                            </filter>
+                          </defs>
+                          {/* Playful, organic hand-drawn curved stroke */}
+                          <path 
+                            d="M6 13 C 48 4, 96 16, 146 9 C 184 3.5, 218 7, 244 11" 
+                            stroke="url(#bestSellersCurveGradient)" 
+                            strokeWidth="3.5" 
+                            strokeLinecap="round" 
+                            filter="url(#curveSoftGlowBS)"
+                          />
+                          <path 
+                            d="M18 16 C 62 8, 112 17, 162 11 C 196 6.5, 222 9, 238 12" 
+                            stroke="url(#bestSellersCurveGradient)" 
+                            strokeWidth="1.8" 
+                            strokeLinecap="round" 
+                            opacity="0.85"
+                          />
+                        </svg>
                       </div>
-                      <h2 className="font-sans text-2xl sm:text-3xl lg:text-4xl text-slate-900 font-semibold tracking-tight mb-2">
-                        {ecomSettings?.bestSellersSectionTitle || ecomSettings?.bundlesSectionTitle || 'Best Sellers'}
-                      </h2>
-                      <p className="text-slate-600 text-[11px] sm:text-sm tracking-wide font-normal max-w-xl mx-auto">
-                        {ecomSettings?.bestSellersSectionSubtitle || ecomSettings?.bundlesSectionSubtitle || 'Discover our top-performing products ranked by customer orders'}
-                      </p>
                     </div>
 
                     {/* 3 Tabs: This Week / This Month / All Time */}
@@ -3082,13 +3414,34 @@ export default function StorefrontPage({ onGoToLogin, onGoToLanding }: Storefron
                                 )}
                               </div>
 
-                              <button 
-                                onClick={() => handleAddToCart(product)}
-                                className="mt-2 sm:mt-3 w-full bg-slate-900 hover:bg-slate-800 text-white text-[11px] sm:text-xs font-semibold py-2 sm:py-2.5 uppercase tracking-wider transition-colors flex items-center justify-center gap-1.5"
-                              >
-                                <ShoppingBag className="w-3.5 h-3.5" />
-                                ADD TO BAG
-                              </button>
+                              <div className="mt-2 sm:mt-3 grid grid-cols-2 gap-1 sm:gap-1.5 w-full">
+                                <button 
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleAddToCart(product);
+                                  }}
+                                  className="w-full bg-slate-900 hover:bg-slate-800 text-white py-1.5 sm:py-2 px-1 rounded-lg text-[10px] sm:text-xs font-bold tracking-tight uppercase flex items-center justify-center gap-1 transition-all active:scale-95 cursor-pointer shadow-xs"
+                                  title="Add to Cart"
+                                >
+                                  <ShoppingBag className="w-3 h-3 shrink-0" />
+                                  <span className="truncate">Add to Cart</span>
+                                </button>
+                                <button 
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleAddToCart(product);
+                                    setIsCartOpen(false);
+                                    navigateTo('checkout');
+                                  }}
+                                  className="w-full bg-gradient-to-r from-[#0093d0] to-[#00a651] hover:from-[#0082b8] hover:to-[#008f45] text-white py-1.5 sm:py-2 px-1 rounded-lg text-[10px] sm:text-xs font-bold tracking-tight uppercase flex items-center justify-center gap-1 transition-all active:scale-95 cursor-pointer shadow-xs"
+                                  title="Buy Now"
+                                >
+                                  <Zap className="w-3 h-3 fill-current shrink-0" />
+                                  <span className="truncate">Buy Now</span>
+                                </button>
+                              </div>
                             </div>
                           </div>
                         ))}
@@ -3513,20 +3866,39 @@ export default function StorefrontPage({ onGoToLogin, onGoToLanding }: Storefron
           })()}
 
           {/* ============================================================
-              DYNAMIC HOMEPAGE SECTIONS (100% Admin Configurable)
+              DYNAMIC HOMEPAGE SOCIAL PROOF & TRUST SECTIONS
               ============================================================ */}
 
+          {/* 7. Real Customer Photo Reviews Gallery */}
+          <PhotoReviewsSection 
+            settings={ecomSettings?.photoReviews || DEFAULT_PHOTO_REVIEWS_SETTINGS}
+          />
 
-
-
-
-          {/* 5. Video Reviews Reel ("Hear it from the people who wash") */}
+          {/* 8. Video Reviews Reel ("Hear it from the people who wash") */}
           <VideoReviewsSection 
             settings={ecomSettings?.videoReviews}
+            products={products}
+            onAddToCart={handleAddToCart}
+            onBuyNow={(prod, qty) => {
+              handleAddToCart(prod, qty);
+              setIsCartOpen(false);
+              navigateTo('checkout');
+            }}
+            onSelectProduct={(prod) => {
+              setActiveProductDetail(prod as StoreProductItem);
+              navigate(`/product/${getProductSlug(prod)}`);
+              scrollToTop();
+            }}
+            formatPrice={formatPrice}
             onNavigateShop={() => navigateTo('shop')}
           />
 
-          {/* 6. Frequently Asked Questions Accordion */}
+          {/* 9. Verified Customer Testimonials Carousel */}
+          <CustomerTestimonialsSection 
+            settings={ecomSettings?.testimonials || DEFAULT_TESTIMONIAL_SETTINGS}
+          />
+
+          {/* 10. Frequently Asked Questions Accordion */}
           <FaqSection 
             settings={ecomSettings?.faqs}
           />
@@ -3537,35 +3909,47 @@ export default function StorefrontPage({ onGoToLogin, onGoToLanding }: Storefron
 
       {/* VIEW 8: BLOG DIRECTORY */}
       {activeNav === 'blog' && (
-        <BlogPage 
-          posts={ecomSettings?.blogPosts || []}
-          onSelectPost={(post) => {
-            setSelectedBlogSlug(post.slug);
-            setActiveNav('blog_post');
-            navigate(`/blogs/news/${post.slug}`);
-            scrollToTop();
-          }}
-          onNavigateHome={() => navigateTo('home')}
-        />
+        <React.Suspense fallback={
+          <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+            <div className="w-10 h-10 border-4 border-[#004d40] border-t-transparent rounded-full animate-spin"></div>
+          </div>
+        }>
+          <BlogPage 
+            posts={ecomSettings?.blogPosts || []}
+            onSelectPost={(post) => {
+              setSelectedBlogSlug(post.slug);
+              setActiveNav('blog_post');
+              navigate(`/blogs/news/${post.slug}`);
+              scrollToTop();
+            }}
+            onNavigateHome={() => navigateTo('home')}
+          />
+        </React.Suspense>
       )}
 
       {/* VIEW 9: SINGLE BLOG POST DETAIL */}
       {activeNav === 'blog_post' && activeBlogPost && (
-        <BlogPostPage 
-          post={activeBlogPost}
-          allPosts={ecomSettings?.blogPosts || []}
-          onNavigateBlog={() => {
-            setActiveNav('blog');
-            navigate('/blogs/news');
-            scrollToTop();
-          }}
-          onSelectPost={(post) => {
-            setSelectedBlogSlug(post.slug);
-            navigate(`/blogs/news/${post.slug}`);
-            scrollToTop();
-          }}
-          onNavigateHome={() => navigateTo('home')}
-        />
+        <React.Suspense fallback={
+          <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+            <div className="w-10 h-10 border-4 border-[#004d40] border-t-transparent rounded-full animate-spin"></div>
+          </div>
+        }>
+          <BlogPostPage 
+            post={activeBlogPost}
+            allPosts={ecomSettings?.blogPosts || []}
+            onNavigateBlog={() => {
+              setActiveNav('blog');
+              navigate('/blogs/news');
+              scrollToTop();
+            }}
+            onSelectPost={(post) => {
+              setSelectedBlogSlug(post.slug);
+              navigate(`/blogs/news/${post.slug}`);
+              scrollToTop();
+            }}
+            onNavigateHome={() => navigateTo('home')}
+          />
+        </React.Suspense>
       )}
 
       {/* ============================================================
@@ -3668,56 +4052,31 @@ export default function StorefrontPage({ onGoToLogin, onGoToLanding }: Storefron
             <div className="w-screen max-w-full sm:max-w-md bg-white shadow-2xl flex flex-col">
               
               {/* Header */}
-              <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-                <h3 className="font-sans text-xl font-bold text-[#081d34]">
-                  Your cart
-                </h3>
+              <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/40">
+                <div className="flex items-center gap-2.5">
+                  <h3 className="font-sans text-xl font-bold text-[#081d34]">
+                    Your cart
+                  </h3>
+                  {totalCartCount > 0 && (
+                    <span className="px-2.5 py-0.5 text-xs font-bold rounded-full bg-purple-100 text-[#7c3aed]">
+                      {totalCartCount} {totalCartCount === 1 ? 'item' : 'items'}
+                    </span>
+                  )}
+                </div>
                 <button 
                   onClick={() => setIsCartOpen(false)} 
-                  className="text-slate-400 hover:text-slate-800 p-1 cursor-pointer transition"
+                  className="w-8 h-8 rounded-full hover:bg-slate-200/70 text-slate-400 hover:text-slate-800 flex items-center justify-center cursor-pointer transition-colors"
                   aria-label="Close cart"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
 
-              {/* Free Shipping Dynamic Progress Goal Bar */}
-              {(() => {
-                const threshold = ecomSettings?.freeDeliveryMinPurchase || 450;
-                const remaining = Math.max(0, threshold - cartSubtotal);
-                const progressPct = Math.min(100, Math.round((cartSubtotal / threshold) * 100));
-                const isUnlocked = cartSubtotal >= threshold;
-                return (
-                  <div className="px-6 pt-3 pb-2 border-b border-slate-100 space-y-1.5">
-                    <div className="flex items-center justify-between text-xs font-semibold text-slate-800">
-                      <span className="flex items-center gap-1.5">
-                        <Truck className="w-4 h-4 text-[#7c3aed] shrink-0" />
-                        {isUnlocked ? (
-                          <span className="text-emerald-700 font-bold">🎉 You've unlocked FREE shipping!</span>
-                        ) : (
-                          <span>You're <strong className="text-[#7c3aed] font-extrabold">{formatPrice(remaining)}</strong> away from free shipping!</span>
-                        )}
-                      </span>
-                    </div>
-
-                    {/* Progress Bar Track with Purple Circle Thumb Dot */}
-                    <div className="w-full bg-slate-100 rounded-full h-2 relative mt-2">
-                      <div 
-                        className="h-full bg-[#7c3aed] rounded-full transition-all duration-300 relative"
-                        style={{ width: `${Math.max(3, progressPct)}%` }}
-                      >
-                        <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 w-3.5 h-3.5 rounded-full bg-[#7c3aed] border-2 border-white shadow-xs" />
-                      </div>
-                    </div>
-
-                    {/* Table Column Headers */}
-                    <div className="flex items-center justify-between text-[11px] font-bold text-slate-400 uppercase tracking-wider pt-2">
-                      <span>PRODUCT</span>
-                      <span>TOTAL</span>
-                    </div>
-                  </div>
-                );
-              })()}
+              {/* Table Column Headers */}
+              <div className="px-6 py-2.5 border-b border-slate-100 flex items-center justify-between text-[11px] font-bold text-slate-400 uppercase tracking-wider bg-slate-50/50">
+                <span>PRODUCT</span>
+                <span>TOTAL</span>
+              </div>
 
               {/* Cart Body */}
               <div className="flex-1 overflow-y-auto px-6 py-2 space-y-4">
@@ -3967,19 +4326,17 @@ export default function StorefrontPage({ onGoToLogin, onGoToLanding }: Storefron
 
               {/* Footer & Checkout */}
               {cart.length > 0 && (
-                <div className="p-5 sm:p-6 bg-white border-t border-slate-200 space-y-3 shadow-lg">
+                <div className="p-5 sm:p-6 bg-white border-t border-slate-200 space-y-3.5 shadow-xl">
                   {/* Estimated total */}
                   <div className="flex items-center justify-between text-sm sm:text-base">
-                    <span className="font-bold text-slate-900">Estimated total</span>
-                    <span className="font-extrabold text-slate-900 font-sans text-base sm:text-lg">
+                    <div>
+                      <span className="font-bold text-slate-900 block leading-tight">Estimated total</span>
+                      <span className="text-[11px] text-slate-400">VAT & Taxes included</span>
+                    </div>
+                    <span className="font-extrabold text-[#7c3aed] font-sans text-lg sm:text-xl">
                       {formatPrice(cartSubtotal)}
                     </span>
                   </div>
-
-                  {/* Taxes & shipping disclaimer */}
-                  <p className="text-[11px] text-slate-500 text-center">
-                    Taxes, discounts and <span className="underline cursor-pointer text-slate-700 font-medium">shipping</span> calculated at checkout.
-                  </p>
 
                   {/* Check out CTA Button */}
                   <button 
@@ -4005,10 +4362,27 @@ export default function StorefrontPage({ onGoToLogin, onGoToLanding }: Storefron
                       setIsCartOpen(false);
                       navigateTo('checkout');
                     }}
-                    className="w-full py-3.5 px-4 bg-[#7c3aed] hover:bg-[#6d28d9] active:scale-[0.99] text-white font-bold text-sm sm:text-base rounded-xl transition shadow-md shadow-purple-600/20 cursor-pointer flex items-center justify-center gap-2"
+                    className="group w-full py-3.5 px-5 bg-gradient-to-r from-[#7c3aed] to-[#6d28d9] hover:from-[#6d28d9] hover:to-[#5b21b6] active:scale-[0.99] text-white font-bold text-sm sm:text-base rounded-2xl transition-all shadow-lg shadow-purple-600/25 cursor-pointer flex items-center justify-center gap-2"
                   >
                     <span>Check out</span>
+                    <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                   </button>
+
+                  {/* Trust Assurances */}
+                  <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-100 text-center text-[10px] sm:text-[11px] text-slate-600 font-medium">
+                    <div className="flex items-center justify-center gap-1">
+                      <span className="text-xs">🛡️</span>
+                      <span>১০০% অরিজিনাল</span>
+                    </div>
+                    <div className="flex items-center justify-center gap-1 border-x border-slate-200 px-1">
+                      <span className="text-xs">🚚</span>
+                      <span>ক্যাশ অন ডেলিভারি</span>
+                    </div>
+                    <div className="flex items-center justify-center gap-1">
+                      <span className="text-xs">⚡</span>
+                      <span>দ্রুততম ডেলিভারি</span>
+                    </div>
+                  </div>
                 </div>
               )}
 
@@ -4300,6 +4674,98 @@ export default function StorefrontPage({ onGoToLogin, onGoToLanding }: Storefron
         message={feedback.message}
         onClose={() => setFeedback(prev => ({ ...prev, isOpen: false }))}
       />
+
+      {/* ============================================================
+          MOBILE STICKY BOTTOM NAVIGATION BAR (Thumb Zone UX)
+          ============================================================ */}
+      {activeNav !== 'checkout' && (
+        <nav 
+          aria-label="Mobile Navigation"
+          className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200/90 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] px-2 py-1.5 pb-[calc(env(safe-area-inset-bottom)+6px)] flex items-center justify-around select-none"
+        >
+          {/* Home Tab */}
+          <button
+            type="button"
+            onClick={() => {
+              if (activeNav === 'home') {
+                scrollToTop();
+              } else {
+                navigateTo('home');
+              }
+            }}
+            className={`flex flex-col items-center justify-center flex-1 py-1 px-1 transition-colors cursor-pointer ${
+              activeNav === 'home' ? 'text-[#0093d0]' : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <div className={`p-1 rounded-full transition-transform active:scale-90 ${activeNav === 'home' ? 'bg-[#0093d0]/10' : ''}`}>
+              <Sun className="w-5 h-5" />
+            </div>
+            <span className="text-[10px] font-semibold mt-0.5 tracking-tight">Home</span>
+          </button>
+
+          {/* Shop Tab */}
+          <button
+            type="button"
+            onClick={() => navigateTo('shop')}
+            className={`flex flex-col items-center justify-center flex-1 py-1 px-1 transition-colors cursor-pointer ${
+              activeNav === 'shop' ? 'text-[#0093d0]' : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <div className={`p-1 rounded-full transition-transform active:scale-90 ${activeNav === 'shop' ? 'bg-[#0093d0]/10' : ''}`}>
+              <ShoppingBag className="w-5 h-5" />
+            </div>
+            <span className="text-[10px] font-semibold mt-0.5 tracking-tight">Shop</span>
+          </button>
+
+          {/* Call / WhatsApp Hotline Tab */}
+          <a
+            href={`tel:${(displayPhone || '01635311494').replace(/\s+/g, '')}`}
+            className="flex flex-col items-center justify-center flex-1 py-1 px-1 text-slate-600 hover:text-emerald-600 transition-colors cursor-pointer"
+          >
+            <div className="p-1 rounded-full transition-transform active:scale-90 text-emerald-600">
+              <Phone className="w-5 h-5" />
+            </div>
+            <span className="text-[10px] font-semibold mt-0.5 tracking-tight">Call</span>
+          </a>
+
+          {/* Customer Track Tab */}
+          <button
+            type="button"
+            onClick={() => {
+              if (onGoToLogin) {
+                onGoToLogin();
+              } else {
+                navigate('/login');
+              }
+            }}
+            className="flex flex-col items-center justify-center flex-1 py-1 px-1 text-slate-600 hover:text-slate-900 transition-colors cursor-pointer"
+          >
+            <div className="p-1 rounded-full transition-transform active:scale-90">
+              <Truck className="w-5 h-5" />
+            </div>
+            <span className="text-[10px] font-semibold mt-0.5 tracking-tight">Track</span>
+          </button>
+
+          {/* Cart Tab with Live Badge */}
+          <button
+            type="button"
+            onClick={() => setIsCartOpen(true)}
+            className="relative flex flex-col items-center justify-center flex-1 py-1 px-1 text-slate-600 hover:text-slate-900 transition-colors cursor-pointer"
+          >
+            <div className="relative p-1 rounded-full transition-transform active:scale-90">
+              <ShoppingBag className="w-5 h-5 text-slate-800" />
+              {totalCartCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 bg-rose-600 text-white text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center shadow-md animate-bounce">
+                  {totalCartCount > 99 ? '99+' : totalCartCount}
+                </span>
+              )}
+            </div>
+            <span className="text-[10px] font-bold text-slate-900 mt-0.5 tracking-tight">
+              {totalCartCount > 0 ? formatPrice(cartSubtotal) : 'Bag'}
+            </span>
+          </button>
+        </nav>
+      )}
 
     </div>
   );

@@ -15,7 +15,7 @@ const limit: any = () => null;
 const startAfter: any = () => null;
 const deleteField: any = () => null;
 const onSnapshot: any = () => () => {};
-import { BookOrder, Product, EcomSettings, Customer, PaymentGatewayItem, DeliveryMethodItem, Coupon, LandingPageData, InstituteInfo, Review, Brand, ContactMessage, AbandonedCart, AbandonedCartItem, AbandonedCartMetrics, VideoReviewsSettings, VideoReviewItem } from '../types';
+import { BookOrder, Product, EcomSettings, Customer, PaymentGatewayItem, DeliveryMethodItem, Coupon, LandingPageData, InstituteInfo, Review, Brand, ContactMessage, AbandonedCart, AbandonedCartItem, AbandonedCartMetrics, VideoReviewsSettings, VideoReviewItem, HeroBannerItem } from '../types';
 import { ApiClient } from '../services/apiClient';
 
 function stripIntegrationSecrets(settings: EcomSettings): EcomSettings {
@@ -694,6 +694,16 @@ export const dbService = {
       return this._ordersCache.data;
     }
 
+    const deduplicate = (list: BookOrder[]): BookOrder[] => {
+      const seen = new Set<string>();
+      return list.filter(o => {
+        if (!o.id) return true;
+        if (seen.has(o.id)) return false;
+        seen.add(o.id);
+        return true;
+      });
+    };
+
     if (isFirebaseEnabled && db) {
       try {
         const querySnapshot = await getDocs(collection(db, 'book_orders'));
@@ -704,8 +714,9 @@ export const dbService = {
             orders.push({ ...data, id: docSnap.id });
           }
         });
-        setLocalData('noor_book_orders', orders);
-        const sortedOrders = orders.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        const dedupedOrders = deduplicate(orders);
+        setLocalData('noor_book_orders', dedupedOrders);
+        const sortedOrders = dedupedOrders.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
         this._ordersCache = { data: sortedOrders, timestamp: Date.now() };
         return sortedOrders;
       } catch (error) {
@@ -721,8 +732,9 @@ export const dbService = {
       if (res.ok) {
         const serverOrders = await res.json();
         if (Array.isArray(serverOrders)) {
-          setLocalData('noor_book_orders', serverOrders);
-          const sorted = serverOrders.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+          const deduped = deduplicate(serverOrders);
+          setLocalData('noor_book_orders', deduped);
+          const sorted = deduped.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
           this._ordersCache = { data: sorted, timestamp: Date.now() };
           return sorted;
         }
@@ -731,7 +743,8 @@ export const dbService = {
       console.warn('Failed to fetch orders from server API:', err);
     }
 
-    const orders = getLocalData<BookOrder[]>('noor_book_orders', []).filter(o => o.id !== 'ORD-2026-001');
+    const orders = deduplicate(getLocalData<BookOrder[]>('noor_book_orders', []).filter(o => o.id !== 'ORD-2026-001'));
+    setLocalData('noor_book_orders', orders);
     return orders.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   },
 
@@ -747,14 +760,17 @@ export const dbService = {
       order.createdAt = new Date().toISOString();
     }
 
-    try {
-      await fetch('/api/orders', {
-        method: 'POST',
-        headers: getAdminAuthHeaders(),
-        body: JSON.stringify(order)
-      });
-    } catch (e) {
-      console.warn('Failed saving order to server API:', e);
+    const alreadyExists = orders.some(o => o.id === order.id);
+    if (!alreadyExists) {
+      try {
+        await fetch('/api/orders', {
+          method: 'POST',
+          headers: getAdminAuthHeaders(),
+          body: JSON.stringify(order)
+        });
+      } catch (e) {
+        console.warn('Failed saving order to server API:', e);
+      }
     }
 
     if (isFirebaseEnabled && db) {
@@ -798,8 +814,60 @@ export const dbService = {
     return order;
   },
 
+  async saveBookOrderLocally(order: BookOrder): Promise<BookOrder> {
+    const orders = await this.getBookOrders();
+    this._ordersCache = null; // invalidate cache
+    if (!order.id) {
+      const year = new Date().getFullYear();
+      const num = orders.length + 1001;
+      order.id = `ORD-${year}-${num}`;
+    }
+    if (!order.createdAt) {
+      order.createdAt = new Date().toISOString();
+    }
+
+    if (isFirebaseEnabled && db) {
+      try {
+        const sanitized = sanitizeForFirestore(order);
+        await setDoc(doc(db, 'book_orders', order.id), sanitized, { merge: true });
+      } catch (error) {
+        handleFirestoreError(error, OperationType.CREATE, `book_orders/${order.id}`);
+      }
+    }
+
+    const updated = [order, ...orders.filter(o => o.id !== order.id)];
+    setLocalData('noor_book_orders', updated);
+
+    if (order.phone) {
+      try {
+        const cleanPhone = (order.phone || '').replace(/\D/g, '');
+        const currentCarts = getLocalData<AbandonedCart[]>('noor_abandoned_carts', []);
+        let cartMatched = false;
+        const updatedCarts = currentCarts.map(c => {
+          if ((c.customerPhone || '').replace(/\D/g, '') === cleanPhone && c.status === 'abandoned') {
+            cartMatched = true;
+            return {
+              ...c,
+              status: 'self_recovered' as const,
+              recoveredOrderId: order.id,
+              recoveredAt: new Date().toISOString()
+            };
+          }
+          return c;
+        });
+        if (cartMatched) {
+          setLocalData('noor_abandoned_carts', updatedCarts);
+          window.dispatchEvent(new Event('abandoned-carts-updated'));
+        }
+      } catch {}
+    }
+
+    window.dispatchEvent(new Event('book-orders-updated'));
+    return order;
+  },
+
   async saveBookOrder(order: BookOrder): Promise<BookOrder> {
-    return this.addBookOrder(order);
+    return this.saveBookOrderLocally(order);
   },
 
   async updateBookOrder(order: BookOrder): Promise<BookOrder> {
@@ -1705,19 +1773,15 @@ export const dbService = {
       const res = await fetch('/api/brands', { cache: 'no-cache' });
       if (res.ok) {
         const serverBrands = await res.json();
-        if (Array.isArray(serverBrands) && serverBrands.length > 0) {
+        if (Array.isArray(serverBrands)) {
           setLocalData('noor_brands', serverBrands);
           return serverBrands;
         }
       }
     } catch {}
 
-    const list = getLocalData<Brand[]>('noor_brands', DEFAULT_BRANDS);
-    if (!list || list.length === 0) {
-      setLocalData('noor_brands', DEFAULT_BRANDS);
-      return DEFAULT_BRANDS;
-    }
-    return list;
+    const list = getLocalData<Brand[]>('noor_brands', []);
+    return list || [];
   },
 
   async saveBrand(brand: Brand): Promise<Brand> {
@@ -2135,6 +2199,36 @@ export const dbService = {
     } catch {
       await this.saveEcomSettings({ videoReviews: settings });
     }
+  },
+
+  async getSliders(): Promise<{ heroBanners: HeroBannerItem[]; heroSliderInterval: number; heroVideoInterval: number }> {
+    try {
+      const res = await ApiClient.getSliders();
+      if (res && res.heroBanners) {
+        return {
+          heroBanners: res.heroBanners,
+          heroSliderInterval: res.heroSliderInterval || 5,
+          heroVideoInterval: res.heroVideoInterval || 10
+        };
+      }
+    } catch {
+      // Fallback
+    }
+    const s = await this.getEcomSettings();
+    return {
+      heroBanners: s.heroBanners || [],
+      heroSliderInterval: s.heroSliderInterval || 5,
+      heroVideoInterval: s.heroVideoInterval || 10
+    };
+  },
+
+  async saveSliders(payload: { heroBanners?: HeroBannerItem[]; heroSliderInterval?: number; heroVideoInterval?: number }): Promise<void> {
+    try {
+      await ApiClient.saveSliders(payload);
+    } catch {
+      await this.saveEcomSettings(payload);
+    }
+    window.dispatchEvent(new Event('ecom-settings-updated'));
   }
 };
 

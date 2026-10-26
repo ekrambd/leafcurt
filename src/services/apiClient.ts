@@ -1,4 +1,4 @@
-import { Product, BookOrder, EcomSettings, VideoReviewItem, VideoReviewsSettings } from '../types';
+import { Product, BookOrder, EcomSettings, VideoReviewItem, VideoReviewsSettings, HeroBannerItem } from '../types';
 //mycomment
 export class ApiClient {
   private static async request<T>(endpoint: string, options?: RequestInit): Promise<T> {
@@ -225,6 +225,38 @@ export class ApiClient {
 
   static deleteVideoReview(id: string): Promise<{ success: boolean; settings: VideoReviewsSettings }> {
     return this.request<{ success: boolean; settings: VideoReviewsSettings }>(`/video-reviews/${id}`, {
+      method: 'DELETE'
+    });
+  }
+
+  // Hero Slider & Video Endpoints
+  static getSliders(): Promise<{ success: boolean; heroBanners: HeroBannerItem[]; heroSliderInterval: number; heroVideoInterval: number }> {
+    return this.request<{ success: boolean; heroBanners: HeroBannerItem[]; heroSliderInterval: number; heroVideoInterval: number }>('/sliders');
+  }
+
+  static saveSliders(payload: { heroBanners?: HeroBannerItem[]; heroSliderInterval?: number; heroVideoInterval?: number }): Promise<{ success: boolean; heroBanners: HeroBannerItem[]; heroSliderInterval: number; heroVideoInterval: number }> {
+    return this.request('/sliders', {
+      method: 'PUT',
+      body: JSON.stringify(payload)
+    });
+  }
+
+  static addSlider(banner: Partial<HeroBannerItem>): Promise<{ success: boolean; item: HeroBannerItem; heroBanners: HeroBannerItem[] }> {
+    return this.request('/sliders', {
+      method: 'POST',
+      body: JSON.stringify(banner)
+    });
+  }
+
+  static updateSlider(banner: HeroBannerItem): Promise<{ success: boolean; item: HeroBannerItem; heroBanners: HeroBannerItem[] }> {
+    return this.request(`/sliders/${banner.id}`, {
+      method: 'PUT',
+      body: JSON.stringify(banner)
+    });
+  }
+
+  static deleteSlider(id: string): Promise<{ success: boolean; heroBanners: HeroBannerItem[] }> {
+    return this.request(`/sliders/${id}`, {
       method: 'DELETE'
     });
   }

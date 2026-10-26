@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { 
   ShoppingBag, ExternalLink, Search, Filter, Plus, Phone, MapPin, Calendar, 
   CheckCircle, Clock, Truck, XCircle, Trash2, Edit3, Printer, 
@@ -220,7 +220,7 @@ export default function OrderManager({
 }: OrderManagerProps) {
   // Filters & Search
   const [searchTerm, setSearchTerm] = useState('');
-  const [typeFilter, setTypeFilter] = useState<'all' | 'landing' | 'physical' | 'store'>('all');
+  const [typeFilter, setTypeFilter] = useState<'all' | 'landing' | 'website'>('all');
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
@@ -289,11 +289,11 @@ export default function OrderManager({
     price: 0,
     deliveryCharge: 0,
     quantity: 1,
-    orderType: 'physical' as 'physical' | 'landing' | 'store',
+    orderType: 'website' as 'website' | 'landing',
     status: 'Confirmed' as BookOrder['status'],
     notes: ''
   });
-  const { ecomSettings, instituteInfo } = useAppStore();
+  const { ecomSettings, instituteInfo, setEcomSettings, setInstituteInfo } = useAppStore();
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [viewingOrder, setViewingOrder] = useState<BookOrder | null>(null);
   const [invoiceModalOrder, setInvoiceModalOrder] = useState<BookOrder | null>(null);
@@ -356,20 +356,23 @@ export default function OrderManager({
 
     const loadInvoiceBrand = async () => {
       try {
-        const [ecomSettings, instituteInfo] = await Promise.all([
+        const [loadedSettings, loadedInfo] = await Promise.all([
           dbService.getEcomSettings(),
           dbService.getInstituteInfo()
         ]);
 
         if (!mounted) return;
 
+        if (loadedSettings) setEcomSettings(loadedSettings);
+        if (loadedInfo) setInstituteInfo(loadedInfo);
+
         setInvoiceBrand({
-          name: ecomSettings.storeName || instituteInfo?.name || 'Store',
-          tagline: ecomSettings.storeTagline || instituteInfo?.description || 'Premium Quality Online Shopping',
-          phone: instituteInfo?.phone || '',
-          email: instituteInfo?.email || 'support@store.com',
-          website: (typeof window !== 'undefined' ? window.location.hostname : 'www.store.com'),
-          logo: ecomSettings.storeLogo || ''
+          name: loadedSettings?.companyName || loadedSettings?.storeName || loadedInfo?.name || 'Leaf Curt',
+          tagline: loadedSettings?.storeTagline || loadedInfo?.description || 'Premium Quality Online Shopping',
+          phone: loadedSettings?.contactPhone || loadedInfo?.phone || '01635311494',
+          email: loadedSettings?.contactEmail || loadedInfo?.email || 'armtrading16@gmail.com',
+          website: loadedSettings?.storeDomain || (typeof window !== 'undefined' ? window.location.hostname : 'leafcurt.com'),
+          logo: loadedSettings?.storeLogo || loadedInfo?.logo || '/uploads/file-1792735476267-28104613.webp'
         });
       } catch (err) {
         console.warn('Failed to load invoice brand data:', err);
@@ -400,7 +403,7 @@ export default function OrderManager({
       couponCode: order.couponCode || '',
       luckyCouponCode: order.luckyCouponCode || '',
       discountAmount: order.discountAmount || 0,
-      orderType: order.orderType || 'physical',
+      orderType: order.orderType === 'landing' ? 'landing' : 'website',
       status: order.status || 'Confirmed',
       notes: order.notes || ''
     } as any);
@@ -453,8 +456,19 @@ export default function OrderManager({
     }
   };
 
+  // Deduplicate orders by ID
+  const uniqueOrders = useMemo(() => {
+    const seen = new Set<string>();
+    return orders.filter(o => {
+      if (!o.id) return true;
+      if (seen.has(o.id)) return false;
+      seen.add(o.id);
+      return true;
+    });
+  }, [orders]);
+
   // Filtered orders list
-  const filteredOrders = orders.filter(order => {
+  const filteredOrders = uniqueOrders.filter(order => {
     const matchesSearch = 
       order.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       order.phone.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -462,7 +476,8 @@ export default function OrderManager({
       (order.luckyCouponCode && order.luckyCouponCode.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (order.address && order.address.toLowerCase().includes(searchTerm.toLowerCase()));
     
-    const matchesType = typeFilter === 'all' || order.orderType === typeFilter;
+    const isLanding = order.orderType === 'landing';
+    const matchesType = typeFilter === 'all' || (typeFilter === 'landing' ? isLanding : !isLanding);
     const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
 
     return matchesSearch && matchesType && matchesStatus;
@@ -478,14 +493,14 @@ export default function OrderManager({
   }, [searchTerm, statusFilter, typeFilter]);
 
   // Selected orders array
-  const selectedOrders = orders.filter(o => selectedOrderIds.includes(o.id));
+  const selectedOrders = uniqueOrders.filter(o => selectedOrderIds.includes(o.id));
 
   // Metrics
-  const totalOrders = orders.length;
-  const landingCount = orders.filter(o => o.orderType === 'landing').length;
-  const physicalCount = orders.filter(o => o.orderType === 'physical').length;
-  const pendingCount = orders.filter(o => o.status === 'Pending').length;
-  const totalRevenue = orders
+  const totalOrders = uniqueOrders.length;
+  const landingCount = uniqueOrders.filter(o => o.orderType === 'landing').length;
+  const websiteCount = uniqueOrders.filter(o => o.orderType !== 'landing').length;
+  const pendingCount = uniqueOrders.filter(o => o.status === 'Pending').length;
+  const totalRevenue = uniqueOrders
     .filter(o => o.status === 'Delivered' || o.status === 'Confirmed' || o.status === 'Shipped')
     .reduce((sum, o) => sum + (o.totalPrice || 580), 0);
 
@@ -803,7 +818,7 @@ export default function OrderManager({
           case 'phone': val = o.phone; break;
           case 'address': val = o.address; break;
           case 'status': val = o.status; break;
-          case 'channel': val = o.orderType; break;
+          case 'channel': val = o.orderType === 'landing' ? 'Landing' : 'Website'; break;
           case 'shopId': val = 'SHOP-01'; break;
           case 'supplierIds': val = 'SUP-01'; break;
           case 'resellerId': val = '-'; break;
@@ -896,7 +911,7 @@ export default function OrderManager({
         price: 0,
         deliveryCharge: 0,
         quantity: 1,
-        orderType: 'physical',
+        orderType: 'website',
         status: 'Confirmed',
         notes: ''
       });
@@ -1326,11 +1341,8 @@ export default function OrderManager({
         <div>
           <h2 className="text-xl sm:text-2xl font-bold text-slate-900 flex items-center space-x-2">
             <ShoppingBag className="h-6 w-6 text-teal-600" />
-            <span>Landing and feeGical</span>
+            <span>Orders</span>
           </h2>
-          <p className="text-xs text-slate-500 font-medium mt-1">
-            Landing page And All in the showroom bookManage orders, courier bookings and print invoices।
-          </p>
         </div>
 
         <div className="flex items-center space-x-2">
@@ -1357,8 +1369,8 @@ export default function OrderManager({
         </div>
 
         <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs space-y-1">
-          <span className="text-[10px] text-teal-600 font-bold uppercase tracking-wider block">Physical order</span>
-          <span className="text-xl sm:text-2xl font-extrabold text-teal-700">{physicalCount}</span>
+          <span className="text-[10px] text-[#0279c7] font-bold uppercase tracking-wider block">Website order</span>
+          <span className="text-xl sm:text-2xl font-extrabold text-[#0279c7]">{websiteCount}</span>
         </div>
 
         <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs space-y-1">
@@ -1427,30 +1439,30 @@ export default function OrderManager({
           </div>
 
           {/* Type Filter Buttons */}
-          <div className="flex items-center bg-slate-100 p-1 rounded-xl text-xs font-bold w-full md:w-auto shrink-0">
+          <div className="flex items-center bg-slate-100 p-1 rounded-xl text-xs font-bold w-full md:w-auto shrink-0 border border-slate-200/60">
             <button 
               onClick={() => setTypeFilter('all')}
-              className={`flex-1 md:flex-none px-3 py-1.5 rounded-lg transition-all ${
+              className={`flex-1 md:flex-none px-3.5 py-1.5 rounded-lg transition-all cursor-pointer ${
                 typeFilter === 'all' ? 'bg-white text-slate-900 shadow-2xs' : 'text-slate-500 hover:text-slate-900'
               }`}
             >
-              all Type
+              All Types ({totalOrders})
             </button>
             <button 
               onClick={() => setTypeFilter('landing')}
-              className={`flex-1 md:flex-none px-3 py-1.5 rounded-lg transition-all ${
+              className={`flex-1 md:flex-none px-3.5 py-1.5 rounded-lg transition-all cursor-pointer ${
                 typeFilter === 'landing' ? 'bg-indigo-600 text-white shadow-2xs' : 'text-slate-500 hover:text-slate-900'
               }`}
             >
               Landing ({landingCount})
             </button>
             <button 
-              onClick={() => setTypeFilter('physical')}
-              className={`flex-1 md:flex-none px-3 py-1.5 rounded-lg transition-all ${
-                typeFilter === 'physical' ? 'bg-teal-600 text-white shadow-2xs' : 'text-slate-500 hover:text-slate-900'
+              onClick={() => setTypeFilter('website')}
+              className={`flex-1 md:flex-none px-3.5 py-1.5 rounded-lg transition-all cursor-pointer ${
+                typeFilter === 'website' ? 'bg-[#0279c7] text-white shadow-2xs' : 'text-slate-500 hover:text-slate-900'
               }`}
             >
-              feeGical ({physicalCount})
+              Website ({websiteCount})
             </button>
           </div>
 
@@ -1803,8 +1815,12 @@ export default function OrderManager({
                               <Copy className="w-3.5 h-3.5" />
                             )}
                           </button>
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-50 text-sky-700 border border-sky-200">
-                            🌐 Customer
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                            order.orderType === 'landing'
+                              ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
+                              : 'bg-sky-50 text-sky-700 border border-sky-200'
+                          }`}>
+                            {order.orderType === 'landing' ? '🚀 Landing' : '🌐 Website'}
                           </span>
                         </div>
 
@@ -2527,7 +2543,7 @@ export default function OrderManager({
               <div className="flex justify-between items-center border-b border-slate-100 p-5 bg-white shrink-0 sticky top-0 z-10">
                 <h3 className="text-base font-bold text-slate-900 flex items-center space-x-2">
                   <Plus className="h-5 w-5 text-teal-600" />
-                  <span>Add new physical showroom order</span>
+                  <span>Create New Order</span>
                 </h3>
                 <button onClick={() => setIsAddModalOpen(false)} className="text-slate-400 hover:text-slate-600 p-1 rounded-xl hover:bg-slate-100">
                   <XCircle className="h-5 w-5" />
@@ -2561,13 +2577,13 @@ export default function OrderManager({
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">Order type</label>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Order Type</label>
                     <select 
                       value={formData.orderType}
-                      onChange={(e) => setFormData({ ...formData, orderType: e.target.value as 'physical' | 'landing' })}
+                      onChange={(e) => setFormData({ ...formData, orderType: e.target.value as 'website' | 'landing' })}
                       className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs font-bold text-slate-800"
                     >
-                      <option value="physical">Physical</option>
+                      <option value="website">Website</option>
                       <option value="landing">Landing</option>
                     </select>
                   </div>

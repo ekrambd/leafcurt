@@ -27,14 +27,14 @@ const BRAND_COLOR_PRESETS = [
 
 export default function ProfileSettings({ adminEmail }: ProfileSettingsProps) {
   // Store Details state
-  const [storeName, setStoreName] = useState('Store');
-  const [companyName, setCompanyName] = useState('Store Ltd.');
+  const [storeName, setStoreName] = useState('Leaf Curt');
+  const [companyName, setCompanyName] = useState('Leaf Curt');
   const [storeTagline, setStoreTagline] = useState('Premium Quality Online Shopping • Fast Delivery Nationwide.');
-  const [topAnnouncementText, setTopAnnouncementText] = useState('WELCOME TO OUR STORE • FAST HOME DELIVERY NATIONWIDE');
-  const [phone, setPhone] = useState('+880 1700-000000');
-  const [email, setEmail] = useState(adminEmail || 'contact@store.com');
-  const [street, setStreet] = useState('Dhaka, Bangladesh');
-  const [industry, setIndustry] = useState('Retail & E-Commerce');
+  const [topAnnouncementText, setTopAnnouncementText] = useState('WELCOME TO www.leafcurt.com');
+  const [phone, setPhone] = useState('01635311494');
+  const [email, setEmail] = useState(adminEmail || 'armtrading16@gmail.com');
+  const [street, setStreet] = useState('Banasree, Dhaka, Bangladesh');
+  const [industry, setIndustry] = useState('Laundry & Home Care');
 
   // Social Media Links state (dynamic from admin, no static fallbacks)
   const [facebookUrl, setFacebookUrl] = useState('');

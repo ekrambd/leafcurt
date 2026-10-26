@@ -596,7 +596,7 @@ export default function CheckoutPage({
       if (!orderCreatedViaServer) {
         await dbService.addBookOrder(orderPayload);
       } else {
-        await dbService.saveBookOrder(confirmedOrder);
+        await dbService.saveBookOrderLocally(confirmedOrder);
       }
 
       // Track Purchase event before clearing cart
@@ -1291,38 +1291,36 @@ export default function CheckoutPage({
               <div className="bg-white rounded-2xl p-6 sm:p-7 border border-slate-200/80 shadow-2xs space-y-3.5">
                 <div className="flex justify-between text-xs sm:text-sm text-slate-600">
                   <span>Sub total</span>
-                  <span className="font-semibold text-slate-900">{cartSubtotal.toLocaleString()} BDT</span>
+                  <span className="font-semibold text-slate-900">Tk.{cartSubtotal.toLocaleString()}</span>
                 </div>
 
                 <div className="flex justify-between text-xs sm:text-sm text-slate-600">
                   <span>Delivery cost</span>
                   <span className="font-semibold text-slate-900">
-                    {deliveryCost === 0 ? '0 BDT' : `${deliveryCost.toLocaleString()} BDT`}
+                    {deliveryCost === 0 ? 'Tk.0' : `Tk.${deliveryCost.toLocaleString()}`}
                   </span>
                 </div>
 
                 {couponDiscountAmount > 0 && (
                   <div className="flex justify-between text-xs sm:text-sm text-emerald-600 font-medium">
                     <span>Coupon Discount ({appliedCoupon?.code})</span>
-                    <span>-{couponDiscountAmount.toLocaleString()} BDT</span>
+                    <span>-Tk.{couponDiscountAmount.toLocaleString()}</span>
                   </div>
                 )}
 
                 {gatewayDiscount > 0 && (
                   <div className="flex justify-between text-xs sm:text-sm text-emerald-600 font-medium">
                     <span>Payment Discount</span>
-                    <span>-{gatewayDiscount.toLocaleString()} BDT</span>
+                    <span>-Tk.{gatewayDiscount.toLocaleString()}</span>
                   </div>
                 )}
 
                 {gatewayFee > 0 && (
                   <div className="flex justify-between text-xs sm:text-sm text-amber-600 font-medium">
                     <span>Gateway Fee</span>
-                    <span>+{gatewayFee.toLocaleString()} BDT</span>
+                    <span>+Tk.{gatewayFee.toLocaleString()}</span>
                   </div>
                 )}
-
-
 
                 {bogoEligible && (
                   <div className="flex justify-between text-xs sm:text-sm text-emerald-700 font-bold bg-emerald-50/70 p-2.5 rounded-xl border border-emerald-200">
@@ -1337,7 +1335,7 @@ export default function CheckoutPage({
                 <div className="pt-3 border-t border-slate-100 flex justify-between items-center">
                   <span className="text-sm sm:text-base font-bold text-slate-900">Total</span>
                   <span className="text-lg sm:text-xl font-black text-[#0284c7] tracking-tight">
-                    {grandTotal.toLocaleString()} BDT
+                    Tk.{grandTotal.toLocaleString()}
                   </span>
                 </div>
               </div>

@@ -295,8 +295,20 @@ async function startServer() {
       }
     }));
 
-    // Fallback static files directly from public directory
-    app.use(express.static(path.join(process.cwd(), 'public'), { index: false }));
+    // Fallback static files directly from public directory with optimal caching policy
+    app.use(express.static(path.join(process.cwd(), 'public'), {
+      index: false,
+      maxAge: '30d',
+      setHeaders: (res, filePath) => {
+        if (filePath.endsWith('.html')) {
+          res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        } else if (/\.(jpg|jpeg|png|webp|avif|svg|ico|mp4|webm|woff|woff2|ttf|eot)$/i.test(filePath)) {
+          res.setHeader('Cache-Control', 'public, max-age=2592000, immutable');
+        } else if (filePath.endsWith('llms.txt') || filePath.endsWith('ai-catalog.json') || filePath.endsWith('robots.txt') || filePath.endsWith('sitemap.xml')) {
+          res.setHeader('Cache-Control', 'public, max-age=3600');
+        }
+      }
+    }));
 
     const getIndexHtml = () => {
       let filePath = path.join(distPath, 'index.html');

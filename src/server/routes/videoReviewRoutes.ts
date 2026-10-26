@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { requireAdmin } from '../middleware/adminAuth';
-import { storeSettings, updateStoreSettings } from '../data/store';
+import { storeSettings, updateStoreSettings, storeProducts } from '../data/store';
 import { VideoReviewItem, VideoReviewsSettings } from '../../types';
 
 export const videoReviewRouter = Router();
@@ -18,6 +18,50 @@ function resolvePosterUrl(posterUrl?: string, videoUrl?: string): string {
   return '';
 }
 
+function enrichItemWithProduct(item: Partial<VideoReviewItem>): VideoReviewItem {
+  const posterUrl = resolvePosterUrl(item.posterUrl, item.videoUrl);
+  let productId = item.productId || undefined;
+  let productTitle = item.productTitle || undefined;
+  let productPrice = item.productPrice !== undefined ? Number(item.productPrice) : undefined;
+  let productRegularPrice = item.productRegularPrice !== undefined ? Number(item.productRegularPrice) : undefined;
+  let productImage = item.productImage || undefined;
+  let productDiscountBadge = item.productDiscountBadge || undefined;
+  let productUrl = item.productUrl || undefined;
+
+  // Auto-fill from product catalog if productId is provided
+  if (productId) {
+    const matchedProduct = (storeProducts || []).find(p => p.id === productId);
+    if (matchedProduct) {
+      if (!productTitle) productTitle = matchedProduct.title;
+      if (productPrice === undefined) productPrice = matchedProduct.price;
+      if (productRegularPrice === undefined && matchedProduct.regularPrice) productRegularPrice = matchedProduct.regularPrice;
+      if (!productImage) productImage = (Array.isArray(matchedProduct.images) && matchedProduct.images[0]) || matchedProduct.image;
+      if (!productDiscountBadge && productRegularPrice && productRegularPrice > (productPrice || 0)) {
+        const discountPercent = Math.round((1 - (productPrice || 0) / productRegularPrice) * 100);
+        if (discountPercent > 0) productDiscountBadge = `${discountPercent}% OFF`;
+      }
+    }
+  }
+
+  return {
+    id: item.id || `vr-${Date.now()}`,
+    author: item.author || 'Reviewer',
+    pillTag: item.pillTag || '',
+    subtitle: item.subtitle || '',
+    quote: item.quote || '',
+    posterUrl,
+    videoUrl: item.videoUrl || '',
+    active: item.active !== false,
+    productId,
+    productTitle,
+    productPrice,
+    productRegularPrice,
+    productImage,
+    productDiscountBadge,
+    productUrl
+  };
+}
+
 // GET video reviews settings & items
 videoReviewRouter.get('/', (_req, res) => {
   const videoSettings: VideoReviewsSettings = storeSettings.videoReviews || {
@@ -25,10 +69,7 @@ videoReviewRouter.get('/', (_req, res) => {
     items: []
   };
 
-  const resolvedItems = (videoSettings.items || []).map(item => ({
-    ...item,
-    posterUrl: resolvePosterUrl(item.posterUrl, item.videoUrl)
-  }));
+  const resolvedItems = (videoSettings.items || []).map(enrichItemWithProduct);
 
   res.json({
     enabled: videoSettings.enabled ?? true,
@@ -42,19 +83,7 @@ videoReviewRouter.post('/', requireAdmin, (req, res) => {
     const currentSettings = storeSettings.videoReviews || { enabled: true, items: [] };
     const currentItems: VideoReviewItem[] = [...(currentSettings.items || [])];
 
-    const posterUrl = resolvePosterUrl(req.body.posterUrl, req.body.videoUrl);
-
-    const newItem: VideoReviewItem = {
-      id: req.body.id || `vr-${Date.now()}`,
-      author: req.body.author || 'Reviewer',
-      pillTag: req.body.pillTag || '',
-      subtitle: req.body.subtitle || '',
-      quote: req.body.quote || '',
-      posterUrl,
-      videoUrl: req.body.videoUrl || '',
-      active: req.body.active !== false
-    };
-
+    const newItem = enrichItemWithProduct(req.body);
     currentItems.push(newItem);
 
     const updated = updateStoreSettings({
@@ -81,14 +110,11 @@ videoReviewRouter.put('/:id', requireAdmin, (req, res) => {
       return res.status(404).json({ error: 'Video review not found' });
     }
 
-    const posterUrl = resolvePosterUrl(req.body.posterUrl, req.body.videoUrl);
-
-    currentItems[index] = {
+    currentItems[index] = enrichItemWithProduct({
       ...currentItems[index],
       ...req.body,
-      posterUrl,
       id: req.params.id
-    };
+    });
 
     const updated = updateStoreSettings({
       videoReviews: {
@@ -127,10 +153,7 @@ videoReviewRouter.put('/', requireAdmin, (req, res) => {
   try {
     const currentSettings = storeSettings.videoReviews || { enabled: true, items: [] };
     const rawItems: VideoReviewItem[] = req.body.items || currentSettings.items || [];
-    const resolvedItems = rawItems.map(item => ({
-      ...item,
-      posterUrl: resolvePosterUrl(item.posterUrl, item.videoUrl)
-    }));
+    const resolvedItems = rawItems.map(enrichItemWithProduct);
 
     const newSettings: VideoReviewsSettings = {
       ...currentSettings,

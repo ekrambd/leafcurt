@@ -31,7 +31,7 @@ export default function FaqSection({ settings }: FaqSectionProps) {
   return (
     <section 
       id="faq-section"
-      className="py-16 sm:py-24 text-white overflow-hidden relative"
+      className="pt-8 pb-10 sm:pt-10 sm:pb-12 text-white overflow-hidden relative"
       style={{ backgroundColor: bgColor }}
     >
       {/* Ambient subtle brand glows matching logo water splash and green leaf */}
@@ -47,7 +47,7 @@ export default function FaqSection({ settings }: FaqSectionProps) {
       <div className="max-w-3xl mx-auto px-4 sm:px-6 relative z-10">
         
         {/* Title & Badge */}
-        <div className="text-center mb-8 sm:mb-12">
+        <div className="text-center mb-5 sm:mb-7">
           <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-white/10 border border-white/15 text-sky-200 text-xs font-semibold mb-3 backdrop-blur-sm">
             <HelpCircle className="w-3.5 h-3.5 text-sky-300" />
             <span>সচরাচর জিজ্ঞাসা • FAQ</span>

@@ -1,30 +1,20 @@
-# Store Platform - Official E-Commerce Catalog & Information
+# Leaf Curt
 
-> Premium Quality Online Shopping. Browse curated collections with Cash on Delivery nationwide.
+> Official e-commerce store for Leaf Curt 5-in-1 Laundry Detergent Pods in Bangladesh. Premium laundry care, deep stain removal, and long-lasting freshness with Cash on Delivery nationwide.
 
-## Core Store Information
-- **Platform:** Store Platform
-- **Customer Care Hotline:** +880 1700-000000
-- **Official Email:** support@store.com
-- **Distribution Hub:** Dhaka, Bangladesh
+## Products & Catalog
 
-## Shipping & Delivery Policy
-- **Coverage:** All 64 districts of Bangladesh via reliable courier partners.
-- **Inside Dhaka:** 70 BDT (Delivery within 24 to 48 hours).
-- **Outside Dhaka:** 130 BDT (Delivery within 48 to 72 hours).
-- **Payment Methods:**
-  - Cash on Delivery (COD) available nationwide.
-  - Mobile Financial Services (bKash, Nagad, Rocket).
-  - Online Cards & Digital Payments.
+- [Shop Products](/shop): Browse our full collection of laundry detergent pods, packs, and family tubs.
+- [Leaf Curt 5-in-1 Laundry Pods](/product): Deep cleaning 5-in-1 laundry capsules with fabric softener and color protection.
+- [About Leaf Curt](/about): Learn about our innovative formula, lab testing, and brand heritage.
+- [Customer Support](/contact): Contact our 24/7 customer care team for orders and tracking.
 
-## Return, Authenticity & Refund Policy
-- **Authenticity Guarantee:** 100% genuine and verified products.
-- **Return Period:** 7-day hassle-free return window for damaged, incorrect, or defective items upon delivery handoff.
-- **Customer Verification:** Parcel verification upon receipt with courier partner.
+## Policies
 
-## Developer & Navigation Resources
-- Full Store Catalog: /shop
-- Interactive Quiz: /quiz
-- Brand Story: /about
-- Customer Support: /contact
-- Machine-Readable Full LLM Context: /llms-full.txt
+- [Delivery Policy](/checkout): Delivery across all 64 districts of Bangladesh (24-48h inside Dhaka, 48-72h outside Dhaka).
+- [Cash on Delivery](/checkout): Pay cash upon delivery after inspecting your package.
+
+## Optional
+
+- [Full LLM Context](/llms-full.txt): Comprehensive machine-readable product catalog and FAQs for AI agents.
+- [AI Product Catalog](/ai-catalog.json): Structured JSON Schema product data feed for autonomous agents.

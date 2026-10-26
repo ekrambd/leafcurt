@@ -3,7 +3,7 @@ import { EcomSettings, HeroBannerItem, Product } from '../types';
 import { dbService } from '../lib/dbService';
 import { CircularProgress } from './LoadingSkeleton';
 import { 
-  Layout, Smartphone, Plus, Trash2, Save, RefreshCw, Check, Edit3, Image as ImageIcon, Upload, X, ExternalLink, ShoppingBag, ArrowUp, ArrowDown, CircleHelp, Copy, Video, Film, Play, Youtube
+  Layout, Smartphone, Plus, Trash2, Save, RefreshCw, Check, Edit3, Image as ImageIcon, Upload, X, ExternalLink, ShoppingBag, ArrowUp, ArrowDown, CircleHelp, Copy, Video, Film, Play, Youtube, Clock
 } from 'lucide-react';
 import { compressImage } from '../lib/imageUtils';
 import { uploadDataUrlToStorage, uploadFileToStorage } from '../lib/storageService';
@@ -78,14 +78,16 @@ export default function SliderManager() {
   useEffect(() => {
     async function loadData() {
       try {
-        const [ecomData, prodList] = await Promise.all([
-          dbService.getEcomSettings(),
+        const [sliderData, prodList] = await Promise.all([
+          dbService.getSliders(),
           dbService.getProducts()
         ]);
-        setSettings({
-          ...ecomData,
-          heroBanners: ecomData.heroBanners || []
-        });
+        setSettings(prev => ({
+          ...prev,
+          heroBanners: sliderData.heroBanners || [],
+          heroSliderInterval: sliderData.heroSliderInterval || 5,
+          heroVideoInterval: sliderData.heroVideoInterval || 10
+        }));
         setProducts(prodList || []);
       } catch (err) {
         console.error('Failed to load slider settings:', err);
@@ -102,18 +104,17 @@ export default function SliderManager() {
     const bannersToSave = updatedBanners || settings.heroBanners || [];
 
     try {
-      const currentFullSettings = await dbService.getEcomSettings();
-      await dbService.saveEcomSettings({
-        ...currentFullSettings,
-        heroBanners: bannersToSave
+      await dbService.saveSliders({
+        heroBanners: bannersToSave,
+        heroSliderInterval: settings.heroSliderInterval || 5,
+        heroVideoInterval: settings.heroVideoInterval || 10
       });
-      window.dispatchEvent(new Event('ecom-settings-updated'));
       setSaveSuccess(true);
       setFeedback({
         isOpen: true,
         type: 'success',
-        title: 'Slider has been saved!',
-        message: 'Hero Slider data and banners saved successfully.'
+        title: 'Slider Settings Saved!',
+        message: 'Hero Slider & Video settings saved successfully.'
       });
       setTimeout(() => setSaveSuccess(false), 3000);
     } catch (err) {
@@ -191,6 +192,7 @@ export default function SliderManager() {
       subtitle: editingBanner.mediaType === 'video' ? '' : editingBanner.subtitle,
       badge: editingBanner.mediaType === 'video' ? '' : editingBanner.badge,
       discountText: editingBanner.mediaType === 'video' ? '' : editingBanner.discountText,
+      durationSeconds: editingBanner.durationSeconds ? Number(editingBanner.durationSeconds) : undefined
     };
 
     const currentList = settings.heroBanners || [];
@@ -347,6 +349,100 @@ export default function SliderManager() {
         </button>
       </div>
 
+      {/* Slider & Video Timing Control Card */}
+      <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200/80 shadow-xs space-y-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 bg-amber-50 text-amber-600 rounded-xl">
+              <Clock className="h-5 w-5" />
+            </div>
+            <div>
+              <h3 className="font-bold text-slate-900 text-sm">
+                Slider & Video Autoplay Timing (স্লাইডার পরিবর্তনের সময়কাল)
+              </h3>
+              <p className="text-xs text-slate-500">
+                ভিডিও ও ইমেজ স্লাইডার কতক্ষণ পর স্বয়ংক্রিয়ভাবে পরবর্তী স্লাইডে যাবে নির্ধারণ করুন
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => handleSaveAll()}
+            disabled={isSaving}
+            className="inline-flex items-center gap-1.5 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition shadow-xs cursor-pointer active:scale-95 disabled:opacity-50"
+          >
+            <Save className="h-3.5 w-3.5" />
+            {isSaving ? 'সংরক্ষণ হচ্ছে...' : 'Save Timing'}
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {/* Video Slide Change Interval */}
+          <div className="p-4 bg-rose-50/50 border border-rose-200/80 rounded-xl space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
+                <Video className="w-4 h-4 text-rose-600" />
+                <span>Video Slide Interval (ভিডিও পরিবর্তনের সময়):</span>
+              </label>
+              <span className="text-xs font-bold text-rose-700 bg-rose-100 px-2 py-0.5 rounded-md">
+                {settings.heroVideoInterval || 10} সেকেন্ড
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-600">
+              ভিডিও ব্যানার কত সেকেন্ড প্লে হওয়ার পর পরবর্তী স্লাইডে যাবে (Slow for video)
+            </p>
+            <div className="flex flex-wrap items-center gap-1.5 pt-1">
+              {[8, 10, 12, 15, 20, 25, 30].map((sec) => (
+                <button
+                  key={sec}
+                  type="button"
+                  onClick={() => setSettings(prev => ({ ...prev, heroVideoInterval: sec }))}
+                  className={`px-2.5 py-1 text-xs font-bold rounded-lg border transition cursor-pointer ${
+                    (settings.heroVideoInterval || 10) === sec
+                      ? 'bg-rose-600 text-white border-rose-600 shadow-xs'
+                      : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                  }`}
+                >
+                  {sec}s
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Image Slide Change Interval */}
+          <div className="p-4 bg-indigo-50/50 border border-indigo-200/80 rounded-xl space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
+                <ImageIcon className="w-4 h-4 text-indigo-600" />
+                <span>Image Slide Interval (ছবির পরিবর্তনের সময়):</span>
+              </label>
+              <span className="text-xs font-bold text-indigo-700 bg-indigo-100 px-2 py-0.5 rounded-md">
+                {settings.heroSliderInterval || 5} সেকেন্ড
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-600">
+              ছবি ব্যানার কত সেকেন্ড পর পরবর্তী স্লাইডে যাবে
+            </p>
+            <div className="flex flex-wrap items-center gap-1.5 pt-1">
+              {[4, 5, 6, 8, 10].map((sec) => (
+                <button
+                  key={sec}
+                  type="button"
+                  onClick={() => setSettings(prev => ({ ...prev, heroSliderInterval: sec }))}
+                  className={`px-2.5 py-1 text-xs font-bold rounded-lg border transition cursor-pointer ${
+                    (settings.heroSliderInterval || 5) === sec
+                      ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
+                      : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                  }`}
+                >
+                  {sec}s
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Slider List */}
       <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs space-y-4">
         <div className="flex items-center justify-between pb-3 border-b border-slate-100">
@@ -420,6 +516,16 @@ export default function SliderManager() {
                             Image banner
                           </span>
                         )}
+
+                        {/* Slide Duration Badge */}
+                        <span className="bg-slate-200/90 text-slate-700 text-[10px] font-bold px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+                          <Clock className="h-3 w-3 text-slate-500" />
+                          {banner.durationSeconds
+                            ? `${banner.durationSeconds}s`
+                            : isVideo
+                              ? `${settings.heroVideoInterval || 10}s`
+                              : `${settings.heroSliderInterval || 5}s`}
+                        </span>
 
                         {banner.badge && (
                           <span className="bg-indigo-100 text-indigo-700 text-[10px] font-extrabold px-2 py-0.5 rounded-full">
@@ -1045,6 +1151,66 @@ export default function SliderManager() {
               </div>
             </>
           )}
+
+              {/* 5. SLIDE CHANGE INTERVAL (Customizable Duration in Seconds) */}
+              <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
+                    <Clock className="w-4 h-4 text-indigo-600" />
+                    <span>Slide Change Interval (স্লাইড পরিবর্তনের সময়কাল)</span>
+                  </label>
+                  <span className="text-[11px] text-slate-500 font-medium">
+                    {editingBanner.mediaType === 'video' ? 'ভিডিওর জন্য রিকমেন্ডেড: ১০-২০ সেকেন্ড' : 'ছবির জন্য রিকমেন্ডেড: ৫-৮ সেকেন্ড'}
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-500">
+                  {editingBanner.mediaType === 'video'
+                    ? 'এই ভিডিও স্লাইডটি কত সেকেন্ড প্লে হওয়ার পর স্বয়ংক্রিয়ভাবে পরবর্তী স্লাইডে যাবে নির্ধারণ করুন।'
+                    : 'এই ইমেজ স্লাইডটি কত সেকেন্ড প্রদর্শিত হওয়ার পর পরবর্তী স্লাইডে যাবে নির্ধারণ করুন।'}
+                </p>
+                <div className="flex flex-wrap items-center gap-2 pt-1">
+                  <div className="flex items-center gap-1.5 bg-white border border-slate-300 rounded-xl px-3 py-1.5">
+                    <input
+                      type="number"
+                      min={3}
+                      max={120}
+                      placeholder={editingBanner.mediaType === 'video' ? String(settings.heroVideoInterval || 10) : String(settings.heroSliderInterval || 5)}
+                      value={editingBanner.durationSeconds || ''}
+                      onChange={(e) => setEditingBanner({
+                        ...editingBanner,
+                        durationSeconds: e.target.value ? Math.max(2, parseInt(e.target.value) || 0) : undefined
+                      })}
+                      className="w-16 font-bold text-xs text-slate-900 outline-none"
+                    />
+                    <span className="text-xs text-slate-500 font-semibold">সেকেন্ড</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    {(editingBanner.mediaType === 'video' ? [8, 10, 12, 15, 20, 30] : [4, 5, 6, 8, 10]).map(sec => (
+                      <button
+                        key={sec}
+                        type="button"
+                        onClick={() => setEditingBanner({ ...editingBanner, durationSeconds: sec })}
+                        className={`px-2.5 py-1 text-xs font-bold rounded-lg border transition cursor-pointer ${
+                          editingBanner.durationSeconds === sec
+                            ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
+                            : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                        }`}
+                      >
+                        {sec}s
+                      </button>
+                    ))}
+                    {editingBanner.durationSeconds !== undefined && (
+                      <button
+                        type="button"
+                        onClick={() => setEditingBanner({ ...editingBanner, durationSeconds: undefined })}
+                        className="text-[11px] text-rose-600 hover:underline font-semibold ml-1 cursor-pointer"
+                      >
+                        Reset Default
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* Modal Footer */}

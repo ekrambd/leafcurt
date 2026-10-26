@@ -131,65 +131,65 @@ export const DEFAULT_HIGHLIGHT_SPOTLIGHT_SETTINGS: HighlightSpotlightSettings = 
 };
 
 export const DEFAULT_TESTIMONIAL_SETTINGS: TestimonialSectionSettings = {
-  enabled: false,
-  title: 'What our customers say',
-  subtitle: '',
+  enabled: true,
+  title: 'সম্মানিত গ্রাহকদের বাস্তব অভিজ্ঞতা',
+  subtitle: 'ধানমন্ডি, বসুন্ধরা ও বনশ্রীসহ সারা দেশের গ্রাহকদের মতামত',
   autoScroll: true,
   scrollInterval: 5,
   showReviewsBadge: true,
   items: [
     {
       id: 'testim-1',
-      name: 'Joe Dan & Kelli',
-      designation: 'Splash Em Out Laundromats',
-      avatarOrLogo: '/authentic/logo_splash_em_out.png',
+      name: 'সাদিয়া ইসলাম',
+      designation: 'ধানমন্ডি, ঢাকা',
+      avatarOrLogo: '',
       rating: 5,
-      quote: "PowerPax™ has transformed our laundry services! Our customers love how fresh and clean their clothes feel after using it. It's reliable and tough on stains, making our job so much easier.",
+      quote: 'ধানমন্ডির বাসায় আমাদের ফ্রন্ট লোড ওয়াশিং মেশিনে আগে গুঁড়া ডিটারজেন্ট ব্যবহার করায় ড্রামে আঠালো তলানি জমে সেন্সর সমস্যা করত। Leaf Curt 5-in-1 Pods ব্যবহার শুরুর পর ড্রাম একদম ঝকঝকে পরিষ্কার। আর কাপড় ধোয়ার পর যে অসাধারণ মিষ্টি সুবাস বের হয়, তা ৩-৪ দিন পর্যন্ত পোশাকে লেগেই থাকে। ট্রুলি বেস্ট চয়েস!',
       active: true
     },
     {
       id: 'testim-2',
-      name: 'Matt Simons',
-      designation: 'Curbside Laundry',
-      avatarOrLogo: '/authentic/logo_curbside_laundry.png',
+      name: 'ফারহানা আফরোজ',
+      designation: 'বসুন্ধরা আর/এ, ঢাকা',
+      avatarOrLogo: '',
       rating: 5,
-      quote: "Since switching to PowerPax™, we've seen a noticeable improvement in customer satisfaction. The soap works perfectly in both our machines and hand washes, ensuring every garment comes out spotless.",
+      quote: 'বসুন্ধরায় থাকি, ডেলিভারি অর্ডার করার পরদিনই পেয়েছি। ১টি পডেই ডিটারজেন্ট, সফটনার ও পারফিউম থাকায় আলাদা কিছু কেনার কোনো প্রয়োজন হয় না। বাচ্চাদের কাপড়ের চকোলেট আর খাবারের জেদি দাগ এক ওয়াশেই শেষ। কাপড়ের উজ্জ্বলতা একটুও নষ্ট হয় না। এক কথায় অসাধারণ!',
       active: true
     },
     {
       id: 'testim-3',
-      name: 'Randy Roberts',
-      designation: 'Columbus Express Laundry',
-      avatarOrLogo: '/authentic/logo_columbus_express.png',
-      rating: 4,
-      quote: "PowerPax™ is our go-to soap for all our laundry needs. It's eco-friendly and gentle on fabrics, which our environmentally conscious customers really appreciate. Plus, it cuts down on residue, keeping our machines running smoothly.",
+      name: 'নুসরাত জাহান',
+      designation: 'বনশ্রী, ঢাকা',
+      avatarOrLogo: '',
+      rating: 5,
+      quote: 'বনশ্রীতে আমাদের ফ্ল্যাটে কাপড় ধোয়া নিয়ে প্রতিদিন কাজের মানুষের সাবান ঢালার অপচয় নিয়ে খুব বিরক্ত ছিলাম। এই ক্যাপসুল পডস আসায় জীবন একদম সহজ হয়ে গেছে—১ লোডে ঠিক ১টি পড। সাবান মাপা বা নষ্ট হওয়ার কোনো সুযোগ নেই। কাপড়ে সুন্দর স্নিগ্ধ সুবাস থাকে।',
       active: true
     },
     {
       id: 'testim-4',
-      name: 'Sarah Jenkins',
-      designation: 'Metro Wash & Fold',
-      avatarOrLogo: '/authentic/logo_splash_em_out.png',
+      name: 'তানহা তাবাসসুম',
+      designation: 'উত্তরা, ঢাকা',
+      avatarOrLogo: '',
       rating: 5,
-      quote: "Switching our commercial operations to PowerPax capsules cut detergent overdosing and dispenser gumming completely. Our linens have never smelled cleaner or felt softer.",
+      quote: 'প্রথমে ১টি বক্স নিয়েছিলাম ট্রায়াল হিসেবে। ওয়াশিং মেশিনের জন্য এটি যে কতটা দরকারি তা ব্যবহারের পরই বুঝেছি। বিশেষ করে সাদা কাপড় ও রঙিন কাপড়ে কোনো ধরনের সাদা পাউডারের গুঁড়ো দাগ লেগে থাকে না। পানির সাথে ১০০% গলে যায়। পুরো পরিবারের কাপড় এখন ফ্রেশ!',
       active: true
     },
     {
       id: 'testim-5',
-      name: 'Marcus Vance',
-      designation: 'Clean Wave Commercial Laundry',
-      avatarOrLogo: '/authentic/logo_curbside_laundry.png',
+      name: 'সাবরিনা সুলতানা',
+      designation: 'গুলশান-২, ঢাকা',
+      avatarOrLogo: '',
       rating: 5,
-      quote: "The cost per turn savings are real. We calculated a 22% reduction in chemical waste in our first two months alone. Unbeatable consistency across every single wash.",
+      quote: 'ইমপোর্টেড প্রিমিয়াম কোয়ালিটি পডস। কাপড়ের ফেব্রিক নষ্ট না করে নিখুঁতভাবে পরিষ্কার করে এবং ফ্রেঞ্চ পারফিউমের চমৎকার সুবাস দেয়। মেশিনের ভেতরের দুর্গন্ধও একদম দূর হয়ে গেছে। আমি সবাইকে এই 5-in-1 পডস ব্যবহারের পরামর্শ দিব।',
       active: true
     },
     {
       id: 'testim-6',
-      name: 'Elena Rostova',
-      designation: 'Hospitality Linen Solutions',
-      avatarOrLogo: '/authentic/logo_columbus_express.png',
+      name: 'মেহনাজ পারভীন',
+      designation: 'মিরপুর ডিওএইচএস, ঢাকা',
+      avatarOrLogo: '',
       rating: 5,
-      quote: "Tough makeup stains and restaurant grease lift right out on regular commercial cycles. Our hotel and Airbnb clients consistently comment on the premium freshness.",
+      quote: 'কাপড় ধোয়ার পর নরম ও মসৃণ থাকে, আলাদা কমফোর্ট সফটনার ব্যবহারের আর দরকার পড়ে না। ড্রামের ভেতর কোনো কাঁচা গুঁড়া সাবান জমে থাকে না। দ্রুত হোম ডেলিভারি ও পার্সেল চেক করে পেমেন্ট করার সুবিধা খুব ভালো লেগেছে।',
       active: true
     }
   ]
@@ -248,7 +248,7 @@ export const DEFAULT_CLIENT_LOGOS_SETTINGS: import('../types').ClientLogosSettin
 export const DEFAULT_HERO_BANNERS: import('../types').HeroBannerItem[] = [];
 
 export const DEFAULT_HEADER_SETTINGS: HeaderSettings = {
-  showTopBar: true,
+  showTopBar: false,
   phone: '',
   email: '',
   socialLinks: {
@@ -468,98 +468,74 @@ export const DEFAULT_FAQ_SETTINGS: import('../types').FaqSectionSettings = {
 export const BANGLADESHI_FEMALE_CART_REVIEWS: import('../types').CartReviewSettings[] = [
   {
     enabled: true,
-    reviewerName: 'Nusrat Jahan',
-    location: 'উত্তরা, ঢাকা',
+    reviewerName: 'সাদিয়া ইসলাম',
+    location: 'ধানমন্ডি, ঢাকা',
     isVerified: true,
     reviewDate: 'গতকাল',
     rating: 5,
-    comment: 'আলহামদুলিল্লাহ, প্রোডাক্টটা সত্যি দারুণ! কাপড় ধোয়ার পর যে চমৎকার একটা ফ্রেশ সুবাস থাকে তা সারাদিন থাকে। বাচ্চাদের কাপড়ের সব জেদি দাগ সহজে উঠে গেছে।',
+    comment: 'ধানমন্ডির বাসায় আমাদের ফ্রন্ট লোড ওয়াশিং মেশিনে Leaf Curt 5-in-1 Pods ব্যবহার করে খুব খুশি। গুঁড়া সাবানের সাদা আঠালো দাগ একদম নেই, আর কাপড়ে ৩-৪ দিন মিষ্টি সুবাস থাকে।',
     photoUrl: '',
-    productTitle: 'Power Pax™ 5-in-1 Laundry Detergent Pods',
+    productTitle: 'Leaf Curt 5-in-1 Laundry Detergent Pods',
     productImage: ''
   },
   {
     enabled: true,
-    reviewerName: 'Sadia Islam',
-    location: 'ধানমন্ডি, ঢাকা',
+    reviewerName: 'ফারহানা আফরোজ',
+    location: 'বসুন্ধরা আর/এ, ঢাকা',
     isVerified: true,
     reviewDate: '২ দিন আগে',
     rating: 5,
-    comment: 'Truly satisfied! গুঁড়ো সাবানের ঝামেলা আর কাপড়ে সাদা দাগ জমার ভয় একদম শেষ। মাত্র একটা পডেই এক বালতি কাপড় নিখুঁত পরিষ্কার আর নরম হয়ে যায়।',
+    comment: 'বসুন্ধরায় দ্রুত ডেলিভারি পেয়েছি। ১ পডেই ডিটারজেন্ট, সফটনার ও পারফিউম থাকায় আলাদা বোতল কেনার ঝামেলা শেষ। বাচ্চাদের কাপড়ের কঠিন দাগ সহজে উঠে যায়।',
     photoUrl: '',
-    productTitle: 'Power Pax™ 5-in-1 Laundry Detergent Pods',
+    productTitle: 'Leaf Curt 5-in-1 Laundry Detergent Pods',
     productImage: ''
   },
   {
     enabled: true,
-    reviewerName: 'Farhana Afroze',
-    location: 'মিরপুর, ঢাকা',
+    reviewerName: 'নুসরাত জাহান',
+    location: 'বনশ্রী, ঢাকা',
     isVerified: true,
     reviewDate: '৩ দিন আগে',
     rating: 5,
-    comment: 'Delivered very fast inside Dhaka. The fragrance is premium and long-lasting! Fabrics feel so soft without even needing a separate softener. Highly recommended!',
+    comment: 'বনশ্রীতে আমাদের ফ্ল্যাটে কাপড় ধোয়ায় সাবানের অপচয় একদম জিরো হয়ে গেছে। ১ লোডে ১টি পড দিলেই যথেষ্ট। কাপড় ভীষণ নরম ও ফ্রেশ থাকে।',
     photoUrl: '',
-    productTitle: 'Power Pax™ 5-in-1 Laundry Detergent Pods',
+    productTitle: 'Leaf Curt 5-in-1 Laundry Detergent Pods',
     productImage: ''
   },
   {
     enabled: true,
-    reviewerName: 'Tanha Tabassum',
-    location: 'গুলশান, ঢাকা',
+    reviewerName: 'তানহা তাবাসসুম',
+    location: 'উত্তরা, ঢাকা',
     isVerified: true,
     reviewDate: '৪ দিন আগে',
     rating: 5,
-    comment: 'প্রথমে ১ প্যাকেট নিয়েছিলাম ট্রাই করার জন্য, ব্যবহার করে মুগ্ধ হয়ে এখন বড় প্যাক অর্ডার করলাম। কাপড় পরিষ্কার করার ক্ষমতা সত্যিই অসাধারণ।',
+    comment: 'প্রথমে ট্রাই করার জন্য ১ বক্স নিয়েছিলাম। কোয়ালিটি দেখে মুগ্ধ হয়ে এখন বড় ফ্যামিলি টাব প্যাক অর্ডার করলাম। ওয়াশিং মেশিনের ড্রাম একদম সুরক্ষিত রাখে।',
     photoUrl: '',
-    productTitle: 'Power Pax™ 5-in-1 Laundry Detergent Pods',
+    productTitle: 'Leaf Curt 5-in-1 Laundry Detergent Pods',
     productImage: ''
   },
   {
     enabled: true,
-    reviewerName: 'Sabrina Sultana',
-    location: 'চট্টগ্রাম',
+    reviewerName: 'সাবরিনা সুলতানা',
+    location: 'গুলশান-২, ঢাকা',
     isVerified: true,
     reviewDate: '১ সপ্তাহ আগে',
     rating: 5,
-    comment: 'Best laundry detergent pods I have used in BD! কাপড়ের উজ্জ্বলতা বা কালার একটুও নষ্ট হয় না। ডেলিভারিও খুব দ্রুত পেয়েছি।',
+    comment: 'Best laundry detergent pods in Bangladesh! কাপড়ের উজ্জ্বলতা বা কালার একটুও নষ্ট হয় না। ডেলিভারিও খুব দ্রুত পেয়েছি।',
     photoUrl: '',
-    productTitle: 'Power Pax™ 5-in-1 Laundry Detergent Pods',
+    productTitle: 'Leaf Curt 5-in-1 Laundry Detergent Pods',
     productImage: ''
   },
   {
     enabled: true,
-    reviewerName: 'Mehnaz Parveen',
-    location: 'বনানী, ঢাকা',
+    reviewerName: 'মেহনাজ পারভীন',
+    location: 'মিরপুর ডিওএইচএস, ঢাকা',
     isVerified: true,
     reviewDate: '৫ দিন আগে',
     rating: 5,
-    comment: 'ওয়াসিং মেশিনে কাপড় ধোয়া এখন একদম ইজি। সাবান মাপার কোনো ঝামেলা নেই, কাপড়গুলো একদম ফ্রেশ আর সুন্দর সুবাস ছড়ায়।',
+    comment: 'ওয়াশিং মেশিনে কাপড় ধোয়া এখন অনেক সহজ। কাপড়গুলো চমৎকার নরম ও ফ্রেশ থাকে, কোনো আলাদা কমফোর্ট সফটনার লাগে না।',
     photoUrl: '',
-    productTitle: 'Power Pax™ 5-in-1 Laundry Detergent Pods',
-    productImage: ''
-  },
-  {
-    enabled: true,
-    reviewerName: 'Sumaiya Akter',
-    location: 'সিলেট',
-    isVerified: true,
-    reviewDate: '১ সপ্তাহ আগে',
-    rating: 5,
-    comment: 'Awesome product! জামা-কাপড় একদম ঝকঝকে পরিষ্কার হয় এবং গন্ধ দূর হয়ে সুন্দর স্নিগ্ধ সুবাস থাকে। প্যাকেজিং ও ডেলিভারি দুইটাই ভালো ছিল।',
-    photoUrl: '',
-    productTitle: 'Power Pax™ 5-in-1 Laundry Detergent Pods',
-    productImage: ''
-  },
-  {
-    enabled: true,
-    reviewerName: 'Tasnim Rahman',
-    location: 'মোহাম্মদপুর, ঢাকা',
-    isVerified: true,
-    reviewDate: '১০ দিন আগে',
-    rating: 5,
-    comment: 'Genuine product! বিশেষ করে সাদা ও রঙিন কাপড়ে ব্যবহার করে খুব ভালো রেজাল্ট পেয়েছি। ধন্যবাদ সেলারকে এমন কোয়ালিটি দেওয়ার জন্য।',
-    photoUrl: '',
-    productTitle: 'Power Pax™ 5-in-1 Laundry Detergent Pods',
+    productTitle: 'Leaf Curt 5-in-1 Laundry Detergent Pods',
     productImage: ''
   }
 ];
@@ -618,15 +594,15 @@ export const DEFAULT_ECOM_SETTINGS: EcomSettings = {
 };
 
 export const DEFAULT_INSTITUTE_INFO: InstituteInfo = {
-  name: 'Store Ltd.',
-  logo: '',
+  name: 'Leaf Curt',
+  logo: '/uploads/file-1792735476267-28104613.webp',
   regNo: '',
-  phone: '+880 1700-000000',
-  email: 'support@store.com',
-  address: 'Dhaka, Bangladesh',
-  street: 'Dhaka, Bangladesh',
-  description: 'Premium E-Commerce Experience.',
-  industry: 'Retail & E-Commerce',
+  phone: '01635311494',
+  email: 'armtrading16@gmail.com',
+  address: 'Banasree, Dhaka, Bangladesh',
+  street: 'Banasree, Dhaka, Bangladesh',
+  description: 'Leaf Curt - Premium Online Shopping Destination.',
+  industry: 'Laundry & Home Care',
   bearingRollLocation: 'Dhaka'
 };
 

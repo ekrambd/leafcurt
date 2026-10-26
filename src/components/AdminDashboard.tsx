@@ -49,6 +49,17 @@ export default function AdminDashboard({ adminEmail, onLogout }: AdminDashboardP
   const [viewsOverview, setViewsOverview] = useState<{ websiteViews: number; landingViews: number; totalProductViews: number }>({ websiteViews: 0, landingViews: 0, totalProductViews: 0 });
   const [loading, setLoading] = useState(true);
 
+  // Helper to deduplicate orders by ID
+  const deduplicateOrders = (list: BookOrder[]): BookOrder[] => {
+    const seen = new Set<string>();
+    return list.filter(o => {
+      if (!o.id) return true;
+      if (seen.has(o.id)) return false;
+      seen.add(o.id);
+      return true;
+    });
+  };
+
   // New order toast state
   const [newOrderToast, setNewOrderToast] = useState<BookOrder | null>(null);
   const knownOrderIds = useRef<Set<string>>(new Set());
@@ -99,8 +110,9 @@ export default function AdminDashboard({ adminEmail, onLogout }: AdminDashboardP
         }
 
         // Seed known IDs from initial fetch (no toast for these)
-        orderList.forEach(o => knownOrderIds.current.add(o.id));
-        setOrders(orderList);
+        const uniqueOrders = deduplicateOrders(orderList);
+        uniqueOrders.forEach(o => knownOrderIds.current.add(o.id));
+        setOrders(uniqueOrders);
         setProducts(prodList);
         setCustomers(custList);
         setStoreSettings(settings);
@@ -193,10 +205,11 @@ export default function AdminDashboard({ adminEmail, onLogout }: AdminDashboardP
     // Real-time Firestore listener for orders
     const unsubOrders = subscribeToOrders((liveOrders) => {
       if (isFirstLoad.current) return; // skip during initial load
-      setOrders(liveOrders);
+      const uniqueOrders = deduplicateOrders(liveOrders);
+      setOrders(uniqueOrders);
 
       // Detect brand-new orders
-      liveOrders.forEach(o => {
+      uniqueOrders.forEach(o => {
         if (!knownOrderIds.current.has(o.id)) {
           knownOrderIds.current.add(o.id);
           // Show toast for the newest order

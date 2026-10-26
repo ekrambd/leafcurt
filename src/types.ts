@@ -163,6 +163,7 @@ export interface HeroBannerItem {
   buttonText?: string;
   secondaryButtonText?: string;
   secondaryButtonLink?: string;
+  durationSeconds?: number;
 }
 
 export interface SubCategoryItem {
@@ -539,6 +540,8 @@ export interface EcomSettings {
   paymentGateways?: PaymentGatewayItem[];
   deliveryMethods?: DeliveryMethodItem[];
   heroBanners?: HeroBannerItem[];
+  heroSliderInterval?: number;
+  heroVideoInterval?: number;
   categories?: string[];
   categoryItems?: CategoryItem[];
   brands?: Brand[];
@@ -694,6 +697,15 @@ export interface VideoReviewItem {
   videoUrl?: string;
   posterUrl: string;
   active?: boolean;
+
+  // Optional Attached Product
+  productId?: string;
+  productTitle?: string;
+  productPrice?: number;
+  productRegularPrice?: number;
+  productImage?: string;
+  productDiscountBadge?: string;
+  productUrl?: string;
 }
 
 export interface VideoReviewsSettings {
@@ -883,7 +895,7 @@ export interface BookOrder {
   paymentMethod?: 'COD' | 'bKash' | 'Nagad' | 'Cash on Delivery' | string;
   trxId?: string;
   senderPhone?: string;
-  orderType?: 'landing' | 'physical' | 'store' | 'storefront';
+  orderType?: 'landing' | 'website' | 'storefront' | 'physical' | 'store';
   source?: string;
   deliveryArea?: string;
   status: 'Pending' | 'Confirmed' | 'Packaging' | 'Ready for Shipment' | 'Shipped' | 'Delivered' | 'Hold' | 'Under Review' | 'Not Responding' | 'Return' | 'Cancelled' | string;

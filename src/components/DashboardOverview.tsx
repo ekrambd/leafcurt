@@ -1,11 +1,14 @@
 import { useState, useMemo, useEffect } from 'react';
 import { 
   ShoppingBag, DollarSign, Package, Users, ArrowRight, 
-  Search, AlertTriangle, Truck, Clock, CheckCircle2, XCircle, Globe, RefreshCw
+  Search, AlertTriangle, Truck, Clock, CheckCircle2, XCircle, Globe, RefreshCw,
+  Calendar, CalendarDays, Filter
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend } from 'recharts';
 import { Product, BookOrder, Customer, ActiveTab } from '../types';
+
+export type DateFilterPreset = 'today' | 'yesterday' | 'last7days' | 'lastMonth' | 'custom';
 
 interface DashboardOverviewProps {
   products: Product[];
@@ -20,74 +23,276 @@ export default function DashboardOverview({
   customers = [], 
   onNavigateTab 
 }: DashboardOverviewProps) {
+  // Date filter state - 'today' is selected by default as requested
+  const [dateFilter, setDateFilter] = useState<DateFilterPreset>('today');
+  
+  // Custom date picker range (defaulting to today's date)
+  const todayStr = useMemo(() => {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }, []);
+
+  const [customStart, setCustomStart] = useState<string>(todayStr);
+  const [customEnd, setCustomEnd] = useState<string>(todayStr);
+
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [tableScope, setTableScope] = useState<'period' | 'all'>('period');
 
+  // Calculate timestamp boundaries for each preset filter
+  const dateRange = useMemo(() => {
+    const now = new Date();
 
+    if (dateFilter === 'today') {
+      const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0).getTime();
+      const end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999).getTime();
+      return {
+        start,
+        end,
+        label: "Today's",
+        badge: `Today (${now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })})`
+      };
+    }
 
-  const deliveredOrdersCount = useMemo(() => {
-    return orders.filter(o => o.status === 'Delivered').length;
-  }, [orders]);
+    if (dateFilter === 'yesterday') {
+      const y = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+      const start = new Date(y.getFullYear(), y.getMonth(), y.getDate(), 0, 0, 0, 0).getTime();
+      const end = new Date(y.getFullYear(), y.getMonth(), y.getDate(), 23, 59, 59, 999).getTime();
+      return {
+        start,
+        end,
+        label: "Yesterday's",
+        badge: `Yesterday (${y.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })})`
+      };
+    }
 
-  const cancelledOrdersCount = useMemo(() => {
-    return orders.filter(o => o.status === 'Cancelled').length;
-  }, [orders]);
+    if (dateFilter === 'last7days') {
+      const startD = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6, 0, 0, 0, 0);
+      const endD = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+      return {
+        start: startD.getTime(),
+        end: endD.getTime(),
+        label: "Last 7 Days",
+        badge: `Last 7 Days (${startD.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${endD.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })})`
+      };
+    }
 
-  const returnedOrdersCount = useMemo(() => {
-    return orders.filter(o => o.status === 'Return').length;
-  }, [orders]);
+    if (dateFilter === 'lastMonth') {
+      const startD = new Date(now.getFullYear(), now.getMonth() - 1, 1, 0, 0, 0, 0);
+      const endD = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+      return {
+        start: startD.getTime(),
+        end: endD.getTime(),
+        label: "Last Month's",
+        badge: `Last Month (${startD.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })})`
+      };
+    }
 
-  // Compute key e-commerce analytics
-  const totalRevenue = useMemo(() => {
+    // Custom
+    const sDate = customStart ? new Date(`${customStart}T00:00:00`) : new Date(0);
+    const eDate = customEnd ? new Date(`${customEnd}T23:59:59.999`) : new Date();
+    return {
+      start: isNaN(sDate.getTime()) ? 0 : sDate.getTime(),
+      end: isNaN(eDate.getTime()) ? Date.now() : eDate.getTime(),
+      label: "Custom Period",
+      badge: `Custom (${customStart} to ${customEnd})`
+    };
+  }, [dateFilter, customStart, customEnd]);
+
+  // Helper to extract timestamp from order
+  const getOrderTimestamp = (o: BookOrder): number => {
+    const raw = o.orderDate || o.createdAt || (o as any).date;
+    if (!raw) return 0;
+    const t = new Date(raw).getTime();
+    return isNaN(t) ? 0 : t;
+  };
+
+  // Orders filtered by the selected date range
+  const periodOrders = useMemo(() => {
+    return orders.filter(o => {
+      const t = getOrderTimestamp(o);
+      return t >= dateRange.start && t <= dateRange.end;
+    });
+  }, [orders, dateRange]);
+
+  // Period-specific metrics
+  const periodRevenue = useMemo(() => {
+    return periodOrders
+      .filter(o => o.status !== 'Cancelled')
+      .reduce((sum, o) => sum + (o.totalPrice || o.totalAmount || 0), 0);
+  }, [periodOrders]);
+
+  const periodPendingCount = useMemo(() => {
+    return periodOrders.filter(o => o.status === 'Pending').length;
+  }, [periodOrders]);
+
+  const periodDeliveredCount = useMemo(() => {
+    return periodOrders.filter(o => o.status === 'Delivered').length;
+  }, [periodOrders]);
+
+  const periodCancelledCount = useMemo(() => {
+    return periodOrders.filter(o => o.status === 'Cancelled').length;
+  }, [periodOrders]);
+
+  const periodReturnedCount = useMemo(() => {
+    return periodOrders.filter(o => o.status === 'Return').length;
+  }, [periodOrders]);
+
+  // Lifetime counts for context
+  const lifetimeRevenue = useMemo(() => {
     return orders
       .filter(o => o.status !== 'Cancelled')
-      .reduce((sum, o) => sum + (o.totalPrice || 0), 0);
+      .reduce((sum, o) => sum + (o.totalPrice || o.totalAmount || 0), 0);
   }, [orders]);
 
-  const pendingOrdersCount = useMemo(() => {
+  const allPendingOrdersCount = useMemo(() => {
     return orders.filter(o => o.status === 'Pending').length;
   }, [orders]);
 
-  const shippedOrdersCount = useMemo(() => {
-    return orders.filter(o => o.status === 'Shipped' || o.status === 'Delivered').length;
+  const allDeliveredOrdersCount = useMemo(() => {
+    return orders.filter(o => o.status === 'Delivered').length;
   }, [orders]);
 
-  // Generate last 7 days chart data
-  const chartData = useMemo(() => {
-    const data = [];
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      const dateStr = d.toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
-      
-      const dayStart = new Date(d.setHours(0,0,0,0)).getTime();
-      const dayEnd = new Date(d.setHours(23,59,59,999)).getTime();
-      
-      const dayOrders = orders.filter(o => {
-        const orderTime = new Date(o.orderDate || Date.now()).getTime();
-        return orderTime >= dayStart && orderTime <= dayEnd;
-      });
-      
-      const dayRevenue = dayOrders
-        .filter(o => o.status !== 'Cancelled')
-        .reduce((sum, o) => sum + (o.totalPrice || 0), 0);
-        
-      data.push({
-        name: dateStr,
-        orders: dayOrders.length,
-        revenue: dayRevenue
-      });
-    }
-    return data;
+  const allCancelledOrdersCount = useMemo(() => {
+    return orders.filter(o => o.status === 'Cancelled').length;
+  }, [orders]);
+
+  const allReturnedOrdersCount = useMemo(() => {
+    return orders.filter(o => o.status === 'Return').length;
   }, [orders]);
 
   const lowStockProductsCount = useMemo(() => {
     return products.filter(p => p.stock <= 5 || !p.isAvailable).length;
   }, [products]);
 
-  // Filtered orders for quick overview
+  // Dynamic Chart Data corresponding to the selected filter
+  const chartData = useMemo(() => {
+    const data = [];
+    const now = new Date();
+
+    if (dateFilter === 'today' || dateFilter === 'yesterday') {
+      const targetDate = dateFilter === 'today' 
+        ? new Date() 
+        : new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+      
+      const hours = [0, 3, 6, 9, 12, 15, 18, 21];
+      
+      hours.forEach((h, idx) => {
+        const slotStart = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate(), h, 0, 0, 0).getTime();
+        const nextH = idx === hours.length - 1 ? 24 : hours[idx + 1];
+        const slotEnd = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate(), nextH - 1, 59, 59, 999).getTime();
+
+        const slotOrders = periodOrders.filter(o => {
+          const t = getOrderTimestamp(o);
+          return t >= slotStart && t <= slotEnd;
+        });
+
+        const slotRevenue = slotOrders
+          .filter(o => o.status !== 'Cancelled')
+          .reduce((sum, o) => sum + (o.totalPrice || o.totalAmount || 0), 0);
+
+        const label = h === 0 ? '12 AM' : h < 12 ? `${h} AM` : h === 12 ? '12 PM' : `${h - 12} PM`;
+
+        data.push({
+          name: label,
+          orders: slotOrders.length,
+          revenue: slotRevenue
+        });
+      });
+      return data;
+    }
+
+    if (dateFilter === 'last7days') {
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i);
+        const dayStart = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0).getTime();
+        const dayEnd = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999).getTime();
+
+        const dayOrders = orders.filter(o => {
+          const t = getOrderTimestamp(o);
+          return t >= dayStart && t <= dayEnd;
+        });
+
+        const dayRevenue = dayOrders
+          .filter(o => o.status !== 'Cancelled')
+          .reduce((sum, o) => sum + (o.totalPrice || o.totalAmount || 0), 0);
+
+        data.push({
+          name: d.toLocaleDateString('en-US', { weekday: 'short', month: 'numeric', day: 'numeric' }),
+          orders: dayOrders.length,
+          revenue: dayRevenue
+        });
+      }
+      return data;
+    }
+
+    if (dateFilter === 'lastMonth') {
+      const firstDay = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const lastDay = new Date(now.getFullYear(), now.getMonth(), 0);
+      const totalDays = lastDay.getDate();
+
+      const step = totalDays > 20 ? 3 : 1;
+      for (let day = 1; day <= totalDays; day += step) {
+        const curStart = new Date(firstDay.getFullYear(), firstDay.getMonth(), day, 0, 0, 0, 0).getTime();
+        const endDay = Math.min(day + step - 1, totalDays);
+        const curEnd = new Date(firstDay.getFullYear(), firstDay.getMonth(), endDay, 23, 59, 59, 999).getTime();
+
+        const intervalOrders = periodOrders.filter(o => {
+          const t = getOrderTimestamp(o);
+          return t >= curStart && t <= curEnd;
+        });
+
+        const intervalRev = intervalOrders
+          .filter(o => o.status !== 'Cancelled')
+          .reduce((sum, o) => sum + (o.totalPrice || o.totalAmount || 0), 0);
+
+        const name = step === 1 
+          ? `${firstDay.toLocaleDateString('en-US', { month: 'short' })} ${day}`
+          : `${firstDay.toLocaleDateString('en-US', { month: 'short' })} ${day}-${endDay}`;
+
+        data.push({
+          name,
+          orders: intervalOrders.length,
+          revenue: intervalRev
+        });
+      }
+      return data;
+    }
+
+    // Custom range
+    const diffDays = Math.max(1, Math.round((dateRange.end - dateRange.start) / 86400000));
+    const stepDays = diffDays > 30 ? Math.ceil(diffDays / 15) : 1;
+    for (let i = 0; i < diffDays; i += stepDays) {
+      const curStart = dateRange.start + i * 86400000;
+      const curEnd = Math.min(dateRange.end, curStart + stepDays * 86400000 - 1);
+      const d = new Date(curStart);
+
+      const intervalOrders = periodOrders.filter(o => {
+        const t = getOrderTimestamp(o);
+        return t >= curStart && t <= curEnd;
+      });
+
+      const intervalRev = intervalOrders
+        .filter(o => o.status !== 'Cancelled')
+        .reduce((sum, o) => sum + (o.totalPrice || o.totalAmount || 0), 0);
+
+      data.push({
+        name: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        orders: intervalOrders.length,
+        revenue: intervalRev
+      });
+    }
+
+    return data;
+  }, [dateFilter, periodOrders, orders, dateRange]);
+
+  // Filtered orders for quick overview (table scope: period or all)
   const filteredOrders = useMemo(() => {
-    return orders.filter(o => {
+    const baseList = tableScope === 'period' ? periodOrders : orders;
+    return baseList.filter(o => {
       const matchesSearch = 
         !searchTerm || 
         o.customerName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -98,7 +303,7 @@ export default function DashboardOverview({
 
       return matchesSearch && matchesStatus;
     });
-  }, [orders, searchTerm, statusFilter]);
+  }, [tableScope, periodOrders, orders, searchTerm, statusFilter]);
 
   const getStatusBadge = (status: BookOrder['status']) => {
     switch (status) {
@@ -145,37 +350,120 @@ export default function DashboardOverview({
   return (
     <div className="space-y-8 font-sans">
 
-      {/* Top Stat Cards */}
+      {/* Top Filter Bar (Today by default, Yesterday, Last 7 Days, Last Month, Custom Range) */}
+      <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm p-4 sm:p-5">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          
+          {/* Left: Summary Title & Live Badge */}
+          <div className="space-y-1">
+            <div className="flex flex-wrap items-center gap-2.5">
+              <h2 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight">Dashboard Summary</h2>
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-blue-50 text-[#0279c7] border border-blue-200/80 shadow-2xs">
+                <span className="w-2 h-2 rounded-full bg-[#0279c7] animate-pulse"></span>
+                {dateRange.badge}
+              </span>
+            </div>
+            <p className="text-xs text-slate-500 font-medium">
+              Sales, order volume, and fulfillment analytics for the selected reporting period
+            </p>
+          </div>
+
+          {/* Right: Date Preset Filter Pills */}
+          <div className="flex flex-wrap items-center gap-2">
+            {[
+              { id: 'today', label: 'Today' },
+              { id: 'yesterday', label: 'Yesterday' },
+              { id: 'last7days', label: 'Last 7 Days' },
+              { id: 'lastMonth', label: 'Last Month' },
+              { id: 'custom', label: 'Custom Range' },
+            ].map(tab => {
+              const active = dateFilter === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setDateFilter(tab.id as DateFilterPreset)}
+                  className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 active:scale-95 ${
+                    active 
+                      ? 'bg-[#0279c7] text-white shadow-md shadow-[#0279c7]/30 scale-[1.02]' 
+                      : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200/80'
+                  }`}
+                >
+                  {tab.id === 'today' && <Clock className="w-3.5 h-3.5" />}
+                  {tab.id === 'custom' && <Calendar className="w-3.5 h-3.5" />}
+                  <span>{tab.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Custom Range Date Pickers (Shown smoothly when 'custom' is selected) */}
+        {dateFilter === 'custom' && (
+          <motion.div 
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="mt-4 pt-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3 bg-slate-50/80 p-3.5 rounded-xl border border-slate-200/60"
+          >
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-slate-600">Start Date:</span>
+                <input 
+                  type="date"
+                  value={customStart}
+                  onChange={(e) => setCustomStart(e.target.value)}
+                  className="px-3 py-1.5 text-xs bg-white border border-slate-300 rounded-lg font-mono font-medium focus:ring-2 focus:ring-[#0279c7]/20 focus:border-[#0279c7] text-slate-800"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-slate-600">End Date:</span>
+                <input 
+                  type="date"
+                  value={customEnd}
+                  onChange={(e) => setCustomEnd(e.target.value)}
+                  className="px-3 py-1.5 text-xs bg-white border border-slate-300 rounded-lg font-mono font-medium focus:ring-2 focus:ring-[#0279c7]/20 focus:border-[#0279c7] text-slate-800"
+                />
+              </div>
+            </div>
+            <span className="text-xs text-[#0279c7] font-bold">
+              {periodOrders.length} order(s) found in selected range
+            </span>
+          </motion.div>
+        )}
+      </div>
+
+      {/* Top Stat Cards (All using Sidebar Blue Palette and White Text) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        {/* Total Sales */}
+        {/* Total Sales / Revenue in Period */}
         <motion.div 
           whileHover={{ y: -4, scale: 1.02 }}
-          className="bg-gradient-to-br from-emerald-500 to-teal-600 p-5 rounded-2xl shadow-lg shadow-emerald-500/20 flex items-center justify-between text-white relative overflow-hidden"
+          className="admin-stat-card bg-gradient-to-br from-[#0279c7] via-[#026aa6] to-[#014d7a] p-5 rounded-2xl shadow-lg shadow-[#0279c7]/20 flex items-center justify-between text-white relative overflow-hidden"
         >
           <div className="absolute -right-4 -top-4 bg-white/10 w-24 h-24 rounded-full blur-2xl"></div>
           <div className="space-y-1 relative z-10">
-            <span className="text-emerald-50 font-semibold text-xs block">Total Revenue</span>
-            <h3 className="text-2xl font-extrabold tracking-tight drop-shadow-sm">Tk.{totalRevenue.toLocaleString()}</h3>
-            <span className="text-[10px] text-emerald-100 font-medium block">All active & delivered orders</span>
+            <span className="stat-label text-blue-100 font-bold text-xs block tracking-wide">{dateRange.label} Revenue</span>
+            <h3 className="text-2xl sm:text-3xl font-black tracking-tight text-white !text-white drop-shadow-xs">Tk.{periodRevenue.toLocaleString()}</h3>
+            <span className="stat-subtitle text-[11px] text-blue-100/80 font-medium block">Lifetime Total: Tk.{lifetimeRevenue.toLocaleString()}</span>
           </div>
-          <div className="h-12 w-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center relative z-10 border border-white/10">
+          <div className="h-12 w-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center relative z-10 border border-white/25 text-white shadow-xs">
             <DollarSign className="h-6 w-6 text-white" />
           </div>
         </motion.div>
 
-        {/* Total Orders */}
+        {/* Total Orders in Period */}
         <motion.div 
           whileHover={{ y: -4, scale: 1.02 }}
           onClick={() => onNavigateTab('orders')}
-          className="bg-gradient-to-br from-violet-500 to-fuchsia-600 p-5 rounded-2xl shadow-lg shadow-violet-500/20 cursor-pointer flex items-center justify-between text-white group relative overflow-hidden"
+          className="admin-stat-card bg-gradient-to-br from-[#1d4ed8] via-[#2563eb] to-[#0279c7] p-5 rounded-2xl shadow-lg shadow-blue-600/20 cursor-pointer flex items-center justify-between text-white group relative overflow-hidden"
         >
           <div className="absolute -right-4 -top-4 bg-white/10 w-24 h-24 rounded-full blur-2xl"></div>
           <div className="space-y-1 relative z-10">
-            <span className="text-violet-50 font-semibold text-xs block">Total Orders</span>
-            <h3 className="text-2xl font-extrabold tracking-tight drop-shadow-sm">{orders.length}</h3>
-            <span className="text-[10px] text-violet-100 font-medium block">Pending: {pendingOrdersCount}</span>
+            <span className="stat-label text-blue-100 font-bold text-xs block tracking-wide">{dateRange.label} Orders</span>
+            <h3 className="text-2xl sm:text-3xl font-black tracking-tight text-white !text-white drop-shadow-xs">{periodOrders.length}</h3>
+            <span className="stat-subtitle text-[11px] text-blue-100/80 font-medium block">Lifetime: {orders.length} total orders</span>
           </div>
-          <div className="h-12 w-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center relative z-10 border border-white/10 group-hover:rotate-6 transition-transform">
+          <div className="h-12 w-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center relative z-10 border border-white/25 text-white shadow-xs group-hover:rotate-6 transition-transform">
             <ShoppingBag className="h-6 w-6 text-white" />
           </div>
         </motion.div>
@@ -184,17 +472,17 @@ export default function DashboardOverview({
         <motion.div 
           whileHover={{ y: -4, scale: 1.02 }}
           onClick={() => onNavigateTab('products')}
-          className={`bg-gradient-to-br ${lowStockProductsCount > 0 ? 'from-rose-500 to-red-600 shadow-rose-500/20' : 'from-indigo-500 to-purple-600 shadow-indigo-500/20'} p-5 rounded-2xl shadow-lg cursor-pointer flex items-center justify-between text-white group relative overflow-hidden`}
+          className="admin-stat-card bg-gradient-to-br from-[#0284c7] via-[#0369a1] to-[#0279c7] p-5 rounded-2xl shadow-lg shadow-sky-600/20 cursor-pointer flex items-center justify-between text-white group relative overflow-hidden"
         >
           <div className="absolute -right-4 -top-4 bg-white/10 w-24 h-24 rounded-full blur-2xl"></div>
           <div className="space-y-1 relative z-10">
-            <span className={`font-semibold text-xs block ${lowStockProductsCount > 0 ? 'text-rose-50' : 'text-indigo-50'}`}>Total Products</span>
-            <h3 className="text-2xl font-extrabold tracking-tight drop-shadow-sm">{products.length}</h3>
-            <span className={`text-[10px] font-medium block ${lowStockProductsCount > 0 ? 'text-white font-bold bg-white/20 px-1.5 py-0.5 rounded inline-block mt-1' : 'text-indigo-100'}`}>
+            <span className="stat-label text-blue-100 font-bold text-xs block tracking-wide">Total Products</span>
+            <h3 className="text-2xl sm:text-3xl font-black tracking-tight text-white !text-white drop-shadow-xs">{products.length}</h3>
+            <span className="stat-subtitle text-[11px] text-blue-100/80 font-medium block">
               {lowStockProductsCount > 0 ? `Stockout / Low Stock: ${lowStockProductsCount}` : 'All items in stock'}
             </span>
           </div>
-          <div className="h-12 w-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center relative z-10 border border-white/10 group-hover:rotate-6 transition-transform">
+          <div className="h-12 w-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center relative z-10 border border-white/25 text-white shadow-xs group-hover:rotate-6 transition-transform">
             <Package className="h-6 w-6 text-white" />
           </div>
         </motion.div>
@@ -203,96 +491,101 @@ export default function DashboardOverview({
         <motion.div 
           whileHover={{ y: -4, scale: 1.02 }}
           onClick={() => onNavigateTab('customers')}
-          className="bg-gradient-to-br from-blue-500 to-cyan-500 p-5 rounded-2xl shadow-lg shadow-blue-500/20 cursor-pointer flex items-center justify-between text-white group relative overflow-hidden"
+          className="admin-stat-card bg-gradient-to-br from-[#0279c7] via-[#0ea5e9] to-[#06b6d4] p-5 rounded-2xl shadow-lg shadow-cyan-600/20 cursor-pointer flex items-center justify-between text-white group relative overflow-hidden"
         >
           <div className="absolute -right-4 -top-4 bg-white/10 w-24 h-24 rounded-full blur-2xl"></div>
           <div className="space-y-1 relative z-10">
-            <span className="text-blue-50 font-semibold text-xs block">Total Customers</span>
-            <h3 className="text-2xl font-extrabold tracking-tight drop-shadow-sm">{customers.length}</h3>
-            <span className="text-[10px] text-blue-100 font-medium block">Delivered Orders: {deliveredOrdersCount}</span>
+            <span className="stat-label text-cyan-100 font-bold text-xs block tracking-wide">Total Customers</span>
+            <h3 className="text-2xl sm:text-3xl font-black tracking-tight text-white !text-white drop-shadow-xs">{customers.length}</h3>
+            <span className="stat-subtitle text-[11px] text-cyan-100/80 font-medium block">Delivered in period: {periodDeliveredCount}</span>
           </div>
-          <div className="h-12 w-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center relative z-10 border border-white/10 group-hover:rotate-6 transition-transform">
+          <div className="h-12 w-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center relative z-10 border border-white/25 text-white shadow-xs group-hover:rotate-6 transition-transform">
             <Users className="h-6 w-6 text-white" />
           </div>
         </motion.div>
       </div>
 
-      {/* Additional Stats Cards */}
+      {/* Additional Stats Cards (All matching Sidebar Blue and Crisp White Typography) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         {/* Pending Orders */}
         <motion.div 
           whileHover={{ y: -4, scale: 1.02 }}
           onClick={() => onNavigateTab('orders')}
-          className="bg-gradient-to-br from-amber-500 to-orange-500 p-5 rounded-2xl shadow-lg shadow-amber-500/20 cursor-pointer flex items-center justify-between text-white group relative overflow-hidden"
+          className="admin-stat-card bg-gradient-to-br from-[#0269ad] via-[#0279c7] to-[#d97706] p-5 rounded-2xl shadow-lg shadow-amber-600/20 cursor-pointer flex items-center justify-between text-white group relative overflow-hidden"
         >
           <div className="absolute -right-4 -top-4 bg-white/10 w-24 h-24 rounded-full blur-2xl"></div>
           <div className="space-y-1 relative z-10">
-            <span className="text-amber-50 font-semibold text-xs block">Pending Orders</span>
-            <h3 className="text-2xl font-extrabold tracking-tight drop-shadow-sm">{pendingOrdersCount}</h3>
-            <span className="text-[10px] text-amber-100 font-medium block">Awaiting processing</span>
+            <span className="stat-label text-white/90 font-bold text-xs block tracking-wide">Pending Orders</span>
+            <h3 className="text-2xl sm:text-3xl font-black tracking-tight text-white !text-white drop-shadow-xs">{periodPendingCount}</h3>
+            <span className="stat-subtitle text-[11px] text-white/80 font-medium block">Lifetime pending: {allPendingOrdersCount}</span>
           </div>
-          <div className="h-12 w-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center relative z-10 border border-white/10 group-hover:rotate-6 transition-transform">
+          <div className="h-12 w-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center relative z-10 border border-white/25 text-white shadow-xs group-hover:rotate-6 transition-transform">
             <Clock className="h-6 w-6 text-white" />
           </div>
         </motion.div>
 
-        {/* Delivered Product */}
+        {/* Delivered Orders */}
         <motion.div 
           whileHover={{ y: -4, scale: 1.02 }}
           onClick={() => onNavigateTab('orders')}
-          className="bg-gradient-to-br from-green-500 to-emerald-600 p-5 rounded-2xl shadow-lg shadow-green-500/20 cursor-pointer flex items-center justify-between text-white group relative overflow-hidden"
+          className="admin-stat-card bg-gradient-to-br from-[#0279c7] via-[#0284c7] to-[#059669] p-5 rounded-2xl shadow-lg shadow-emerald-600/20 cursor-pointer flex items-center justify-between text-white group relative overflow-hidden"
         >
           <div className="absolute -right-4 -top-4 bg-white/10 w-24 h-24 rounded-full blur-2xl"></div>
           <div className="space-y-1 relative z-10">
-            <span className="text-green-50 font-semibold text-xs block">Delivered Orders</span>
-            <h3 className="text-2xl font-extrabold tracking-tight drop-shadow-sm">{deliveredOrdersCount}</h3>
-            <span className="text-[10px] text-green-100 font-medium block">Successfully completed</span>
+            <span className="stat-label text-white/90 font-bold text-xs block tracking-wide">Delivered Orders</span>
+            <h3 className="text-2xl sm:text-3xl font-black tracking-tight text-white !text-white drop-shadow-xs">{periodDeliveredCount}</h3>
+            <span className="stat-subtitle text-[11px] text-white/80 font-medium block">Lifetime delivered: {allDeliveredOrdersCount}</span>
           </div>
-          <div className="h-12 w-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center relative z-10 border border-white/10 group-hover:rotate-6 transition-transform">
+          <div className="h-12 w-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center relative z-10 border border-white/25 text-white shadow-xs group-hover:rotate-6 transition-transform">
             <CheckCircle2 className="h-6 w-6 text-white" />
           </div>
         </motion.div>
 
-        {/* Cancelled Product */}
+        {/* Cancelled Orders */}
         <motion.div 
           whileHover={{ y: -4, scale: 1.02 }}
           onClick={() => onNavigateTab('orders')}
-          className="bg-gradient-to-br from-rose-500 to-red-600 p-5 rounded-2xl shadow-lg shadow-rose-500/20 cursor-pointer flex items-center justify-between text-white group relative overflow-hidden"
+          className="admin-stat-card bg-gradient-to-br from-[#0269ad] via-[#1e293b] to-[#dc2626] p-5 rounded-2xl shadow-lg shadow-rose-600/20 cursor-pointer flex items-center justify-between text-white group relative overflow-hidden"
         >
           <div className="absolute -right-4 -top-4 bg-white/10 w-24 h-24 rounded-full blur-2xl"></div>
           <div className="space-y-1 relative z-10">
-            <span className="text-rose-50 font-semibold text-xs block">Cancelled Orders</span>
-            <h3 className="text-2xl font-extrabold tracking-tight drop-shadow-sm">{cancelledOrdersCount}</h3>
-            <span className="text-[10px] text-rose-100 font-medium block">Customer or store cancelled</span>
+            <span className="stat-label text-white/90 font-bold text-xs block tracking-wide">Cancelled Orders</span>
+            <h3 className="text-2xl sm:text-3xl font-black tracking-tight text-white !text-white drop-shadow-xs">{periodCancelledCount}</h3>
+            <span className="stat-subtitle text-[11px] text-white/80 font-medium block">Lifetime cancelled: {allCancelledOrdersCount}</span>
           </div>
-          <div className="h-12 w-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center relative z-10 border border-white/10 group-hover:rotate-6 transition-transform">
+          <div className="h-12 w-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center relative z-10 border border-white/25 text-white shadow-xs group-hover:rotate-6 transition-transform">
             <XCircle className="h-6 w-6 text-white" />
           </div>
         </motion.div>
 
-        {/* Returned Product */}
+        {/* Returned Orders */}
         <motion.div 
           whileHover={{ y: -4, scale: 1.02 }}
           onClick={() => onNavigateTab('orders')}
-          className="bg-gradient-to-br from-yellow-500 to-amber-600 p-5 rounded-2xl shadow-lg shadow-yellow-500/20 cursor-pointer flex items-center justify-between text-white group relative overflow-hidden"
+          className="admin-stat-card bg-gradient-to-br from-[#0279c7] via-[#0269ad] to-[#7c3aed] p-5 rounded-2xl shadow-lg shadow-purple-600/20 cursor-pointer flex items-center justify-between text-white group relative overflow-hidden"
         >
           <div className="absolute -right-4 -top-4 bg-white/10 w-24 h-24 rounded-full blur-2xl"></div>
           <div className="space-y-1 relative z-10">
-            <span className="text-yellow-50 font-semibold text-xs block">Returned Orders</span>
-            <h3 className="text-2xl font-extrabold tracking-tight drop-shadow-sm">{returnedOrdersCount}</h3>
-            <span className="text-[10px] text-yellow-100 font-medium block">Courier parcel returned</span>
+            <span className="stat-label text-white/90 font-bold text-xs block tracking-wide">Returned Orders</span>
+            <h3 className="text-2xl sm:text-3xl font-black tracking-tight text-white !text-white drop-shadow-xs">{periodReturnedCount}</h3>
+            <span className="stat-subtitle text-[11px] text-white/80 font-medium block">Lifetime returned: {allReturnedOrdersCount}</span>
           </div>
-          <div className="h-12 w-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center relative z-10 border border-white/10 group-hover:rotate-6 transition-transform">
+          <div className="h-12 w-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center relative z-10 border border-white/25 text-white shadow-xs group-hover:rotate-6 transition-transform">
             <RefreshCw className="h-6 w-6 text-white" />
           </div>
         </motion.div>
       </div>
 
-      {/* Analytics Charts */}
+      {/* Analytics Charts (Dynamically labeled with the current period badge) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         {/* Orders Trend */}
         <div className="w-full min-w-0 bg-white rounded-2xl border border-slate-100 shadow-xs p-5">
-          <h3 className="text-sm font-bold text-slate-800 mb-4">Orders Trend (Last 7 Days)</h3>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-bold text-slate-800">Orders Trend</h3>
+            <span className="text-[11px] font-semibold text-[#0279c7] bg-blue-50 px-2.5 py-0.5 rounded-full border border-blue-100">
+              {dateRange.badge}
+            </span>
+          </div>
           <div className="w-full min-w-0" style={{ height: 250, minHeight: 250 }}>
             <ResponsiveContainer width="100%" height={250} minWidth={1} minHeight={220}>
               <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
@@ -300,7 +593,7 @@ export default function DashboardOverview({
                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#64748b' }} />
                 <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#64748b' }} />
                 <Tooltip cursor={{ fill: '#f8fafc' }} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
-                <Bar dataKey="orders" name="Orders" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={30} />
+                <Bar dataKey="orders" name="Orders" fill="#0279c7" radius={[4, 4, 0, 0]} barSize={30} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -308,21 +601,26 @@ export default function DashboardOverview({
 
         {/* Revenue Trend */}
         <div className="w-full min-w-0 bg-white rounded-2xl border border-slate-100 shadow-xs p-5">
-          <h3 className="text-sm font-bold text-slate-800 mb-4">Revenue Trend (Last 7 Days)</h3>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-bold text-slate-800">Revenue Trend</h3>
+            <span className="text-[11px] font-semibold text-[#0279c7] bg-blue-50 px-2.5 py-0.5 rounded-full border border-blue-100">
+              {dateRange.badge}
+            </span>
+          </div>
           <div className="w-full min-w-0" style={{ height: 250, minHeight: 250 }}>
             <ResponsiveContainer width="100%" height={250} minWidth={1} minHeight={220}>
               <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                    <stop offset="5%" stopColor="#0279c7" stopOpacity={0.35}/>
+                    <stop offset="95%" stopColor="#0279c7" stopOpacity={0}/>
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#64748b' }} />
                 <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#64748b' }} tickFormatter={(val) => `Tk.${val}`} />
                 <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} formatter={(val) => [`Tk.${val}`, 'Revenue']} />
-                <Area type="monotone" dataKey="revenue" name="Revenue" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorRevenue)" />
+                <Area type="monotone" dataKey="revenue" name="Revenue" stroke="#0279c7" strokeWidth={3} fillOpacity={1} fill="url(#colorRevenue)" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -346,8 +644,8 @@ export default function DashboardOverview({
           </button>
         </div>
 
-        {/* Quick Search and Filter */}
-        <div className="flex flex-col sm:flex-row gap-3">
+        {/* Quick Search, Scope Toggle, and Status Filter */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
           <div className="relative flex-1">
             <Search className="h-4 w-4 absolute left-3 top-2.5 text-slate-400" />
             <input
@@ -355,13 +653,40 @@ export default function DashboardOverview({
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Search by order ID, name or phone..."
-              className="w-full pl-9 pr-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
+              className="w-full pl-9 pr-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0279c7]/20 focus:border-[#0279c7]"
             />
           </div>
+
+          {/* Table Scope Selector: Period vs All */}
+          <div className="flex items-center bg-slate-100 p-1 rounded-xl text-xs font-bold border border-slate-200">
+            <button
+              type="button"
+              onClick={() => setTableScope('period')}
+              className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                tableScope === 'period'
+                  ? 'bg-white text-[#0279c7] shadow-xs'
+                  : 'text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              {dateRange.label} ({periodOrders.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setTableScope('all')}
+              className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                tableScope === 'all'
+                  ? 'bg-white text-[#0279c7] shadow-xs'
+                  : 'text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              All Orders ({orders.length})
+            </button>
+          </div>
+
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-3 py-2 text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 cursor-pointer"
+            className="px-3 py-2 text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0279c7]/20 focus:border-[#0279c7] cursor-pointer"
           >
             <option value="all">All Statuses</option>
             <option value="Pending">Pending</option>

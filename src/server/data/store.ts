@@ -94,7 +94,15 @@ export function loadOrdersFromDisk(): BookOrder[] {
       const raw = fs.readFileSync(ORDERS_STORAGE_FILE, 'utf-8');
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed)) {
-        return parsed;
+        const seen = new Set<string>();
+        const uniqueOrders: BookOrder[] = [];
+        for (const order of parsed) {
+          if (order && order.id && !seen.has(order.id)) {
+            seen.add(order.id);
+            uniqueOrders.push(order);
+          }
+        }
+        return uniqueOrders;
       }
     }
   } catch (err) {
@@ -109,7 +117,16 @@ export function saveOrdersToDisk(orders: BookOrder[]): void {
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
     }
-    fs.writeFileSync(ORDERS_STORAGE_FILE, JSON.stringify(orders, null, 2), 'utf-8');
+    // Always deduplicate by ID before writing to disk
+    const seen = new Set<string>();
+    const uniqueOrders: BookOrder[] = [];
+    for (const order of orders) {
+      if (order && order.id && !seen.has(order.id)) {
+        seen.add(order.id);
+        uniqueOrders.push(order);
+      }
+    }
+    fs.writeFileSync(ORDERS_STORAGE_FILE, JSON.stringify(uniqueOrders, null, 2), 'utf-8');
   } catch (err) {
     console.error('[store] Failed saving orders to disk:', err);
   }
@@ -127,15 +144,15 @@ const SETTINGS_STORAGE_FILE = path.join(process.cwd(), 'prisma', 'settings.json'
 
 const DEFAULT_INITIAL_SETTINGS: EcomSettings = {
   headerSettings: DEFAULT_HEADER_SETTINGS,
-  storeName: 'Store',
-  companyName: 'Store Ltd.',
-  storeLogo: '',
+  storeName: 'Leaf Curt',
+  companyName: 'Leaf Curt',
+  storeLogo: '/uploads/file-1792735476267-28104613.webp',
   storeTagline: 'Your Premium Online Shopping Destination',
-  topAnnouncementText: 'WELCOME TO OUR STORE • FAST HOME DELIVERY NATIONWIDE',
-  contactEmail: 'support@store.com',
-  contactPhone: '+880 1700-000000',
-  storeAddress: 'Dhaka, Bangladesh',
-  footerDescription: 'Premium E-Commerce Experience. Discover quality products at unbeatable prices.',
+  topAnnouncementText: 'WELCOME TO www.leafcurt.com',
+  contactEmail: 'armtrading16@gmail.com',
+  contactPhone: '01635311494',
+  storeAddress: 'Banasree, Dhaka, Bangladesh',
+  footerDescription: 'Leaf Curt - Premium Online Shopping Destination. Discover quality laundry pods and home care at unbeatable prices.',
   gtmId: '',
   deliveryChargeInsideDhaka: 70,
   deliveryChargeOutsideDhaka: 130,

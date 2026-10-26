@@ -75,10 +75,19 @@ export const HeroBannerItemSchema = z.object({
   imageOnly: z.boolean().optional(),
   bgGradient: z.string().optional(),
   imageUrl: z.string().optional(),
+  mobileImageUrl: z.string().optional(),
   link: z.string().optional(),
   actionType: z.enum(['product', 'external']).optional(),
-  productId: z.string().optional()
-});
+  productId: z.string().optional(),
+  mediaType: z.enum(['image', 'video']).optional(),
+  videoType: z.enum(['file', 'youtube']).optional(),
+  videoUrl: z.string().optional(),
+  youtubeUrl: z.string().optional(),
+  buttonText: z.string().optional(),
+  secondaryButtonText: z.string().optional(),
+  secondaryButtonLink: z.string().optional(),
+  durationSeconds: z.number().optional()
+}).passthrough();
 
 export const PaymentGatewayItemSchema = z.object({
   id: z.string(),
@@ -139,10 +148,12 @@ export const EcomSettingsSchema = z.object({
   paymentGateways: z.array(PaymentGatewayItemSchema).optional(),
   deliveryMethods: z.array(DeliveryMethodItemSchema).optional(),
   heroBanners: z.array(HeroBannerItemSchema).optional(),
+  heroSliderInterval: z.number().optional(),
+  heroVideoInterval: z.number().optional(),
   categories: z.array(z.string()).optional(),
   categoryItems: z.array(CategoryItemSchema).optional(),
   promoCards: z.array(PromoCardItemSchema).optional()
-});
+}).passthrough();
 
 export const BookOrderSchema = z.object({
   id: z.string(),

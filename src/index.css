@@ -58,16 +58,33 @@ p, span, a, label, li,
   color: #1e293b;
 }
 
-.admin-scope h1,
-.admin-scope h2,
-.admin-scope h3,
-.admin-scope h4,
-.admin-scope h5,
-.admin-scope h6 {
+.admin-scope h1:not([class*="text-white"]):not([class*="text-blue-"]):not([class*="text-emerald-"]):not([class*="text-rose-"]),
+.admin-scope h2:not([class*="text-white"]):not([class*="text-blue-"]):not([class*="text-emerald-"]):not([class*="text-rose-"]),
+.admin-scope h3:not([class*="text-white"]):not([class*="text-blue-"]):not([class*="text-emerald-"]):not([class*="text-rose-"]),
+.admin-scope h4:not([class*="text-white"]):not([class*="text-blue-"]):not([class*="text-emerald-"]):not([class*="text-rose-"]),
+.admin-scope h5:not([class*="text-white"]):not([class*="text-blue-"]):not([class*="text-emerald-"]):not([class*="text-rose-"]),
+.admin-scope h6:not([class*="text-white"]):not([class*="text-blue-"]):not([class*="text-emerald-"]):not([class*="text-rose-"]) {
   font-family: 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
   font-weight: 700 !important;
   letter-spacing: -0.015em;
   color: #0f172a;
+}
+
+/* Dashboard Stat Card Typography - Guaranteed Pure White Text */
+.admin-stat-card,
+.admin-stat-card h3,
+.admin-stat-card span,
+.admin-stat-card p,
+.admin-stat-card div {
+  color: #ffffff !important;
+}
+
+.admin-stat-card .stat-subtitle {
+  color: rgba(255, 255, 255, 0.75) !important;
+}
+
+.admin-stat-card .stat-label {
+  color: rgba(255, 255, 255, 0.9) !important;
 }
 
 .admin-scope p,
@@ -375,8 +392,9 @@ video.hero-bg-video::-webkit-media-controls-start-playback-button {
     inset -3px -3px 8px rgba(186, 230, 253, 0.5),
     inset 3px 3px 8px rgba(253, 232, 240, 0.45),
     0 4px 16px rgba(186, 230, 253, 0.3);
-  backdrop-filter: blur(0.5px);
   will-change: transform;
+  contain: layout style paint;
+  backface-visibility: hidden;
 }
 
 .soap-bubble::before {
@@ -479,4 +497,212 @@ video.hero-bg-video::-webkit-media-controls-start-playback-button {
 .animate-corner-glow {
   animation: borderGlowPulse 3.5s ease-in-out infinite;
 }
+
+/* =========================================================================
+   Continuous Bottom-to-Top Floating Soap Bubbles (Laundry Fresh Ambience)
+   ========================================================================= */
+@keyframes bubbleRise1 {
+  0% {
+    transform: translate3d(0, 108vh, 0) scale(0.7);
+    opacity: 0;
+  }
+  8% {
+    opacity: 0.85;
+    transform: translate3d(12px, 98vh, 0) scale(0.92);
+  }
+  30% {
+    transform: translate3d(-18px, 72vh, 0) scale(1.03);
+  }
+  55% {
+    transform: translate3d(15px, 46vh, 0) scale(0.97);
+    opacity: 0.9;
+  }
+  78% {
+    transform: translate3d(-12px, 20vh, 0) scale(1.02);
+  }
+  92% {
+    opacity: 0.7;
+    transform: translate3d(8px, 6vh, 0) scale(1);
+  }
+  100% {
+    transform: translate3d(-4px, -15vh, 0) scale(1.08);
+    opacity: 0;
+  }
+}
+
+@keyframes bubbleRise2 {
+  0% {
+    transform: translate3d(0, 108vh, 0) scale(0.65);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.8;
+    transform: translate3d(-14px, 96vh, 0) scale(0.9);
+  }
+  35% {
+    transform: translate3d(16px, 68vh, 0) scale(1.04);
+  }
+  60% {
+    transform: translate3d(-15px, 42vh, 0) scale(0.96);
+    opacity: 0.88;
+  }
+  82% {
+    transform: translate3d(10px, 18vh, 0) scale(1.01);
+  }
+  94% {
+    opacity: 0.65;
+    transform: translate3d(-6px, 4vh, 0) scale(1);
+  }
+  100% {
+    transform: translate3d(5px, -15vh, 0) scale(1.06);
+    opacity: 0;
+  }
+}
+
+@keyframes bubbleRise3 {
+  0% {
+    transform: translate3d(0, 108vh, 0) scale(0.75);
+    opacity: 0;
+  }
+  6% {
+    opacity: 0.85;
+    transform: translate3d(8px, 100vh, 0) scale(0.95);
+  }
+  28% {
+    transform: translate3d(-20px, 76vh, 0) scale(1.02);
+  }
+  52% {
+    transform: translate3d(18px, 50vh, 0) scale(0.98);
+    opacity: 0.92;
+  }
+  75% {
+    transform: translate3d(-16px, 24vh, 0) scale(1.03);
+  }
+  90% {
+    opacity: 0.72;
+    transform: translate3d(10px, 8vh, 0) scale(1);
+  }
+  100% {
+    transform: translate3d(-6px, -15vh, 0) scale(1.08);
+    opacity: 0;
+  }
+}
+
+@keyframes bubbleRise4 {
+  0% {
+    transform: translate3d(0, 108vh, 0) scale(0.6);
+    opacity: 0;
+  }
+  12% {
+    opacity: 0.82;
+    transform: translate3d(-10px, 94vh, 0) scale(0.88);
+  }
+  38% {
+    transform: translate3d(14px, 65vh, 0) scale(1.05);
+  }
+  65% {
+    transform: translate3d(-12px, 38vh, 0) scale(0.95);
+    opacity: 0.85;
+  }
+  85% {
+    transform: translate3d(8px, 15vh, 0) scale(1.02);
+  }
+  95% {
+    opacity: 0.6;
+    transform: translate3d(-4px, 3vh, 0) scale(1);
+  }
+  100% {
+    transform: translate3d(6px, -15vh, 0) scale(1.05);
+    opacity: 0;
+  }
+}
+
+.animate-bubble-rise-1 {
+  animation: bubbleRise1 linear infinite;
+}
+
+.animate-bubble-rise-2 {
+  animation: bubbleRise2 linear infinite;
+}
+
+.animate-bubble-rise-3 {
+  animation: bubbleRise3 linear infinite;
+}
+
+.animate-bubble-rise-4 {
+  animation: bubbleRise4 linear infinite;
+}
+
+.animate-bubble-rise-once-1 {
+  animation: bubbleRise1 linear forwards;
+}
+
+.animate-bubble-rise-once-2 {
+  animation: bubbleRise2 linear forwards;
+}
+
+.animate-bubble-rise-once-3 {
+  animation: bubbleRise3 linear forwards;
+}
+
+.animate-bubble-rise-once-4 {
+  animation: bubbleRise4 linear forwards;
+}
+
+/* Creative Interactive Bubble Pop & Sparkle Micro-interactions */
+@keyframes bubblePop {
+  0% {
+    transform: scale(1);
+    opacity: 0.9;
+  }
+  45% {
+    transform: scale(1.35);
+    opacity: 1;
+    filter: brightness(1.35);
+  }
+  100% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+}
+
+.animate-bubble-pop {
+  animation: bubblePop 0.22s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards !important;
+  pointer-events: none !important;
+}
+
+@keyframes sparkleBurst {
+  0% {
+    transform: translate(0, 0) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--tx), var(--ty)) scale(0);
+    opacity: 0;
+  }
+}
+
+.bubble-sparkle {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #ffffff 15%, #38bdf8 65%, #f472b6 100%);
+  animation: sparkleBurst 0.4s ease-out forwards;
+  pointer-events: none;
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.6);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .soap-bubble,
+  .animate-bubble-rise-1,
+  .animate-bubble-rise-2,
+  .animate-bubble-rise-3,
+  .animate-bubble-rise-4 {
+    animation: none !important;
+    display: none !important;
+  }
+}
+
+
 

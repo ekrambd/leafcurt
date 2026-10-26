@@ -1,6 +1,6 @@
 {
   "headerSettings": {
-    "showTopBar": true,
+    "showTopBar": false,
     "phone": "01635311494",
     "email": "armtrading16@gmail.com",
     "socialLinks": {
@@ -103,37 +103,64 @@
   },
   "testimonials": {
     "enabled": true,
-    "title": "What our customers say",
-    "subtitle": "",
+    "title": "সম্মানিত গ্রাহকদের বাস্তব অভিজ্ঞতা",
+    "subtitle": "ধানমন্ডি, বসুন্ধরা ও বনশ্রীসহ সারা দেশের গ্রাহকদের মতামত",
     "autoScroll": true,
     "scrollInterval": 5,
     "showReviewsBadge": true,
     "items": [
       {
         "id": "testim-1",
-        "name": "Joe Dan & Kelli",
-        "designation": "Splash Em Out Laundromats",
-        "avatarOrLogo": "/authentic/logo_splash_em_out.png",
+        "name": "সাদিয়া ইসলাম",
+        "designation": "ধানমন্ডি, ঢাকা",
+        "avatarOrLogo": "",
         "rating": 5,
-        "quote": "PowerPax™ has transformed our laundry services! Our customers love how fresh and clean their clothes feel after using it. It's reliable and tough on stains, making our job so much easier.",
+        "quote": "ধানমন্ডির বাসায় আমাদের ফ্রন্ট লোড ওয়াশিং মেশিনে আগে গুঁড়া ডিটারজেন্ট ব্যবহার করায় ড্রামে আঠালো তলানি জমে সেন্সর সমস্যা করত। Leaf Curt 5-in-1 Pods ব্যবহার শুরুর পর ড্রাম একদম ঝকঝকে পরিষ্কার। আর কাপড় ধোয়ার পর যে অসাধারণ মিষ্টি সুবাস বের হয়, তা ৩-৪ দিন পর্যন্ত পোশাকে লেগেই থাকে। ট্রুলি বেস্ট চয়েস!",
         "active": true
       },
       {
         "id": "testim-2",
-        "name": "Matt Simons",
-        "designation": "Curbside Laundry",
-        "avatarOrLogo": "/authentic/logo_curbside_laundry.png",
+        "name": "ফারহানা আফরোজ",
+        "designation": "বসুন্ধরা আর/এ, ঢাকা",
+        "avatarOrLogo": "",
         "rating": 5,
-        "quote": "Since switching to PowerPax™, we've seen a noticeable improvement in customer satisfaction. The soap works perfectly in both our machines and hand washes, ensuring every garment comes out spotless.",
+        "quote": "বসুন্ধরায় থাকি, ডেলিভারি অর্ডার করার পরদিনই পেয়েছি। ১টি পডেই ডিটারজেন্ট, সফটনার ও পারফিউম থাকায় আলাদা কিছু কেনার কোনো প্রয়োজন হয় না। বাচ্চাদের কাপড়ের চকোলেট আর খাবারের জেদি দাগ এক ওয়াশেই শেষ। কাপড়ের উজ্জ্বলতা একটুও নষ্ট হয় না। এক কথায় অসাধারণ!",
         "active": true
       },
       {
         "id": "testim-3",
-        "name": "Randy Roberts",
-        "designation": "Columbus Express Laundry",
-        "avatarOrLogo": "/authentic/logo_columbus_express.png",
-        "rating": 4,
-        "quote": "PowerPax™ is our go-to soap for all our laundry needs. It's eco-friendly and gentle on fabrics, which our environmentally conscious customers really appreciate. Plus, it cuts down on residue, keeping our machines running smoothly.",
+        "name": "নুসরাত জাহান",
+        "designation": "বনশ্রী, ঢাকা",
+        "avatarOrLogo": "",
+        "rating": 5,
+        "quote": "বনশ্রীতে আমাদের ফ্ল্যাটে কাপড় ধোয়া নিয়ে প্রতিদিন কাজের মানুষের সাবান ঢালার অপচয় নিয়ে খুব বিরক্ত ছিলাম। এই ক্যাপসুল পডস আসায় জীবন একদম সহজ হয়ে গেছে—১ লোডে ঠিক ১টি পড। সাবান মাপা বা নষ্ট হওয়ার কোনো সুযোগ নেই। কাপড়ে সুন্দর স্নিগ্ধ সুবাস থাকে।",
+        "active": true
+      },
+      {
+        "id": "testim-4",
+        "name": "তানহা তাবাসসুম",
+        "designation": "উত্তরা, ঢাকা",
+        "avatarOrLogo": "",
+        "rating": 5,
+        "quote": "প্রথমে ১টি বক্স নিয়েছিলাম ট্রায়াল হিসেবে। ওয়াশিং মেশিনের জন্য এটি যে কতটা দরকারি তা ব্যবহারের পরই বুঝেছি। বিশেষ করে সাদা কাপড় ও রঙিন কাপড়ে কোনো ধরনের সাদা পাউডারের গুঁড়ো দাগ লেগে থাকে না। পানির সাথে ১০০% গলে যায়। পুরো পরিবারের কাপড় এখন ফ্রেশ!",
+        "active": true
+      },
+      {
+        "id": "testim-5",
+        "name": "সাবরিনা সুলতানা",
+        "designation": "গুলশান-২, ঢাকা",
+        "avatarOrLogo": "",
+        "rating": 5,
+        "quote": "ইমপোর্টেড প্রিমিয়াম কোয়ালিটি পডস। কাপড়ের ফেব্রিক নষ্ট না করে নিখুঁতভাবে পরিষ্কার করে এবং ফ্রেঞ্চ পারফিউমের চমৎকার সুবাস দেয়। মেশিনের ভেতরের দুর্গন্ধও একদম দূর হয়ে গেছে। আমি সবাইকে এই 5-in-1 পডস ব্যবহারের পরামর্শ দিব।",
+        "active": true
+      },
+      {
+        "id": "testim-6",
+        "name": "মেহনাজ পারভীন",
+        "designation": "মিরপুর ডিওএইচএস, ঢাকা",
+        "avatarOrLogo": "",
+        "rating": 5,
+        "quote": "কাপড় ধোয়ার পর নরম ও মসৃণ থাকে, আলাদা কমফোর্ট সফটনার ব্যবহারের আর দরকার পড়ে না। ড্রামের ভেতর কোনো কাঁচা গুঁড়া সাবান জমে থাকে না। দ্রুত হোম ডেলিভারি ও পার্সেল চেক করে পেমেন্ট করার সুবিধা খুব ভালো লেগেছে।",
         "active": true
       }
     ]
@@ -262,7 +289,14 @@
         "quote": "",
         "posterUrl": "",
         "videoUrl": "/uploads/file-1792747680387-561712890.mp4",
-        "active": true
+        "active": true,
+        "productId": "prod-1792732821114",
+        "productTitle": "Sweet Peach",
+        "productPrice": 900,
+        "productRegularPrice": 1000,
+        "productImage": "/uploads/file-1792732806051-429767445.jpg",
+        "productDiscountBadge": "10% OFF",
+        "productUrl": "/product/sweet-peach"
       },
       {
         "id": "vr-1792745880850",
@@ -272,7 +306,14 @@
         "quote": "",
         "posterUrl": "",
         "videoUrl": "/uploads/file-1792747696161-780318768.mp4",
-        "active": true
+        "active": true,
+        "productId": "prod-1792732597296",
+        "productTitle": "4 in 1 Laundry pods poison",
+        "productPrice": 1000,
+        "productRegularPrice": 1200,
+        "productImage": "/uploads/file-1792732574240-906933853.jpg",
+        "productDiscountBadge": "17% OFF",
+        "productUrl": "/product/4-in-1-laundry-pods-poison"
       },
       {
         "id": "vr-1792745920583",
@@ -282,7 +323,14 @@
         "quote": "",
         "posterUrl": "",
         "videoUrl": "/uploads/file-1792747706292-781402950.mp4",
-        "active": true
+        "active": true,
+        "productId": "prod-1792730885570",
+        "productTitle": "All in 1 Laundry Pods",
+        "productPrice": 1000,
+        "productRegularPrice": 1200,
+        "productImage": "/uploads/file-1792730818328-114393804.jpg",
+        "productDiscountBadge": "17% OFF",
+        "productUrl": "/product/all-in-1-laundry-pods"
       },
       {
         "id": "vr-1792747716596",
@@ -292,7 +340,14 @@
         "quote": "",
         "posterUrl": "",
         "videoUrl": "/uploads/file-1792747714061-986769243.mp4",
-        "active": true
+        "active": true,
+        "productId": "prod-1792732483291",
+        "productTitle": "4 in 1 Sandhill",
+        "productPrice": 1000,
+        "productRegularPrice": 1200,
+        "productImage": "/uploads/file-1792732437643-265801008.jpg",
+        "productDiscountBadge": "17% OFF",
+        "productUrl": "/product/4-in-1-sandhill"
       }
     ]
   },
@@ -489,6 +544,19 @@
   "maintenanceMode": false,
   "clubMembers": [
     {
+      "id": "mem-1793029745247",
+      "phone": "01784067744",
+      "name": "Farhana",
+      "memberNumber": "LWF-VIP-530244",
+      "tierId": "tier-silver",
+      "tierName": "Silver Member",
+      "joinedDate": "Oct 26, 2026",
+      "validUntil": "Oct 26, 2027",
+      "totalSpent": 1070,
+      "pointsBalance": 50,
+      "status": "Active"
+    },
+    {
       "id": "mem-1792751522970",
       "phone": "01315861003",
       "name": "Roxy",
@@ -527,5 +595,7 @@
       "pointsBalance": 180,
       "status": "Active"
     }
-  ]
+  ],
+  "heroVideoInterval": 10,
+  "heroSliderInterval": 5
 }

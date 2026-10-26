@@ -1,0 +1,57 @@
+{
+  "$schema": "https://schema.org",
+  "@context": "https://schema.org",
+  "@type": "DataFeed",
+  "name": "Leaf Curt Product Catalog",
+  "description": "Machine-readable catalog of Leaf Curt laundry care products for AI agents and WebMCP.",
+  "url": "https://www.leafcurt.com",
+  "provider": {
+    "@type": "Organization",
+    "name": "Leaf Curt",
+    "url": "https://www.leafcurt.com",
+    "contactPoint": {
+      "@type": "ContactPoint",
+      "telephone": "+8801700000000",
+      "contactType": "customer service",
+      "areaServed": "BD"
+    }
+  },
+  "dataFeedElement": [
+    {
+      "@type": "Product",
+      "name": "Leaf Curt 5-in-1 Laundry Detergent Pods (Tub 60 Pods)",
+      "description": "Premium 5-in-1 laundry detergent pods with color protect, deep stain remover, and long-lasting fragrance.",
+      "sku": "LC-TUB-60",
+      "brand": {
+        "@type": "Brand",
+        "name": "Leaf Curt"
+      },
+      "offers": {
+        "@type": "Offer",
+        "price": "790",
+        "priceCurrency": "BDT",
+        "availability": "https://schema.org/InStock",
+        "itemCondition": "https://schema.org/NewCondition",
+        "url": "https://www.leafcurt.com/shop"
+      }
+    },
+    {
+      "@type": "Product",
+      "name": "Leaf Curt 5-in-1 Laundry Detergent Pods (Box 30 Pods)",
+      "description": "Concentrated 5-in-1 laundry pods in eco-safe box pack for daily washing convenience.",
+      "sku": "LC-BOX-30",
+      "brand": {
+        "@type": "Brand",
+        "name": "Leaf Curt"
+      },
+      "offers": {
+        "@type": "Offer",
+        "price": "450",
+        "priceCurrency": "BDT",
+        "availability": "https://schema.org/InStock",
+        "itemCondition": "https://schema.org/NewCondition",
+        "url": "https://www.leafcurt.com/shop"
+      }
+    }
+  ]
+}

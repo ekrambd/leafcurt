@@ -16,7 +16,14 @@ export const orderRouter = Router();
 orderRouter.get('/', requireAdmin, cacheResponse({ ttlSeconds: 15, staleWhileRevalidateSeconds: 30, tag: 'orders' }), async (req, res) => {
   const includeCustomer = req.query.include === 'customer' || req.query.withCustomer === 'true';
 
-  let orders = [...storeOrders];
+  // Deduplicate storeOrders by ID before serving
+  const seenIds = new Set<string>();
+  let orders = storeOrders.filter(o => {
+    if (!o.id) return true;
+    if (seenIds.has(o.id)) return false;
+    seenIds.add(o.id);
+    return true;
+  });
 
   // Eager load customer data in 1 single batch query (Zero N+1 queries)
   if (includeCustomer && orders.length > 0) {
@@ -185,8 +192,13 @@ orderRouter.post('/checkout', checkoutRateLimiter, async (req, res) => {
       }
     };
 
-    // Save order
-    storeOrders.unshift(confirmedOrder);
+    // Save order (deduplicate by id if already exists)
+    const existingIdx = storeOrders.findIndex(o => o.id === confirmedOrder.id);
+    if (existingIdx === -1) {
+      storeOrders.unshift(confirmedOrder);
+    } else {
+      storeOrders[existingIdx] = confirmedOrder;
+    }
     saveOrdersToDisk(storeOrders);
     syncSelfRecoveredCart(confirmedOrder.phone, confirmedOrder.id, confirmedOrder.totalPrice);
     shardService.incrementCounter('orders_total', 1);
@@ -255,6 +267,18 @@ orderRouter.post('/', checkoutRateLimiter, (req, res) => {
   const orderId = req.body.id || `ORD-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
   const shardIndex = shardService.getShardIndex(orderId);
   const timePartition = shardService.getTimePartitionName('orders');
+
+  const existingIndex = storeOrders.findIndex(o => o.id === orderId);
+  if (existingIndex !== -1) {
+    storeOrders[existingIndex] = {
+      ...storeOrders[existingIndex],
+      ...req.body,
+      id: orderId
+    };
+    saveOrdersToDisk(storeOrders);
+    globalCache.invalidateTag('orders');
+    return res.status(200).json(storeOrders[existingIndex]);
+  }
 
   const newOrder: BookOrder & { _shardMeta?: { shardIndex: number; partition: string } } = {
     id: orderId,

@@ -14,7 +14,8 @@ import {
   Sparkles,
   ShoppingBag,
   Clock,
-  ArrowRight
+  ArrowRight,
+  MapPin
 } from 'lucide-react';
 import { Review, Product } from '../types';
 import { dbService } from '../lib/dbService';
@@ -780,9 +781,17 @@ export default function ProductReviewsSection({
                         </span>
                       )}
                     </div>
-                    <p className="text-[11px] text-slate-400 flex items-center gap-1 mt-0.5">
-                      <Clock className="w-3 h-3" />
-                      <span>{formatTimeAgo(rev.createdAt)}</span>
+                    <p className="text-[11px] text-slate-400 flex items-center gap-2 mt-0.5">
+                      <span className="flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        <span>{formatTimeAgo(rev.createdAt)}</span>
+                      </span>
+                      {(rev as any).location && (
+                        <span className="flex items-center gap-1 text-slate-500 font-medium">
+                          <MapPin className="w-3 h-3 text-[#0093d0]" />
+                          <span>{(rev as any).location}</span>
+                        </span>
+                      )}
                     </p>
                   </div>
                 </div>

@@ -1,17 +1,43 @@
 import { Router } from 'express';
 import { prisma } from '../db';
-import { cacheResponse } from '../middleware/cacheMiddleware';
 import { requireAdmin } from '../middleware/adminAuth';
+import { storeSettings } from '../data/store';
 
 export const categoryRouter = Router();
 
 // GET all categories
-categoryRouter.get('/', cacheResponse({ ttlSeconds: 60, staleWhileRevalidateSeconds: 120, tag: 'categories' }), async (req, res) => {
+categoryRouter.get('/', async (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
   try {
     const items = await prisma.category.findMany();
-    res.json(items);
+    if (items && items.length > 0) {
+      return res.json(items);
+    }
+    if (storeSettings.categoryItems && storeSettings.categoryItems.length > 0) {
+      return res.json(storeSettings.categoryItems);
+    }
+    if (storeSettings.categories && storeSettings.categories.length > 0) {
+      return res.json(storeSettings.categories.map((c, idx) => ({
+        id: `cat-${idx}`,
+        name: c,
+        order: idx,
+        subcategories: []
+      })));
+    }
+    res.json([]);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch categories' });
+    if (storeSettings.categoryItems && storeSettings.categoryItems.length > 0) {
+      return res.json(storeSettings.categoryItems);
+    }
+    if (storeSettings.categories && storeSettings.categories.length > 0) {
+      return res.json(storeSettings.categories.map((c, idx) => ({
+        id: `cat-${idx}`,
+        name: c,
+        order: idx,
+        subcategories: []
+      })));
+    }
+    res.json([]);
   }
 });
 

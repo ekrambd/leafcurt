@@ -145,12 +145,11 @@ export const publicStoreService = {
   },
 
   async getBrands(): Promise<Brand[]> {
-    const cached = readCache<Brand[]>('noor_brands', DEFAULT_BRANDS);
     try {
       const res = await fetch('/api/brands');
       if (res.ok) {
         const data = await res.json();
-        if (Array.isArray(data) && data.length > 0) {
+        if (Array.isArray(data)) {
           writeCache('noor_brands', data);
           return data;
         }
@@ -158,7 +157,28 @@ export const publicStoreService = {
     } catch {
       // fallback
     }
-    return cached;
+    return readCache<Brand[]>('noor_brands', []) || [];
+  },
+
+  async getCategories(): Promise<string[]> {
+    try {
+      const res = await fetch('/api/categories');
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          const names: string[] = data.map((c: any) => typeof c === 'string' ? c.trim() : (c?.name || '').trim()).filter(Boolean);
+          writeCache('noor_categories', names);
+          return names;
+        }
+      }
+    } catch {
+      // fallback
+    }
+    const settings = await this.getEcomSettings();
+    if (settings.categories && Array.isArray(settings.categories)) {
+      return settings.categories.filter(Boolean);
+    }
+    return readCache<string[]>('noor_categories', []) || [];
   },
 
   async getLandingPageSettings(slugOrId?: string, productFallback?: Product): Promise<LandingPageData> {

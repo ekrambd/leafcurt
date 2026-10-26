@@ -182,8 +182,21 @@ export default function StoreFooter({
 
         </div>
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-8 mt-12 pt-6 border-t border-white/20 flex justify-center text-sm text-blue-100">
-          <div className="text-xs sm:text-sm text-center">© {new Date().getFullYear()} {displayStoreName}. All rights reserved.</div>
+        <div className="max-w-7xl mx-auto px-4 sm:px-8 mt-10 pt-6 border-t border-white/20 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs sm:text-sm text-blue-100">
+          <div className="text-center sm:text-left">
+            © {new Date().getFullYear()} {displayStoreName || 'www.leafcurt.com'}. All rights reserved.
+          </div>
+          <div className="text-center sm:text-right flex items-center gap-1.5">
+            <span className="text-blue-200/90">Developed by</span>
+            <a 
+              href="https://corbincore.vercel.app/" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="font-bold text-white hover:text-cyan-200 transition-colors inline-flex items-center gap-1 hover:underline underline-offset-4"
+            >
+              Corbin Core
+            </a>
+          </div>
         </div>
       </footer>
 
