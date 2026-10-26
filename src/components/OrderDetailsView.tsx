@@ -12,7 +12,8 @@ import {
   buildWhatsAppInvoiceUrl, 
   copyElementAsImage, 
   downloadCanvasAsPng, 
-  loadHtml2Canvas 
+  loadHtml2Canvas,
+  isOrderPaid 
 } from '../lib/orderInvoiceUtils';
 
 interface Props {
@@ -244,11 +245,11 @@ export function OrderDetailsView({ order, onClose, onUpdateStatus, onEditOrder }
                 <div className="flex items-center gap-2 text-sm">
                   <span className="text-slate-500 font-semibold">Payment Status :</span>
                   <span className={`px-3 py-1 font-bold rounded-md ${
-                    order.paymentMethod && order.paymentMethod !== 'COD' 
+                    isOrderPaid(order)
                       ? 'bg-emerald-100 text-emerald-700'
                       : 'bg-amber-100 text-amber-700'
                   }`}>
-                    {order.paymentMethod || 'Cash On Delivery'}
+                    {isOrderPaid(order) ? 'Paid' : `Unpaid (${order.paymentMethod || 'Cash On Delivery'})`}
                   </span>
                 </div>
               </div>

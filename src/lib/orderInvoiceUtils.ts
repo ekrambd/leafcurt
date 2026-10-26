@@ -1,6 +1,64 @@
 import { BookOrder } from '../types';
 
 /**
+ * Check if payment method is Cash on Delivery
+ */
+export function isCodPaymentMethod(method?: string): boolean {
+  if (!method) return true;
+  const m = method.toLowerCase().trim();
+  return (
+    m === 'cod' ||
+    m === 'cash on delivery' ||
+    m === 'cash_on_delivery' ||
+    m.includes('cash') ||
+    m.includes('ক্যাশ') ||
+    m === 'hand cash'
+  );
+}
+
+/**
+ * Determine if an order is paid
+ */
+export function isOrderPaid(order: {
+  paymentMethod?: string;
+  paymentGateway?: string;
+  status?: string;
+  trxId?: string;
+  paymentStatus?: string;
+}): boolean {
+  if (order.paymentStatus) {
+    return order.paymentStatus.toLowerCase() === 'paid';
+  }
+
+  // If COD, it is only paid once Delivered
+  if (isCodPaymentMethod(order.paymentMethod || order.paymentGateway)) {
+    return order.status === 'Delivered';
+  }
+
+  // If online transaction with trxId
+  if (order.trxId && order.trxId.trim().length > 0) {
+    return true;
+  }
+
+  const method = (order.paymentMethod || order.paymentGateway || '').toLowerCase();
+  if (
+    method.includes('bkash') ||
+    method.includes('nagad') ||
+    method.includes('rocket') ||
+    method.includes('card') ||
+    method.includes('online') ||
+    method.includes('sslcommerz') ||
+    method.includes('aamarpay') ||
+    method.includes('shurjopay') ||
+    method === 'paid'
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
  * Format relative time (e.g. 'an hour ago', '4 hours ago', 'yesterday')
  */
 export function formatRelativeTime(dateInput: string | Date | undefined): string {

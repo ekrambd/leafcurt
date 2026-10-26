@@ -811,6 +811,13 @@ export const dbService = {
     }
 
     window.dispatchEvent(new Event('book-orders-updated'));
+    try {
+      if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+        const bc = new BroadcastChannel('leafcurt_order_sync');
+        bc.postMessage({ type: 'ORDER_CREATED', orderId: order.id });
+        bc.close();
+      }
+    } catch {}
     return order;
   },
 
@@ -863,6 +870,13 @@ export const dbService = {
     }
 
     window.dispatchEvent(new Event('book-orders-updated'));
+    try {
+      if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+        const bc = new BroadcastChannel('leafcurt_order_sync');
+        bc.postMessage({ type: 'ORDER_CREATED', orderId: order.id });
+        bc.close();
+      }
+    } catch {}
     return order;
   },
 
@@ -895,6 +909,13 @@ export const dbService = {
     const updated = orders.map(o => o.id === order.id ? order : o);
     setLocalData('noor_book_orders', updated);
     window.dispatchEvent(new Event('book-orders-updated'));
+    try {
+      if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+        const bc = new BroadcastChannel('leafcurt_order_sync');
+        bc.postMessage({ type: 'ORDER_CREATED', orderId: order.id });
+        bc.close();
+      }
+    } catch {}
     return order;
   },
 
@@ -2232,23 +2253,79 @@ export const dbService = {
   }
 };
 
-// Real-time Firestore listener for book_orders
-// Returns an unsubscribe function. Falls back gracefully if Firebase not enabled.
+// Real-time listener for book_orders
+// Supports Firestore when enabled, or automatic live polling + BroadcastChannel + window events for Node/VPS deployment!
 export function subscribeToOrders(
   onData: (orders: BookOrder[]) => void
 ): () => void {
-  if (!isFirebaseEnabled || !db) {
-    return () => {};
-  }
-  const q = query(collection(db, 'book_orders'), orderBy('createdAt', 'desc'));
-  const unsub = onSnapshot(q, (snapshot) => {
-    const orders: BookOrder[] = [];
-    snapshot.forEach((docSnap) => {
-      orders.push({ ...(docSnap.data() as BookOrder), id: docSnap.id });
+  if (isFirebaseEnabled && db) {
+    const q = query(collection(db, 'book_orders'), orderBy('createdAt', 'desc'));
+    const unsub = onSnapshot(q, (snapshot) => {
+      const orders: BookOrder[] = [];
+      snapshot.forEach((docSnap) => {
+        orders.push({ ...(docSnap.data() as BookOrder), id: docSnap.id });
+      });
+      onData(orders);
+    }, (err) => {
+      console.warn('subscribeToOrders error:', err);
     });
-    onData(orders);
-  }, (err) => {
-    console.warn('subscribeToOrders error:', err);
-  });
-  return unsub;
+    return unsub;
+  }
+
+  // --- Real-Time Sync for Standalone / VPS / Node Server ---
+  let isMounted = true;
+  let broadcastChannel: BroadcastChannel | null = null;
+
+  const fetchLatestOrders = async () => {
+    if (!isMounted) return;
+    try {
+      dbService._ordersCache = null; // Invalidate cache so we always get the fresh orders
+      const freshOrders = await dbService.getBookOrders();
+      if (isMounted && Array.isArray(freshOrders)) {
+        onData(freshOrders);
+      }
+    } catch (e) {
+      console.warn('Real-time order sync fetch error:', e);
+    }
+  };
+
+  // 1. Cross-tab instant communication via BroadcastChannel
+  try {
+    if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+      broadcastChannel = new BroadcastChannel('leafcurt_order_sync');
+      broadcastChannel.onmessage = (event) => {
+        if (!isMounted) return;
+        if (event.data?.type === 'ORDER_CREATED' || event.data?.type === 'ORDERS_UPDATED') {
+          fetchLatestOrders();
+        }
+      };
+    }
+  } catch {}
+
+  // 2. Same-window event listener
+  const handleLocalEvent = () => {
+    fetchLatestOrders();
+  };
+
+  if (typeof window !== 'undefined') {
+    window.addEventListener('book-orders-updated', handleLocalEvent);
+  }
+
+  // 3. Low-overhead Background polling (every 3 seconds) for orders placed by other users / devices
+  const pollInterval = setInterval(() => {
+    fetchLatestOrders();
+  }, 3000);
+
+  return () => {
+    isMounted = false;
+    clearInterval(pollInterval);
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('book-orders-updated', handleLocalEvent);
+    }
+    if (broadcastChannel) {
+      try {
+        broadcastChannel.close();
+      } catch {}
+    }
+  };
 }

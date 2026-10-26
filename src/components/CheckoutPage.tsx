@@ -152,9 +152,9 @@ export default function CheckoutPage({
 
   // Dynamic Delivery Methods from Admin Settings filtered by District
   const activeDeliveryMethods = useMemo<DeliveryMethodItem[]>(() => {
-    const allMethods = (ecomSettings?.deliveryMethods && ecomSettings.deliveryMethods.length > 0)
-      ? ecomSettings.deliveryMethods
-      : DEFAULT_DELIVERY_METHODS;
+    const allMethods = Array.isArray(ecomSettings?.deliveryMethods)
+      ? ecomSettings.deliveryMethods.filter(m => m.status === 'Active')
+      : [];
 
     return filterDeliveryMethodsForDistrict(allMethods, district);
   }, [ecomSettings?.deliveryMethods, district]);
@@ -166,11 +166,14 @@ export default function CheckoutPage({
       if (!selectedDeliveryMethodId || !activeDeliveryMethods.some(m => m.id === selectedDeliveryMethodId)) {
         setSelectedDeliveryMethodId(activeDeliveryMethods[0].id);
       }
+    } else {
+      setSelectedDeliveryMethodId('');
     }
   }, [activeDeliveryMethods, selectedDeliveryMethodId]);
 
   const selectedDeliveryMethod = useMemo(() => {
-    return activeDeliveryMethods.find(m => m.id === selectedDeliveryMethodId) || activeDeliveryMethods[0];
+    if (activeDeliveryMethods.length === 0) return null;
+    return activeDeliveryMethods.find(m => m.id === selectedDeliveryMethodId) || activeDeliveryMethods[0] || null;
   }, [activeDeliveryMethods, selectedDeliveryMethodId]);
 
   // Method fee calculations cache for immediate UI display
@@ -195,16 +198,16 @@ export default function CheckoutPage({
   const deliveryCalc = useMemo(() => {
     if (!selectedDeliveryMethod) {
       return {
-        finalCharge: ecomSettings?.deliveryChargeInsideDhaka || 70,
-        isFreeDelivery: false,
+        finalCharge: 0,
+        isFreeDelivery: true,
         breakdownText: '',
         effectiveWeightKg: cartTotalWeight
       };
     }
     return methodCalculations[selectedDeliveryMethod.id] || calculateDeliveryCharge(selectedDeliveryMethod, cartSubtotal, cartTotalWeight);
-  }, [selectedDeliveryMethod, methodCalculations, cartSubtotal, cartTotalWeight, ecomSettings?.deliveryChargeInsideDhaka]);
+  }, [selectedDeliveryMethod, methodCalculations, cartSubtotal, cartTotalWeight]);
 
-  const deliveryCost = deliveryCalc.finalCharge;
+  const deliveryCost = selectedDeliveryMethod ? deliveryCalc.finalCharge : 0;
 
   // Payment Gateways from Admin
   const activePaymentGateways = useMemo<PaymentGatewayItem[]>(() => {
@@ -487,8 +490,8 @@ export default function CheckoutPage({
         district: district,
         thana: thana.trim() || undefined,
         notes: (specialNotes.trim() ? specialNotes.trim() + '\n' : '') + (bogoEligible ? '[BOGO APPLIED: 11th+ Coupon Usage - Free Gift]' : '') || undefined,
-        deliveryArea: selectedDeliveryMethod?.title || 'Inside Dhaka',
-        deliveryZone: selectedDeliveryMethod?.title || 'Inside Dhaka',
+        deliveryArea: selectedDeliveryMethod?.title || 'Standard Delivery',
+        deliveryZone: selectedDeliveryMethod?.title || 'Standard Delivery',
         deliveryCharge: deliveryCost,
         price: cartSubtotal,
         unitPrice: cart.length === 1 ? cart[0].product.price : cartSubtotal,
@@ -554,7 +557,12 @@ export default function CheckoutPage({
             phone: phone.trim(),
             address: address.trim(),
             testEventCode: (typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('meta_test_code') : undefined) || undefined,
-            deliveryZone: selectedDeliveryMethod?.title || 'Inside Dhaka',
+            deliveryZone: selectedDeliveryMethod?.title || 'Standard Delivery',
+            deliveryMethodId: selectedDeliveryMethod?.id,
+            deliveryCharge: deliveryCost,
+            deliveryFee: deliveryCost,
+            memberDiscount: memberDiscountAmount,
+            pointsDiscount: pointsRedeemedTaka,
             paymentMethod: selectedPaymentGateway?.title || 'Cash on Delivery',
             senderPhone: isOnlinePayment ? senderPhone.trim() : undefined,
             trxId: isOnlinePayment ? trxId.trim() : undefined,
@@ -1050,66 +1058,83 @@ export default function CheckoutPage({
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {activeDeliveryMethods.map((method) => {
-                        const isSelected = selectedDeliveryMethod?.id === method.id;
-                        const calc = methodCalculations[method.id] || calculateDeliveryCharge(method, cartSubtotal, cartTotalWeight);
+                    {activeDeliveryMethods.length > 0 ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {activeDeliveryMethods.map((method) => {
+                          const isSelected = selectedDeliveryMethod?.id === method.id;
+                          const calc = methodCalculations[method.id] || calculateDeliveryCharge(method, cartSubtotal, cartTotalWeight);
 
-                        return (
-                          <div
-                            key={method.id}
-                            onClick={() => setSelectedDeliveryMethodId(method.id)}
-                            className={`p-3.5 rounded-2xl border text-xs cursor-pointer transition-all flex flex-col justify-between gap-2.5 ${
-                              isSelected 
-                                ? 'border-[#0284c7] bg-sky-50/60 text-slate-900 font-bold ring-2 ring-sky-300 shadow-xs'
-                                : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/50 text-slate-700'
-                            }`}
-                          >
-                            <div className="flex items-start justify-between gap-2">
-                              <div className="flex items-start gap-2.5 min-w-0">
-                                <div className={`w-4 h-4 rounded-full border mt-0.5 shrink-0 flex items-center justify-center ${
-                                  isSelected ? 'border-[#0284c7] bg-[#0284c7]' : 'border-slate-300'
-                                }`}>
-                                  {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                          return (
+                            <div
+                              key={method.id}
+                              onClick={() => setSelectedDeliveryMethodId(method.id)}
+                              className={`p-3.5 rounded-2xl border text-xs cursor-pointer transition-all flex flex-col justify-between gap-2.5 ${
+                                isSelected 
+                                  ? 'border-[#0284c7] bg-sky-50/60 text-slate-900 font-bold ring-2 ring-sky-300 shadow-xs'
+                                  : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/50 text-slate-700'
+                              }`}
+                            >
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex items-start gap-2.5 min-w-0">
+                                  <div className={`w-4 h-4 rounded-full border mt-0.5 shrink-0 flex items-center justify-center ${
+                                    isSelected ? 'border-[#0284c7] bg-[#0284c7]' : 'border-slate-300'
+                                  }`}>
+                                    {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                                  </div>
+                                  <div className="min-w-0">
+                                    <div className="font-extrabold text-slate-900 text-xs truncate">
+                                      {method.title}
+                                    </div>
+                                    <div className="flex items-center gap-1.5 mt-0.5">
+                                      {method.courierPartner && (
+                                        <span className="text-[10px] font-bold px-1.5 py-0.2 bg-white/90 border border-slate-200 text-slate-600 rounded">
+                                          {method.courierPartner}
+                                        </span>
+                                      )}
+                                      {method.estimatedDays && (
+                                        <span className="text-[10px] text-slate-500 font-medium flex items-center gap-0.5">
+                                          <Clock className="w-2.5 h-2.5" />
+                                          <span>{method.estimatedDays}</span>
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
                                 </div>
-                                <div className="min-w-0">
-                                  <div className="font-extrabold text-slate-900 text-xs truncate">
-                                    {method.title}
-                                  </div>
-                                  <div className="flex items-center gap-1.5 mt-0.5">
-                                    {method.courierPartner && (
-                                      <span className="text-[10px] font-bold px-1.5 py-0.2 bg-white/90 border border-slate-200 text-slate-600 rounded">
-                                        {method.courierPartner}
-                                      </span>
-                                    )}
-                                    {method.estimatedDays && (
-                                      <span className="text-[10px] text-slate-500 font-medium flex items-center gap-0.5">
-                                        <Clock className="w-2.5 h-2.5" />
-                                        <span>{method.estimatedDays}</span>
-                                      </span>
-                                    )}
-                                  </div>
+
+                                <div className="text-right shrink-0">
+                                  <span className="font-black text-sm text-[#0284c7]">
+                                    {calc.isFreeDelivery ? 'FREE (৳০)' : `৳${calc.finalCharge}`}
+                                  </span>
                                 </div>
                               </div>
 
-                              <div className="text-right shrink-0">
-                                <span className="font-black text-sm text-[#0284c7]">
-                                  {calc.isFreeDelivery ? 'FREE (৳০)' : `৳${calc.finalCharge}`}
-                                </span>
+                              {/* Weight / Rate breakdown pill */}
+                              <div className="pt-2 border-t border-slate-200/60 flex items-center justify-between text-[10px] text-slate-500">
+                                <span className="truncate max-w-[200px]">{calc.breakdownText}</span>
+                                {calc.pricingModel === 'weight_based' && (
+                                  <span className="text-[#0284c7] font-semibold shrink-0">ওজন ভিত্তিক</span>
+                                )}
                               </div>
                             </div>
-
-                            {/* Weight / Rate breakdown pill */}
-                            <div className="pt-2 border-t border-slate-200/60 flex items-center justify-between text-[10px] text-slate-500">
-                              <span className="truncate max-w-[200px]">{calc.breakdownText}</span>
-                              {calc.pricingModel === 'weight_based' && (
-                                <span className="text-[#0284c7] font-semibold shrink-0">ওজন ভিত্তিক</span>
-                              )}
-                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="p-4 rounded-2xl border border-dashed border-amber-300 bg-amber-50/60 text-slate-800 flex items-center justify-between gap-3 text-xs">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-xl bg-amber-100 flex items-center justify-center shrink-0">
+                            <Truck className="w-5 h-5 text-amber-700" />
                           </div>
-                        );
-                      })}
-                    </div>
+                          <div>
+                            <p className="font-extrabold text-slate-900 text-xs sm:text-sm">কোনো ডেলিভারি মেথড যোগ করা হয়নি</p>
+                            <p className="text-[11px] text-slate-500 mt-0.5">অ্যাডমিন প্যানেল (Settings &gt; Delivery) থেকে ডেলিভারি মেথড যোগ করলে এখানে সিলেক্ট করার অপশন আসবে।</p>
+                          </div>
+                        </div>
+                        <span className="font-bold text-xs text-slate-700 bg-white border border-slate-200 px-3 py-1.5 rounded-xl shrink-0 shadow-2xs">
+                          Tk. 0
+                        </span>
+                      </div>
+                    )}
                   </div>
 
                 </div>

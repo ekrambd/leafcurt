@@ -247,8 +247,7 @@ export default function StorefrontPage({ onGoToLogin, onGoToLanding }: Storefron
             !p.brand?.toLowerCase().includes('fantine') &&
             p.category !== 'Serums' &&
             p.category !== 'Toners' &&
-            p.category !== 'Rapid Acne Treatment Series' &&
-            !p.id?.startsWith('prod-')
+            p.category !== 'Rapid Acne Treatment Series'
           );
           if (cleanParsed.length > 0) {
             return cleanParsed.map((p: any, idx: number) => normalizeStoreProduct(p, idx));
@@ -337,6 +336,13 @@ export default function StorefrontPage({ onGoToLogin, onGoToLanding }: Storefron
   const [isZoomModalOpen, setIsZoomModalOpen] = useState<boolean>(false);
   const [isHoverZooming, setIsHoverZooming] = useState<boolean>(false);
   const [zoomPos, setZoomPos] = useState<{ x: number; y: number }>({ x: 50, y: 50 });
+
+  const handleProductImageMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100));
+    const y = Math.max(0, Math.min(100, ((e.clientY - rect.top) / rect.height) * 100));
+    setZoomPos({ x, y });
+  };
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
   const [customerSession, setCustomerSession] = useState<CustomerSession | null>(() => getCustomerSession());
 
@@ -1056,9 +1062,8 @@ export default function StorefrontPage({ onGoToLogin, onGoToLanding }: Storefron
 
   // Active Delivery Methods from Admin Settings
   const activeDeliveryMethods = useMemo<DeliveryMethodItem[]>(() => {
-    const list = ecomSettings?.deliveryMethods || DEFAULT_DELIVERY_METHODS;
-    const active = list.filter(m => m.status === 'Active');
-    return active.length > 0 ? active : list;
+    const list = Array.isArray(ecomSettings?.deliveryMethods) ? ecomSettings.deliveryMethods : [];
+    return list.filter(m => m.status === 'Active');
   }, [ecomSettings?.deliveryMethods]);
 
   const [selectedDeliveryMethodId, setSelectedDeliveryMethodId] = useState<string>('');
@@ -1068,21 +1073,24 @@ export default function StorefrontPage({ onGoToLogin, onGoToLanding }: Storefron
       if (!selectedDeliveryMethodId || !activeDeliveryMethods.some(m => m.id === selectedDeliveryMethodId)) {
         setSelectedDeliveryMethodId(activeDeliveryMethods[0].id);
       }
+    } else {
+      setSelectedDeliveryMethodId('');
     }
   }, [activeDeliveryMethods, selectedDeliveryMethodId]);
 
   const selectedDeliveryMethod = useMemo(() => {
-    return activeDeliveryMethods.find(m => m.id === selectedDeliveryMethodId) || activeDeliveryMethods[0];
+    if (activeDeliveryMethods.length === 0) return null;
+    return activeDeliveryMethods.find(m => m.id === selectedDeliveryMethodId) || activeDeliveryMethods[0] || null;
   }, [activeDeliveryMethods, selectedDeliveryMethodId]);
 
   const deliveryCalc = useMemo(() => {
     if (!selectedDeliveryMethod) {
-      return { finalCharge: ecomSettings?.deliveryChargeInsideDhaka || 70 };
+      return { finalCharge: 0 };
     }
     return calculateDeliveryCharge(selectedDeliveryMethod, cartSubtotal, cartTotalWeight);
-  }, [selectedDeliveryMethod, cartSubtotal, cartTotalWeight, ecomSettings?.deliveryChargeInsideDhaka]);
+  }, [selectedDeliveryMethod, cartSubtotal, cartTotalWeight]);
 
-  const deliveryCharge = deliveryCalc.finalCharge;
+  const deliveryCharge = selectedDeliveryMethod ? deliveryCalc.finalCharge : 0;
 
   // Active Payment Gateways from Admin Settings
   const activePaymentGateways = useMemo<PaymentGatewayItem[]>(() => {
@@ -1226,9 +1234,9 @@ export default function StorefrontPage({ onGoToLogin, onGoToLanding }: Storefron
         name: checkoutName.trim(),
         phone: checkoutPhone.trim(),
         address: checkoutAddress.trim(),
-        deliveryArea: selectedDeliveryMethod?.title || 'Inside Dhaka',
-        deliveryZone: selectedDeliveryMethod?.title || 'Inside Dhaka',
-        district: selectedDeliveryMethod?.title || 'Inside Dhaka',
+        deliveryArea: selectedDeliveryMethod?.title || 'Standard Delivery',
+        deliveryZone: selectedDeliveryMethod?.title || 'Standard Delivery',
+        district: selectedDeliveryMethod?.title || 'Dhaka',
         deliveryCharge: deliveryCharge,
         price: cartSubtotal,
         unitPrice: cart.length === 1 ? cart[0].product.price : cartSubtotal,
@@ -1275,7 +1283,10 @@ export default function StorefrontPage({ onGoToLogin, onGoToLanding }: Storefron
             phone: checkoutPhone.trim(),
             address: checkoutAddress.trim(),
             testEventCode: (typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('meta_test_code') : undefined) || undefined,
-            deliveryZone: selectedDeliveryMethod?.title || 'Inside Dhaka',
+            deliveryZone: selectedDeliveryMethod?.title || 'Standard Delivery',
+            deliveryMethodId: selectedDeliveryMethod?.id,
+            deliveryCharge: deliveryCharge,
+            deliveryFee: deliveryCharge,
             paymentMethod: selectedPaymentGateway?.title || 'Cash on Delivery',
             senderPhone: isOnlinePayment ? senderPhone.trim() : undefined,
             trxId: isOnlinePayment ? trxId.trim() : undefined,
@@ -1858,18 +1869,30 @@ export default function StorefrontPage({ onGoToLogin, onGoToLanding }: Storefron
                 ))}
               </div>
 
-              {/* Main Product Frame with Gentle Hover & Click-to-Zoom */}
+              {/* Main Product Frame with Professional Cursor Zoom & Magnifier Icon */}
               <div 
-                onClick={() => setIsZoomModalOpen(true)}
-                className="relative flex-1 aspect-square max-h-[500px] bg-[#e8f5e9]/30 rounded-xl overflow-hidden border border-slate-100 flex items-center justify-center group cursor-pointer"
-                title="Click to view full image"
+                onMouseEnter={() => setIsHoverZooming(true)}
+                onMouseLeave={() => setIsHoverZooming(false)}
+                onMouseMove={handleProductImageMouseMove}
+                className="relative flex-1 aspect-square max-h-[500px] bg-[#e8f5e9]/30 rounded-xl overflow-hidden border border-slate-100 flex items-center justify-center select-none cursor-crosshair"
+                title="Hover cursor to zoom in details"
               >
-                <img fetchPriority="high" width={500} height={500} src={currentProductImages[activeImageIndex] || activeProductDetail.coverImage} alt={activeProductDetail.title} 
+                <img 
+                  fetchPriority="high" 
+                  width={500} 
+                  height={500} 
+                  src={currentProductImages[activeImageIndex] || activeProductDetail.coverImage} 
+                  alt={activeProductDetail.title} 
+                  style={{
+                    transformOrigin: `${zoomPos.x}% ${zoomPos.y}%`,
+                    transform: isHoverZooming ? 'scale(2.2)' : 'scale(1)',
+                    transition: isHoverZooming ? 'none' : 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
+                  }}
                   onError={(e) => {
                     e.currentTarget.onerror = null;
                     e.currentTarget.src = DEFAULT_STORE_FALLBACK_IMAGE;
                   }}
-                  className="w-4/5 h-4/5 object-contain select-none transition-transform duration-300 group-hover:scale-105"
+                  className="w-4/5 h-4/5 object-contain select-none pointer-events-none will-change-transform"
                 />
 
                 {/* Left/Right Carousel Arrows */}
@@ -1907,7 +1930,7 @@ export default function StorefrontPage({ onGoToLogin, onGoToLanding }: Storefron
                     e.stopPropagation();
                     setIsZoomModalOpen(true);
                   }}
-                  className="absolute bottom-2.5 right-2.5 sm:bottom-3 sm:right-3 px-2.5 py-1.5 bg-slate-900/80 hover:bg-slate-950 text-white text-xs font-semibold rounded-lg flex items-center gap-1.5 transition-all shadow-md active:scale-95 cursor-pointer z-10 backdrop-blur-xs"
+                  className="absolute bottom-2.5 right-2.5 sm:bottom-3 sm:right-3 px-2.5 py-1.5 bg-slate-900/85 hover:bg-slate-950 text-white text-xs font-semibold rounded-lg flex items-center gap-1.5 transition-all shadow-md active:scale-95 cursor-pointer z-20 backdrop-blur-xs"
                   title="Click to Zoom Fullscreen"
                   aria-label="Zoom Fullscreen"
                 >
@@ -2015,48 +2038,92 @@ export default function StorefrontPage({ onGoToLogin, onGoToLanding }: Storefron
           </div>
 
           {/* ============================================================
-              FULL-WIDTH DETAILS SECTION: SPECIFICATIONS & FEATURES
+              FULL-WIDTH DETAILS SECTION: DESCRIPTION, SPECIFICATIONS & FEATURES
               ============================================================ */}
           <div className="mt-12 sm:mt-16 pt-10 border-t border-slate-200 space-y-12 sm:space-y-16">
             
-            {/* 1. PRODUCT SPECIFICATIONS TABLE (MATCHING IMAGE EXACTLY) */}
-            <div className="max-w-4xl mx-auto">
-              <div className="text-center sm:text-left mb-6">
-                <span className="text-xs uppercase tracking-wider font-bold text-sky-600 bg-sky-50 px-3 py-1 rounded-full">
-                  Detailed Specifications
-                </span>
-                <h2 className="text-xl sm:text-2xl font-bold text-slate-900 mt-2 flex items-center justify-center sm:justify-start gap-2">
-                  <Sparkles className="w-5 h-5 text-sky-600" />
-                  Product Specifications (পণ্যের বিশদ বিবরণ)
-                </h2>
-                <p className="text-xs sm:text-sm text-slate-500 mt-1">
-                  Leaf Curt প্রিমিয়াম পডসের টেকনিক্যাল স্পেসিফিকেশন ও ব্যবহারের নির্দেশিকা
-                </p>
-              </div>
+            {/* 1. PRODUCT DESCRIPTION (Clean, Formatted & Separated) */}
+            {activeProductDetail.description && (
+              <div className="max-w-4xl mx-auto">
+                <div className="text-center sm:text-left mb-6">
+                  <span className="text-xs uppercase tracking-wider font-bold text-sky-600 bg-sky-50 px-3 py-1 rounded-full">
+                    Product Description
+                  </span>
+                  <h2 className="text-xl sm:text-2xl font-bold text-slate-900 mt-2 flex items-center justify-center sm:justify-start gap-2">
+                    <Sparkles className="w-5 h-5 text-sky-600" />
+                    পণ্যের বিবরণ ও বৈশিষ্ট্য
+                  </h2>
+                </div>
 
-              <div className="overflow-hidden rounded-xl border border-slate-200 shadow-xs bg-white">
-                <table className="w-full text-left border-collapse text-xs sm:text-sm">
-                  <thead>
-                    <tr className="bg-slate-100/90 border-b border-slate-200 text-slate-800 font-bold uppercase text-[11px] sm:text-xs tracking-wider">
-                      <th className="py-3 px-3 sm:px-5 w-2/5 sm:w-1/3 border-r border-slate-200">Feature</th>
-                      <th className="py-3 px-3 sm:px-5">Details</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {((activeProductDetail as any).specTable?.length > 0 ? (activeProductDetail as any).specTable : DEFAULT_PODS_SPEC_TABLE).map((row: any, idx: number) => (
-                      <tr key={idx} className={idx % 2 === 0 ? 'bg-white hover:bg-slate-50/60' : 'bg-slate-50/40 hover:bg-slate-50/70'}>
-                        <td className="py-3 px-3 sm:px-5 font-semibold text-slate-900 border-r border-slate-200/80 align-top">
-                          {row.feature || row.label}
-                        </td>
-                        <td className="py-3 px-3 sm:px-5 text-slate-700 leading-relaxed align-top">
-                          {row.details || row.value}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                <div className="bg-white rounded-2xl border border-slate-200/90 p-6 sm:p-8 shadow-xs">
+                  {/<[a-z][\s\S]*>/i.test(activeProductDetail.description) ? (
+                    <div 
+                      className="prose prose-slate max-w-none text-sm sm:text-base leading-relaxed space-y-4"
+                      dangerouslySetInnerHTML={{ __html: activeProductDetail.description }}
+                    />
+                  ) : (
+                    <div className="space-y-4 text-sm sm:text-base text-slate-700 leading-relaxed whitespace-pre-line">
+                      {activeProductDetail.description.split('\n\n').filter(Boolean).map((para, pIdx) => {
+                        const trimmed = para.trim();
+                        if (trimmed.startsWith('http') && (trimmed.endsWith('.jpg') || trimmed.endsWith('.png') || trimmed.endsWith('.webp') || trimmed.includes('/uploads/'))) {
+                          return (
+                            <div key={pIdx} className="my-4 rounded-xl overflow-hidden border border-slate-200 shadow-xs flex justify-center">
+                              <img src={trimmed} alt="Product Detail" className="max-w-full h-auto object-contain" />
+                            </div>
+                          );
+                        }
+                        return (
+                          <p key={pIdx} className="text-slate-700">
+                            {para}
+                          </p>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
+            )}
+
+            {/* 2. PRODUCT SPECIFICATIONS TABLE (Only shown if custom specs are configured) */}
+            {((activeProductDetail as any).specTable?.length > 0) && (
+              <div className="max-w-4xl mx-auto">
+                <div className="text-center sm:text-left mb-6">
+                  <span className="text-xs uppercase tracking-wider font-bold text-sky-600 bg-sky-50 px-3 py-1 rounded-full">
+                    Detailed Specifications
+                  </span>
+                  <h2 className="text-xl sm:text-2xl font-bold text-slate-900 mt-2 flex items-center justify-center sm:justify-start gap-2">
+                    <Sparkles className="w-5 h-5 text-sky-600" />
+                    Product Specifications (পণ্যের বিশদ বিবরণ)
+                  </h2>
+                  <p className="text-xs sm:text-sm text-slate-500 mt-1">
+                    Leaf Curt প্রিমিয়াম পডসের টেকনিক্যাল স্পেসিফিকেশন ও ব্যবহারের নির্দেশিকা
+                  </p>
+                </div>
+
+                <div className="overflow-hidden rounded-xl border border-slate-200 shadow-xs bg-white">
+                  <table className="w-full text-left border-collapse text-xs sm:text-sm">
+                    <thead>
+                      <tr className="bg-slate-100/90 border-b border-slate-200 text-slate-800 font-bold uppercase text-[11px] sm:text-xs tracking-wider">
+                        <th className="py-3 px-3 sm:px-5 w-2/5 sm:w-1/3 border-r border-slate-200">Feature</th>
+                        <th className="py-3 px-3 sm:px-5">Details</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {((activeProductDetail as any).specTable as any[]).map((row: any, idx: number) => (
+                        <tr key={idx} className={idx % 2 === 0 ? 'bg-white hover:bg-slate-50/60' : 'bg-slate-50/40 hover:bg-slate-50/70'}>
+                          <td className="py-3 px-3 sm:px-5 font-semibold text-slate-900 border-r border-slate-200/80 align-top">
+                            {row.feature || row.label}
+                          </td>
+                          <td className="py-3 px-3 sm:px-5 text-slate-700 leading-relaxed align-top">
+                            {row.details || row.value}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
 
             {/* 2. PROPERLY SEPARATED PRODUCT OVERVIEW & ADVANTAGES */}
             <div className="max-w-4xl mx-auto">

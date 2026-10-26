@@ -233,8 +233,19 @@ export default function AdminDashboard({ adminEmail, onLogout }: AdminDashboardP
     };
     window.addEventListener('abandoned-carts-updated', handleAbandonedSync);
 
+    // Instant refresh when admin switches back to this browser tab
+    const handleWindowFocus = () => {
+      dbService.getBookOrders().then(fresh => {
+        const uniqueOrders = deduplicateOrders(fresh);
+        setOrders(uniqueOrders);
+        uniqueOrders.forEach(o => knownOrderIds.current.add(o.id));
+      }).catch(() => {});
+    };
+    window.addEventListener('focus', handleWindowFocus);
+
     return () => {
       unsubOrders();
+      window.removeEventListener('focus', handleWindowFocus);
       window.removeEventListener('ecom-products-updated', handleSync);
       window.removeEventListener('abandoned-carts-updated', handleAbandonedSync);
       window.removeEventListener('ecom-settings-updated', handleSettingsUpdate);

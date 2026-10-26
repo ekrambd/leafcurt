@@ -61,7 +61,16 @@ export default function AuthenticProductDetailPage({
   const [isAutoScrolling, setIsAutoScrolling] = useState<boolean>(product.galleryAutoScroll ?? true);
   const [isHoveredGallery, setIsHoveredGallery] = useState<boolean>(false);
   const [isZoomOpen, setIsZoomOpen] = useState<boolean>(false);
+  const [isHoverZoom, setIsHoverZoom] = useState<boolean>(false);
+  const [zoomPos, setZoomPos] = useState<{ x: number; y: number }>({ x: 50, y: 50 });
   const [isShowingVideoInMain, setIsShowingVideoInMain] = useState<boolean>(false);
+
+  const handleImageMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100));
+    const y = Math.max(0, Math.min(100, ((e.clientY - rect.top) / rect.height) * 100));
+    setZoomPos({ x, y });
+  };
   
   // Tab Navigation State
   const [activeTab, setActiveTab] = useState<'specification' | 'features' | 'video' | 'reviews'>('specification');
@@ -574,13 +583,20 @@ export default function AuthenticProductDetailPage({
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 1.02 }}
                     transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-                    className="w-full h-full flex items-center justify-center relative cursor-zoom-in"
-                    onClick={() => setIsZoomOpen(true)}
+                    className="w-full h-full flex items-center justify-center relative overflow-hidden select-none cursor-crosshair"
+                    onMouseEnter={() => setIsHoverZoom(true)}
+                    onMouseLeave={() => setIsHoverZoom(false)}
+                    onMouseMove={handleImageMouseMove}
                   >
                     <img 
                       src={allImages[activeImageIndex] || product.coverImage} 
                       alt={product.title}
-                      className="w-full h-full object-cover sm:object-contain"
+                      className="w-full h-full object-cover sm:object-contain will-change-transform pointer-events-none"
+                      style={{
+                        transformOrigin: `${zoomPos.x}% ${zoomPos.y}%`,
+                        transform: isHoverZoom ? 'scale(2.2)' : 'scale(1)',
+                        transition: isHoverZoom ? 'none' : 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
+                      }}
                       onError={(e) => {
                         e.currentTarget.onerror = null;
                         e.currentTarget.src = '/authentic/pod_triple_chamber_main.png';
@@ -647,8 +663,8 @@ export default function AuthenticProductDetailPage({
                     e.stopPropagation();
                     setIsZoomOpen(true);
                   }}
-                  className="absolute bottom-3 right-3 p-2 bg-white/80 hover:bg-white text-slate-700 rounded-lg shadow-sm border border-slate-200/80 transition-colors cursor-pointer z-10"
-                  title="Fullscreen Zoom"
+                  className="absolute bottom-3 right-3 p-2.5 bg-white/95 hover:bg-white text-slate-800 rounded-xl shadow-md border border-slate-200/90 hover:scale-105 active:scale-95 transition-all cursor-pointer z-20"
+                  title="Click to view Fullscreen Zoom"
                 >
                   <ZoomIn className="w-4 h-4" />
                 </button>

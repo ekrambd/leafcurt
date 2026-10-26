@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { checkoutRateLimiter } from '../middleware/rateLimiter';
-import { storeOrders, storeProducts, saveOrdersToDisk, syncSelfRecoveredCart } from '../data/store';
+import { storeOrders, storeProducts, storeSettings, saveOrdersToDisk, syncSelfRecoveredCart } from '../data/store';
 import { BookOrder } from '../../types';
 import { cacheResponse } from '../middleware/cacheMiddleware';
 import { globalCache } from '../services/cacheEngine';
@@ -85,7 +85,22 @@ orderRouter.get('/shards/stats', (_req, res) => {
 // POST /api/orders/checkout - Secure Server-Side Atomic Order Validation & Placement (N+1 queries prevented)
 orderRouter.post('/checkout', checkoutRateLimiter, async (req, res) => {
   try {
-    const { items, customerName, phone, address, deliveryZone, paymentMethod, senderPhone, trxId, couponCode } = req.body;
+    const { 
+      items, 
+      customerName, 
+      phone, 
+      address, 
+      deliveryZone, 
+      paymentMethod, 
+      senderPhone, 
+      trxId, 
+      couponCode,
+      deliveryMethodId,
+      deliveryCharge,
+      deliveryFee: reqDeliveryFee,
+      memberDiscount,
+      pointsDiscount
+    } = req.body;
 
     if (!items || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ error: 'Order must contain at least one item.' });
@@ -142,8 +157,31 @@ orderRouter.post('/checkout', checkoutRateLimiter, async (req, res) => {
       });
     }
 
-    // 2. Authoritative Delivery Charge Calculation
-    const deliveryFee = deliveryZone === 'inside_dhaka' ? 60 : 110;
+    // 2. Authoritative Delivery Charge Calculation based on real Admin Settings
+    let deliveryFee = 0;
+    const configuredMethods = Array.isArray(storeSettings?.deliveryMethods)
+      ? storeSettings.deliveryMethods.filter(m => m.status === 'Active')
+      : [];
+
+    if (configuredMethods.length > 0) {
+      // Find matching method configured in Admin Panel
+      const matchedMethod = configuredMethods.find(m => 
+        (deliveryMethodId && m.id === deliveryMethodId) ||
+        (deliveryZone && m.id === deliveryZone) ||
+        (deliveryZone && m.title?.toLowerCase() === String(deliveryZone).toLowerCase()) ||
+        (deliveryZone && String(deliveryZone).toLowerCase().includes(m.title?.toLowerCase() || ''))
+      ) || configuredMethods[0];
+
+      if (matchedMethod) {
+        deliveryFee = Number(matchedMethod.baseCharge ?? (matchedMethod as any).charge ?? 0);
+      }
+    } else if (typeof deliveryCharge === 'number') {
+      deliveryFee = Math.max(0, deliveryCharge);
+    } else if (typeof reqDeliveryFee === 'number') {
+      deliveryFee = Math.max(0, reqDeliveryFee);
+    } else {
+      deliveryFee = 0;
+    }
 
     // 3. Authoritative Coupon Verification
     let couponDiscount = 0;
@@ -156,7 +194,9 @@ orderRouter.post('/checkout', checkoutRateLimiter, async (req, res) => {
       }
     }
 
-    const calculatedGrandTotal = Math.max(0, calculatedSubtotal + deliveryFee - couponDiscount);
+    const memberDisc = Number(memberDiscount || req.body.memberDiscountAmount || 0);
+    const pointsDisc = Number(pointsDiscount || req.body.pointsRedeemedTaka || 0);
+    const calculatedGrandTotal = Math.max(0, calculatedSubtotal + deliveryFee - couponDiscount - memberDisc - pointsDisc);
     const orderId = `ORD-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
     const shardIndex = shardService.getShardIndex(orderId);
     const timePartition = shardService.getTimePartitionName('orders');
@@ -166,9 +206,11 @@ orderRouter.post('/checkout', checkoutRateLimiter, async (req, res) => {
       customerName: String(customerName).trim(),
       phone: String(phone).trim(),
       address: String(address).trim(),
-      deliveryZone: deliveryZone || 'inside_dhaka',
+      deliveryZone: deliveryZone || (configuredMethods.length > 0 ? configuredMethods[0].title : 'Standard Delivery'),
       deliveryFee,
       deliveryCharge: deliveryFee,
+      memberDiscount: memberDisc > 0 ? memberDisc : undefined,
+      pointsRedeemed: pointsDisc > 0 ? pointsDisc : undefined,
 
       items: validatedItems,
       quantity: validatedItems.reduce((sum, i) => sum + i.quantity, 0),

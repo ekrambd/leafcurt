@@ -65,7 +65,7 @@
   "storeAddress": "Banasree,Dhaka, Bangladesh",
   "footerDescription": "Your Premium Online Shopping Destination",
   "gtmId": "",
-  "deliveryChargeInsideDhaka": 70,
+  "deliveryChargeInsideDhaka": 120,
   "deliveryChargeOutsideDhaka": 130,
   "bkashNumber": "",
   "nagadNumber": "",
@@ -419,7 +419,50 @@
     "productImage": ""
   },
   "freeDeliveryMinPurchase": 450,
-  "deliveryMethods": [],
+  "deliveryMethods": [
+    {
+      "id": "dm-1793043462623",
+      "title": "Inside Dhaka",
+      "subtitle": "২৪-৪৮ ঘণ্টার মধ্যে হোম ডেলিভারি",
+      "status": "Active",
+      "mode": "Fixed",
+      "type": "Fixed",
+      "pricingModel": "flat",
+      "areaScope": "inside_dhaka",
+      "customDistricts": [],
+      "baseWeightKg": 1,
+      "baseCharge": 90,
+      "deliveryCharge": 90,
+      "additionalChargePerKg": 20,
+      "freeDeliveryThreshold": 2000,
+      "estimatedDays": "24-48 Hours",
+      "courierPartner": "Pathao",
+      "minimumCharge": 0,
+      "maximumCharge": 0,
+      "updatedAt": "Oct 27, 2026"
+    },
+    {
+      "id": "dm-1793043524131",
+      "title": "Outside Dhaka",
+      "subtitle": "২৪-৪৮ ঘণ্টার মধ্যে হোম ডেলিভারি",
+      "status": "Active",
+      "mode": "Fixed",
+      "type": "Fixed",
+      "pricingModel": "flat",
+      "areaScope": "inside_dhaka",
+      "customDistricts": [],
+      "baseWeightKg": 1,
+      "baseCharge": 120,
+      "deliveryCharge": 120,
+      "additionalChargePerKg": 20,
+      "freeDeliveryThreshold": 2000,
+      "estimatedDays": "24-48 Hours",
+      "courierPartner": "Pathao",
+      "minimumCharge": 0,
+      "maximumCharge": 0,
+      "updatedAt": "Oct 27, 2026"
+    }
+  ],
   "blogPosts": [
     {
       "id": "blog-1792724857353",
@@ -552,8 +595,8 @@
       "tierName": "Silver Member",
       "joinedDate": "Oct 26, 2026",
       "validUntil": "Oct 26, 2027",
-      "totalSpent": 1070,
-      "pointsBalance": 50,
+      "totalSpent": 2805,
+      "pointsBalance": 152,
       "status": "Active"
     },
     {

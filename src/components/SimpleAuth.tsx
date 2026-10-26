@@ -2,6 +2,7 @@ import React, { useState, FormEvent } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Smartphone, AlertCircle, ArrowLeft, MessageCircle, Package, Clock, CheckCircle2, Search } from 'lucide-react';
 import { BookOrder } from '../types';
+import { useAppStore } from '../store/useAppStore';
 
 interface SimpleAuthProps {
   onSuccess: (identifier: string, userData?: { name?: string; photoURL?: string }) => void;
@@ -9,9 +10,11 @@ interface SimpleAuthProps {
   isModal?: boolean;
 }
 
-const WHATSAPP_HOTLINE = '8801329458568';
-
 export default function SimpleAuth({ onSuccess, onCancel, isModal = false }: SimpleAuthProps) {
+  const { ecomSettings } = useAppStore();
+  const rawPhone = (ecomSettings?.contactPhone || '01635311494').replace(/\D/g, '');
+  const whatsappHotline = rawPhone.startsWith('880') ? rawPhone : (rawPhone.startsWith('0') ? '88' + rawPhone : '880' + rawPhone);
+
   const [identifier, setIdentifier] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -60,7 +63,7 @@ export default function SimpleAuth({ onSuccess, onCancel, isModal = false }: Sim
     const text = orderId
       ? `Hello Support Team,\nI would like an update on my order #${orderId} (Phone: ${identifier.trim()}). Please let me know the status!`
       : `Hello Support Team,\nI need assistance with my order (Phone: ${identifier.trim() || 'Not Provided'}). Please assist me!`;
-    return `https://wa.me/${WHATSAPP_HOTLINE}?text=${encodeURIComponent(text)}`;
+    return `https://wa.me/${whatsappHotline}?text=${encodeURIComponent(text)}`;
   };
 
   return (

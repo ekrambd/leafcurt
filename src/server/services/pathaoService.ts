@@ -190,7 +190,9 @@ export class PathaoCourierService {
       throw new Error('Store ID is required for Pathao parcel dispatch. Please configure store_id in Pathao settings or ensure your Pathao account has at least one store created.');
     }
 
-    const isPrepaid = order.paymentMethod && order.paymentMethod !== 'COD';
+    const method = (order.paymentMethod || '').toLowerCase().trim();
+    const isCod = !method || method === 'cod' || method.includes('cash') || method.includes('ক্যাশ');
+    const isPrepaid = !isCod;
     const amountToCollect = isPrepaid ? 0 : Number(order.totalPrice || 0);
 
     // Prepare phone number (standardize to 11 digits)

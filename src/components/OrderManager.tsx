@@ -15,7 +15,9 @@ import {
   buildWhatsAppInvoiceUrl, 
   formatRelativeTime, 
   normalizeBdPhone, 
-  copyElementAsImage 
+  copyElementAsImage,
+  isOrderPaid,
+  isCodPaymentMethod
 } from '../lib/orderInvoiceUtils';
 import { dbService } from '../lib/dbService';
 import { ApiClient } from '../services/apiClient';
@@ -830,8 +832,8 @@ export default function OrderManager({
           case 'total': val = String(o.totalPrice); break;
           case 'rEarn': val = '0'; break;
           case 'resell': val = 'No'; break;
-          case 'paid': val = o.paymentMethod !== 'COD' ? String(o.totalPrice) : '0'; break;
-          case 'due': val = o.paymentMethod === 'COD' ? String(o.totalPrice) : '0'; break;
+          case 'paid': val = isOrderPaid(o) ? String(o.totalPrice) : '0'; break;
+          case 'due': val = isOrderPaid(o) ? '0' : String(o.totalPrice); break;
           case 'rDue': val = '0'; break;
           case 'profit': val = String(Math.round(o.totalPrice * 0.4)); break;
           case 'created': val = new Date(o.createdAt).toLocaleDateString('en-US'); break;
@@ -1031,7 +1033,7 @@ export default function OrderManager({
               const orderDate = new Date(ord.createdAt);
               const formattedDate = orderDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
               const formattedTime = orderDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-              const isPaid = ord.paymentMethod !== 'COD';
+              const isPaid = isOrderPaid(ord);
               
               const price = ord.price || 0;
               const qty = ord.quantity || 1;
@@ -1766,7 +1768,8 @@ export default function OrderManager({
                   const serialNo = (currentPage - 1) * itemsPerPage + idx + 1;
                   const orderShortId = order.id.replace('ORD-', '');
                   const total = order.totalAmount || order.totalPrice || ((order.price || 0) * (order.quantity || 1) + (order.deliveryCharge || 0));
-                  const isPaid = order.paymentMethod && order.paymentMethod !== 'COD';
+                  const isPaid = isOrderPaid(order);
+                  const dueAmount = isPaid ? 0 : total;
 
                   return (
                     <tr 
@@ -1993,14 +1996,14 @@ export default function OrderManager({
                         </div>
 
                         <span className="text-[10px] font-mono font-semibold text-slate-500 block">
-                          Due ৳ {total.toFixed(2)}
+                          Due ৳ {dueAmount.toFixed(2)}
                         </span>
                       </td>
 
                       {/* 5. DELIVERY (Zone, Charge, Courier) */}
                       <td className="py-4 px-4 align-top space-y-1 text-xs">
                         <p className="font-semibold text-slate-800">
-                          {order.district?.toLowerCase().includes('dhaka') || order.deliveryZone === 'Inside Dhaka' ? 'Inside Dhaka' : 'Outside Dhaka'}
+                          {order.deliveryZone || (order.district ? (order.district.toLowerCase().includes('dhaka') ? 'Inside Dhaka' : order.district) : 'Standard Delivery')}
                         </p>
                         <p className="text-[11px] text-slate-500 font-mono">
                           Charge ৳ {order.deliveryCharge || 0}
