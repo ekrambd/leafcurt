@@ -1,7 +1,7 @@
 import { dbService } from "../lib/dbService";
 //fix pixel event 2
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { 
   ShoppingBag, User, Search, ChevronDown, ChevronLeft, ChevronRight,
   ArrowRight, ArrowLeft, Heart, Star, Check, Sparkles, X, Plus, Minus,
@@ -38,6 +38,7 @@ import CustomerTestimonialsSection from './CustomerTestimonialsSection';
 import FaqSection from './FaqSection';
 import AmbientSoapBubbles from './AmbientSoapBubbles';
 import WashingComparisonSection from './WashingComparisonSection';
+import { validateOrderCustomerDetails } from '../lib/orderValidation';
 
 const CheckoutPage = React.lazy(() => import('./CheckoutPage'));
 const BlogPage = React.lazy(() => import('./BlogPage'));
@@ -681,6 +682,27 @@ export default function StorefrontPage({ onGoToLogin, onGoToLanding }: Storefron
     }
   }, [activeHeroBanners.length]);
 
+  // Hero Video Sound State & Control
+  const [isHeroMuted, setIsHeroMuted] = useState(true);
+  const heroVideoRefs = useRef<Record<string, HTMLVideoElement | null>>({});
+
+  const toggleHeroSound = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsHeroMuted(prev => {
+      const nextMuted = !prev;
+      const currentBanner = activeHeroBanners[activeSlideIndex];
+      const videoKey = currentBanner?.id || String(activeSlideIndex);
+      const vidEl = heroVideoRefs.current[videoKey];
+      if (vidEl) {
+        vidEl.muted = nextMuted;
+        if (!nextMuted) {
+          vidEl.play().catch(() => {});
+        }
+      }
+      return nextMuted;
+    });
+  }, [activeHeroBanners, activeSlideIndex]);
+
   const handlePrevSlide = () => {
     setActiveSlideIndex(prev => (prev - 1 + activeHeroBanners.length) % activeHeroBanners.length);
   };
@@ -1192,16 +1214,28 @@ export default function StorefrontPage({ onGoToLogin, onGoToLanding }: Storefron
 
   const handlePlaceOrder = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!checkoutPhone.trim() || !checkoutAddress.trim() || !checkoutName.trim()) {
+
+    // Strict validation against fake/dummy names, non-BD phones, and incomplete addresses
+    const validation = validateOrderCustomerDetails({
+      customerName: checkoutName,
+      phone: checkoutPhone,
+      address: checkoutAddress
+    });
+
+    if (!validation.isValid) {
       setFeedback({
         isOpen: true,
         type: 'error',
-        title: 'Required Information Missing',
-        message: 'Please provide your name, mobile phone number, and complete delivery address to complete your order.'
+        title: 'সঠিক তথ্য প্রদান করুন',
+        message: validation.errors[0]
       });
-      showToast('Please fill in your name, phone and address.', 'error');
+      showToast(validation.errors[0], 'error');
       return;
     }
+
+    const cleanCustomerName = validation.sanitized.name;
+    const cleanPhone = validation.sanitized.phone;
+    const cleanAddress = validation.sanitized.address;
 
     if (cart.length === 0) {
       setFeedback({
@@ -1230,10 +1264,10 @@ export default function StorefrontPage({ onGoToLogin, onGoToLanding }: Storefron
       const orderId = `ORD-${new Date().getFullYear()}-${Math.floor(100000 + Math.random() * 900000)}`;
       const orderPayload: BookOrder = {
         id: orderId,
-        customerName: checkoutName.trim(),
-        name: checkoutName.trim(),
-        phone: checkoutPhone.trim(),
-        address: checkoutAddress.trim(),
+        customerName: cleanCustomerName,
+        name: cleanCustomerName,
+        phone: cleanPhone,
+        address: cleanAddress,
         deliveryArea: selectedDeliveryMethod?.title || 'Standard Delivery',
         deliveryZone: selectedDeliveryMethod?.title || 'Standard Delivery',
         district: selectedDeliveryMethod?.title || 'Dhaka',
@@ -2957,8 +2991,11 @@ export default function StorefrontPage({ onGoToLogin, onGoToLanding }: Storefron
                         ) : directVideoUrl ? (
                           <video
                             ref={(el) => {
+                              const videoKey = banner.id || String(index);
+                              heroVideoRefs.current[videoKey] = el;
                               if (el) {
                                 if (isActive) {
+                                  el.muted = isHeroMuted;
                                   el.play().catch(() => {});
                                 } else {
                                   el.pause();
@@ -2968,11 +3005,11 @@ export default function StorefrontPage({ onGoToLogin, onGoToLanding }: Storefron
                             }}
                             autoPlay
                             loop={activeHeroBanners.length <= 1}
-                            muted
+                            muted={isHeroMuted}
                             playsInline
                             preload="auto"
                             onEnded={handleVideoEnded}
-                            poster={banner.imageUrl || '/authentic/about_hero_pods.png'}
+                            poster={banner.imageUrl || undefined}
                             className="w-full h-full object-cover pointer-events-auto"
                           >
                             <source src={directVideoUrl} type="video/mp4" />
@@ -3119,6 +3156,23 @@ export default function StorefrontPage({ onGoToLogin, onGoToLanding }: Storefron
                   ))}
                 </div>
               </>
+            )}
+
+            {/* Sound / Volume Control for Hero Video Banner */}
+            {activeHeroBanners[activeSlideIndex]?.mediaType === 'video' && (
+              <button
+                type="button"
+                onClick={toggleHeroSound}
+                className="absolute bottom-4 sm:bottom-6 right-3 sm:right-6 z-30 inline-flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-black/55 hover:bg-black/85 backdrop-blur-md text-white border border-white/20 shadow-xl transition-all duration-300 hover:scale-110 active:scale-95 cursor-pointer group select-none"
+                title={isHeroMuted ? "শব্দ চালু করুন (Sound On)" : "শব্দ বন্ধ করুন (Sound Off)"}
+                aria-label={isHeroMuted ? "Unmute video sound" : "Mute video sound"}
+              >
+                {isHeroMuted ? (
+                  <VolumeX className="w-4 h-4 sm:w-4.5 sm:h-4.5 text-rose-300 group-hover:text-white transition-colors" />
+                ) : (
+                  <Volume2 className="w-4 h-4 sm:w-4.5 sm:h-4.5 text-emerald-400 group-hover:text-emerald-300 animate-pulse transition-colors" />
+                )}
+              </button>
             )}
           </section>
 

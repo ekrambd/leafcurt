@@ -17,8 +17,17 @@ export const initPixelAndGtm = (pixelId?: string, gtmId?: string) => {
   const normalizedPixelId = pixelId?.trim();
   const normalizedGtmId = gtmId?.trim();
 
+  // Attach to window so multiple Vite chunks or re-renders share the same initialization state
+  const win = window as any;
+  win.__INITIALIZED_PIXEL_IDS__ = win.__INITIALIZED_PIXEL_IDS__ || initializedPixelIds;
+  win.__INITIALIZED_GTM_IDS__ = win.__INITIALIZED_GTM_IDS__ || initializedGtmIds;
+  const activePixelSet: Set<string> = win.__INITIALIZED_PIXEL_IDS__;
+  const activeGtmSet: Set<string> = win.__INITIALIZED_GTM_IDS__;
+
   // 1. Setup the FBQ stub synchronously so events can be queued immediately!
-  if (normalizedPixelId && !initializedPixelIds.has(normalizedPixelId)) {
+  if (normalizedPixelId && !activePixelSet.has(normalizedPixelId)) {
+    activePixelSet.add(normalizedPixelId);
+
     if (!window.fbq) {
       const fbq: any = function (...args: any[]) {
         if (fbq.callMethod) fbq.callMethod.apply(fbq, args);
@@ -36,19 +45,19 @@ export const initPixelAndGtm = (pixelId?: string, gtmId?: string) => {
   }
 
   // 2. Setup the GTM dataLayer stub synchronously
-  if (normalizedGtmId && !initializedGtmIds.has(normalizedGtmId)) {
+  if (normalizedGtmId && !activeGtmSet.has(normalizedGtmId)) {
+    activeGtmSet.add(normalizedGtmId);
     window.dataLayer = window.dataLayer || [];
     window.dataLayer.push({ 'gtm.start': Date.now(), event: 'gtm.js' });
   }
 
-  // Load scripts immediately without 3.5-second delay so tracker catches all early events
+  // Load scripts immediately without delay so tracker catches all early events
   if (normalizedPixelId && !document.getElementById('fb-pixel-script')) {
     const script = document.createElement('script');
     script.id = 'fb-pixel-script';
     script.async = true;
     script.src = 'https://connect.facebook.net/en_US/fbevents.js';
     document.head.appendChild(script);
-    initializedPixelIds.add(normalizedPixelId);
   }
 
   if (normalizedGtmId && !document.getElementById('gtm-script')) {
@@ -57,7 +66,6 @@ export const initPixelAndGtm = (pixelId?: string, gtmId?: string) => {
     script.async = true;
     script.src = `https://www.googletagmanager.com/gtm.js?id=${encodeURIComponent(normalizedGtmId)}`;
     document.head.appendChild(script);
-    initializedGtmIds.add(normalizedGtmId);
   }
 };
 

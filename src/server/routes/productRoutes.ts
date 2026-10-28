@@ -5,6 +5,7 @@ import { cacheResponse } from '../middleware/cacheMiddleware';
 import { globalCache } from '../services/cacheEngine';
 import { shardService } from '../services/shardService';
 import { prisma } from '../db';
+import { paginateInMemoryKeyset } from '../services/keysetPagination';
 
 export const productRouter = Router();
 
@@ -115,12 +116,58 @@ productRouter.get('/bestsellers', cacheResponse({ ttlSeconds: 30, staleWhileReva
   }
 });
 
-// GET All Products - High-speed cached with ETag, SWR & Eager Loading (Zero N+1 Queries)
+// GET All Products - Supports O(log N) Keyset Pagination, ETag, SWR & Zero N+1 Queries
 productRouter.get('/', async (req, res) => {
   const includeReviews = req.query.include === 'reviews' || req.query.withReviews === 'true';
   const includeBrand = req.query.include === 'brand' || req.query.withBrand === 'true';
+  const isKeysetRequested = Boolean(req.query.cursor || req.query.limit || req.query.keyset === 'true');
 
   let products = loadProductsFromDisk();
+
+  // Deterministic DESC order by (createdAt, id)
+  products.sort((a, b) => {
+    const timeA = new Date(a.createdAt || 0).getTime();
+    const timeB = new Date(b.createdAt || 0).getTime();
+    if (timeB !== timeA) return timeB - timeA;
+    return (b.id || '').localeCompare(a.id || '');
+  });
+
+  if (isKeysetRequested) {
+    const limit = Number(req.query.limit) || 20;
+    const paginated = paginateInMemoryKeyset(products, req.query.cursor as string, limit);
+
+    if (includeReviews || includeBrand) {
+      const productIds = paginated.data.map(p => p.id);
+      const reviewsMap = new Map<string, any[]>();
+      if (includeReviews) {
+        try {
+          const allReviews = await prisma.review.findMany({
+            where: { productId: { in: productIds } }
+          });
+          for (const rev of allReviews) {
+            if (!reviewsMap.has(rev.productId)) reviewsMap.set(rev.productId, []);
+            reviewsMap.get(rev.productId)!.push(rev);
+          }
+        } catch {}
+      }
+
+      const brandsMap = new Map<string, any>();
+      if (includeBrand) {
+        try {
+          const allBrands = await prisma.brand.findMany();
+          for (const b of allBrands) brandsMap.set(b.id, b);
+        } catch {}
+      }
+
+      paginated.data = paginated.data.map(p => ({
+        ...p,
+        reviews: includeReviews ? (reviewsMap.get(p.id) || []) : undefined,
+        brandDetails: (includeBrand && p.brandId) ? (brandsMap.get(p.brandId) || null) : undefined
+      }));
+    }
+
+    return res.json(paginated);
+  }
 
   // Eager load related data in a single batch query (Zero N+1 queries)
   if (includeReviews || includeBrand) {

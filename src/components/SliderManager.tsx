@@ -103,12 +103,29 @@ export default function SliderManager() {
     setSaveSuccess(false);
     const bannersToSave = updatedBanners || settings.heroBanners || [];
 
+    // Sanitize any existing Base64 video/image data that may have been stored during failed uploads
+    const cleanBanners = await Promise.all(
+      bannersToSave.map(async (banner) => {
+        const b = { ...banner };
+        if (b.videoUrl && b.videoUrl.startsWith('data:')) {
+          try {
+            b.videoUrl = await uploadDataUrlToStorage(b.videoUrl);
+          } catch (e) {
+            console.error('Failed to convert base64 video to storage file:', e);
+            delete (b as any).videoUrl;
+          }
+        }
+        return b;
+      })
+    );
+
     try {
       await dbService.saveSliders({
-        heroBanners: bannersToSave,
+        heroBanners: cleanBanners,
         heroSliderInterval: settings.heroSliderInterval || 5,
         heroVideoInterval: settings.heroVideoInterval || 10
       });
+      setSettings(prev => ({ ...prev, heroBanners: cleanBanners }));
       setSaveSuccess(true);
       setFeedback({
         isOpen: true,
@@ -277,37 +294,39 @@ export default function SliderManager() {
     const file = e.target.files?.[0];
     if (!file || !editingBanner) return;
 
-    if (file.size > 50 * 1024 * 1024) {
+    if (file.size > 100 * 1024 * 1024) {
       setFeedback({
         isOpen: true,
         type: 'error',
         title: 'Video file size is large',
-        message: '50MB or smaller in size MP4/WebM video file select।'
+        message: 'Please select an MP4/WebM video file smaller than 100MB.'
       });
       return;
     }
 
     setIsUploadingVideo(true);
     try {
-      try {
-        const videoUrl = await uploadFileToStorage(
-          file,
-          `ecom-banners/video-${editingBanner.id}-${Date.now()}.${file.name.split('.').pop() || 'mp4'}`
-        );
-        setEditingBanner(prev => prev ? { ...prev, videoUrl, mediaType: 'video', videoType: 'file' } : null);
-      } catch (storageError) {
-        console.warn('Video cloud storage upload failed, using local FileReader URL fallback:', storageError);
-        const reader = new FileReader();
-        reader.onload = (uploadEvent) => {
-          const result = uploadEvent.target?.result as string;
-          if (result) {
-            setEditingBanner(prev => prev ? { ...prev, videoUrl: result, mediaType: 'video', videoType: 'file' } : null);
-          }
-        };
-        reader.readAsDataURL(file);
-      }
-    } catch (err) {
-      console.error('Video upload error:', err);
+      const videoUrl = await uploadFileToStorage(
+        file,
+        `ecom-banners/video-${editingBanner.id}-${Date.now()}.${file.name.split('.').pop() || 'mp4'}`
+      );
+      setEditingBanner(prev => prev ? { ...prev, videoUrl, mediaType: 'video', videoType: 'file' } : null);
+      setFeedback({
+        isOpen: true,
+        type: 'success',
+        title: 'Video Uploaded',
+        message: 'Video uploaded successfully to server media storage.'
+      });
+    } catch (storageError: any) {
+      console.error('Video upload error:', storageError);
+      setFeedback({
+        isOpen: true,
+        type: 'error',
+        title: 'Video Upload Failed',
+        message: storageError?.message?.includes('413')
+          ? 'Server upload limit exceeded (413). Please increase client_max_body_size in Nginx configuration.'
+          : (storageError?.message || 'Failed to upload video to server. Please try again.')
+      });
     } finally {
       setIsUploadingVideo(false);
     }

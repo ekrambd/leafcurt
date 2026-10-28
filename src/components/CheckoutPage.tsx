@@ -29,6 +29,7 @@ import { DEFAULT_DELIVERY_METHODS, DEFAULT_PAYMENT_GATEWAYS } from '../lib/const
 import { getCustomerSession, setCustomerSession } from '../lib/customerAuth';
 import { BD_ALL_DISTRICTS, DHAKA_SUBURBS, calculateCartTotalWeight, calculateDeliveryCharge, filterDeliveryMethodsForDistrict } from '../lib/deliveryCalculator';
 import { loyaltyClubService } from '../lib/loyaltyClubService';
+import { validateCustomerName, validateBdPhone, validateRealAddress, validateOrderCustomerDetails } from '../lib/orderValidation';
 
 const BD_DISTRICTS = [
   'Dhaka',
@@ -448,21 +449,28 @@ export default function CheckoutPage({
   // Order Submission
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState<BookOrder | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<{ name?: string; phone?: string; address?: string }>({});
 
   const handlePlaceOrder = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) {
-      alert('Please enter your Full Name.');
+
+    // Strict validation against fake/dummy names, non-BD phones, and incomplete addresses
+    const validation = validateOrderCustomerDetails({ name, phone, address });
+    if (!validation.isValid) {
+      setFieldErrors({
+        name: validateCustomerName(name).error,
+        phone: validateBdPhone(phone).error,
+        address: validateRealAddress(address).error
+      });
+      alert(validation.errors[0]);
       return;
     }
-    if (!phone.trim()) {
-      alert('Please enter your Phone Number.');
-      return;
-    }
-    if (!address.trim()) {
-      alert('Please enter your full delivery address.');
-      return;
-    }
+
+    setFieldErrors({});
+    const cleanCustomerName = validation.sanitized.name;
+    const cleanPhone = validation.sanitized.phone;
+    const cleanAddress = validation.sanitized.address;
+
     if (cart.length === 0) {
       alert('Your shopping bag is empty.');
       return;
@@ -482,11 +490,11 @@ export default function CheckoutPage({
       
       const orderPayload: BookOrder = {
         id: orderId,
-        customerName: name.trim(),
-        name: name.trim(),
-        phone: phone.trim(),
+        customerName: cleanCustomerName,
+        name: cleanCustomerName,
+        phone: cleanPhone,
         email: email.trim() || undefined,
-        address: address.trim(),
+        address: cleanAddress,
         district: district,
         thana: thana.trim() || undefined,
         notes: (specialNotes.trim() ? specialNotes.trim() + '\n' : '') + (bogoEligible ? '[BOGO APPLIED: 11th+ Coupon Usage - Free Gift]' : '') || undefined,
@@ -930,8 +938,13 @@ export default function CheckoutPage({
                 <div className="space-y-4 text-xs sm:text-sm">
                   {/* 1. Mobile Phone Number */}
                   <div className="space-y-1.5">
-                    <label className="block text-xs font-bold text-slate-700">
-                      Phone Number (mobile number) *
+                    <label className="block text-xs font-bold text-slate-700 flex items-center justify-between">
+                      <span>Phone Number (mobile number) *</span>
+                      {phone.length === 11 && validateBdPhone(phone).isValid && (
+                        <span className="text-[11px] font-bold text-emerald-600 flex items-center gap-1">
+                          <CheckCircle2 className="w-3.5 h-3.5" /> বৈধ মোবাইল নম্বর
+                        </span>
+                      )}
                     </label>
                     <div className="flex">
                       <span className="inline-flex items-center px-3.5 bg-slate-100 border border-r-0 border-slate-200 rounded-l-xl text-xs font-bold text-slate-600">
@@ -941,12 +954,32 @@ export default function CheckoutPage({
                         type="tel"
                         required
                         value={phone}
-                        onChange={(e) => setPhone(e.target.value)}
-                        onBlur={() => captureCurrentCart()}
+                        onChange={(e) => {
+                          setPhone(e.target.value);
+                          if (fieldErrors.phone) {
+                            const val = validateBdPhone(e.target.value);
+                            if (val.isValid) setFieldErrors(prev => ({ ...prev, phone: undefined }));
+                          }
+                        }}
+                        onBlur={() => {
+                          captureCurrentCart();
+                          if (phone.trim()) {
+                            const val = validateBdPhone(phone);
+                            if (!val.isValid) setFieldErrors(prev => ({ ...prev, phone: val.error }));
+                            else setFieldErrors(prev => ({ ...prev, phone: undefined }));
+                          }
+                        }}
                         placeholder="01XXXXXXXXX"
-                        className="w-full px-4 py-3 bg-white border border-slate-200 rounded-r-xl text-xs sm:text-sm text-slate-800 placeholder:text-slate-400 font-mono focus:outline-none focus:border-[#f97316] focus:ring-1 focus:ring-[#f97316] transition-all"
+                        className={`w-full px-4 py-3 bg-white border ${
+                          fieldErrors.phone 
+                            ? 'border-rose-400 focus:border-rose-500 focus:ring-rose-500' 
+                            : 'border-slate-200 focus:border-[#f97316] focus:ring-[#f97316]'
+                        } rounded-r-xl text-xs sm:text-sm text-slate-800 placeholder:text-slate-400 font-mono focus:outline-none focus:ring-1 transition-all`}
                       />
                     </div>
+                    {fieldErrors.phone && (
+                      <p className="text-[11px] text-rose-600 font-medium">{fieldErrors.phone}</p>
+                    )}
                   </div>
 
                   {/* 2. Full Name */}
@@ -958,11 +991,31 @@ export default function CheckoutPage({
                       type="text"
                       required
                       value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      onBlur={() => captureCurrentCart()}
-                      placeholder="Your Full Name"
-                      className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-[#f97316] focus:ring-1 focus:ring-[#f97316] transition-all"
+                      onChange={(e) => {
+                        setName(e.target.value);
+                        if (fieldErrors.name) {
+                          const val = validateCustomerName(e.target.value);
+                          if (val.isValid) setFieldErrors(prev => ({ ...prev, name: undefined }));
+                        }
+                      }}
+                      onBlur={() => {
+                        captureCurrentCart();
+                        if (name.trim()) {
+                          const val = validateCustomerName(name);
+                          if (!val.isValid) setFieldErrors(prev => ({ ...prev, name: val.error }));
+                          else setFieldErrors(prev => ({ ...prev, name: undefined }));
+                        }
+                      }}
+                      placeholder="আপনার সম্পূর্ণ নাম লিখুন"
+                      className={`w-full px-4 py-3 bg-white border ${
+                        fieldErrors.name 
+                          ? 'border-rose-400 focus:border-rose-500 focus:ring-rose-500' 
+                          : 'border-slate-200 focus:border-[#f97316] focus:ring-[#f97316]'
+                      } rounded-xl text-xs sm:text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-1 transition-all`}
                     />
+                    {fieldErrors.name && (
+                      <p className="text-[11px] text-rose-600 font-medium">{fieldErrors.name}</p>
+                    )}
                   </div>
 
                   {/* 3. District & Delivery Zone Selector */}
@@ -1038,11 +1091,33 @@ export default function CheckoutPage({
                       type="text"
                       required
                       value={address}
-                      onChange={(e) => setAddress(e.target.value)}
-                      onBlur={() => captureCurrentCart()}
+                      onChange={(e) => {
+                        setAddress(e.target.value);
+                        if (fieldErrors.address) {
+                          const val = validateRealAddress(e.target.value);
+                          if (val.isValid) setFieldErrors(prev => ({ ...prev, address: undefined }));
+                        }
+                      }}
+                      onBlur={() => {
+                        captureCurrentCart();
+                        if (address.trim()) {
+                          const val = validateRealAddress(address);
+                          if (!val.isValid) setFieldErrors(prev => ({ ...prev, address: val.error }));
+                          else setFieldErrors(prev => ({ ...prev, address: undefined }));
+                        }
+                      }}
                       placeholder="যেমন: বাড়ি # ১২, রোড # ৪, সেক্টর # ৩, উত্তরা, ঢাকা"
-                      className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-[#0284c7] focus:ring-1 focus:ring-[#0284c7] transition-all"
+                      className={`w-full px-4 py-3 bg-white border ${
+                        fieldErrors.address 
+                          ? 'border-rose-400 focus:border-rose-500 focus:ring-rose-500' 
+                          : 'border-slate-200 focus:border-[#0284c7] focus:ring-[#0284c7]'
+                      } rounded-xl text-xs sm:text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-1 transition-all`}
                     />
+                    {fieldErrors.address ? (
+                      <p className="text-[11px] text-rose-600 font-medium">{fieldErrors.address}</p>
+                    ) : (
+                      <p className="text-[10px] text-slate-400">কুরিয়ারের ডেলিভারিম্যানের সহজে খুঁজে পাওয়ার জন্য পূর্ণাঙ্গ ঠিকানা দিন (বাড়ি নং, রোড নং, এলাকা/গ্রাম)।</p>
+                    )}
                   </div>
 
                   {/* Dynamic Weight & Zone Delivery Method Selector */}

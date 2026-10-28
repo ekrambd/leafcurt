@@ -68,6 +68,24 @@ export class ApiClient {
     return this.request<BookOrder[]>('/orders');
   }
 
+  static getKeysetOrders(params?: { cursor?: string; limit?: number; status?: string }): Promise<{
+    data: BookOrder[];
+    pageInfo: {
+      limit: number;
+      hasMore: boolean;
+      nextCursor: string | null;
+      endCursor: { createdAt: string; id: string } | null;
+      totalCount: number;
+    };
+  }> {
+    const q = new URLSearchParams();
+    if (params?.cursor) q.set('cursor', params.cursor);
+    if (params?.limit) q.set('limit', String(params.limit));
+    if (params?.status) q.set('status', params.status);
+    q.set('keyset', 'true');
+    return this.request(`/orders?${q.toString()}`);
+  }
+
   static createOrder(order: Partial<BookOrder>): Promise<BookOrder> {
     return this.request<BookOrder>('/orders', {
       method: 'POST',

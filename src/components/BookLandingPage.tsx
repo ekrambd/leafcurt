@@ -12,6 +12,7 @@ import { initPixelAndGtm, trackEvent, createEventId } from '../lib/pixelGtmServi
 import { getProductSlug } from '../lib/seoUtils';
 import { FeedbackDialog } from './ui/FeedbackDialog';
 import { calculateProductWeight, calculateDeliveryCharge } from '../lib/deliveryCalculator';
+import { validateOrderCustomerDetails, validateCustomerName, validateBdPhone, validateRealAddress } from '../lib/orderValidation';
 
 interface BookLandingPageProps {
   onNavigateHome: () => void;
@@ -537,15 +538,27 @@ export default function BookLandingPage({ onNavigateHome }: BookLandingPageProps
 
   const handleOrderSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!customerName.trim() || !customerPhone.trim() || !customerAddress.trim()) {
+
+    // Strict validation against fake/dummy names, non-BD phones, and incomplete addresses
+    const validation = validateOrderCustomerDetails({
+      customerName,
+      phone: customerPhone,
+      address: customerAddress
+    });
+
+    if (!validation.isValid) {
       setFeedback({
         isOpen: true,
-        type: 'info',
-        title: 'Information is required',
-        message: 'Please provide your name, mobile number and full delivery address.'
+        type: 'error',
+        title: 'সঠিক তথ্য দিন',
+        message: validation.errors[0]
       });
       return;
     }
+
+    const cleanCustomerName = validation.sanitized.name;
+    const cleanPhone = validation.sanitized.phone;
+    const cleanAddress = validation.sanitized.address;
 
     setIsSubmitting(true);
 
@@ -556,9 +569,9 @@ export default function BookLandingPage({ onNavigateHome }: BookLandingPageProps
       
       const newOrder: BookOrder = {
         id: orderId,
-        customerName: customerName.trim(),
-        phone: customerPhone.trim(),
-        address: customerAddress.trim(),
+        customerName: cleanCustomerName,
+        phone: cleanPhone,
+        address: cleanAddress,
         quantity: quantity,
         price: displayPrice,
         unitPrice: displayPrice,

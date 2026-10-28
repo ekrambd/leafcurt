@@ -205,7 +205,7 @@ export default function VideoReviewsSection({
             const displayTitle = item.productTitle || attachedProduct?.title || 'Leaf Curt Pods';
             const displayPrice = item.productPrice ?? attachedProduct?.price ?? 0;
             const displayRegularPrice = item.productRegularPrice ?? attachedProduct?.regularPrice;
-            const displayImage = item.productImage || (attachedProduct && (Array.isArray(attachedProduct.images) ? attachedProduct.images[0] : attachedProduct.image)) || '/authentic/about_hero_pods.png';
+            const displayImage = item.productImage || (attachedProduct && (Array.isArray(attachedProduct.images) ? attachedProduct.images[0] : attachedProduct.image)) || products?.[0]?.image || '';
             const displayBadge = item.productDiscountBadge || (displayRegularPrice && displayRegularPrice > displayPrice ? `${Math.round((1 - displayPrice / displayRegularPrice) * 100)}% OFF` : null);
 
             return (
@@ -260,8 +260,8 @@ export default function VideoReviewsSection({
                       /* Video Frame Preview for Uploaded MP4 files */
                       <video
                         src={`${item.videoUrl}#t=0.5`}
-                        preload="none"
-                        poster={poster || '/authentic/about_hero_pods.png'}
+                        preload="metadata"
+                        poster={poster || undefined}
                         muted={isMuted}
                         loop
                         playsInline
@@ -521,7 +521,7 @@ export default function VideoReviewsSection({
               const title = activeVideoModal.productTitle || modalAttachedProduct?.title || 'Leaf Curt Pods';
               const price = activeVideoModal.productPrice ?? modalAttachedProduct?.price ?? 0;
               const regPrice = activeVideoModal.productRegularPrice ?? modalAttachedProduct?.regularPrice;
-              const img = activeVideoModal.productImage || (modalAttachedProduct && (Array.isArray(modalAttachedProduct.images) ? modalAttachedProduct.images[0] : modalAttachedProduct.image)) || '/authentic/about_hero_pods.png';
+              const img = activeVideoModal.productImage || (modalAttachedProduct && (Array.isArray(modalAttachedProduct.images) ? modalAttachedProduct.images[0] : modalAttachedProduct.image)) || products?.[0]?.image || '';
 
               const targetProd: Product = modalAttachedProduct || ({
                 id: activeVideoModal.productId || `prod-${activeVideoModal.id}`,

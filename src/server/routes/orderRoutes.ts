@@ -9,12 +9,16 @@ import { redundancyService } from '../services/redundancyService';
 import { prisma } from '../db';
 import { requireAdmin } from '../middleware/adminAuth';
 import { FacebookCapiService } from '../services/facebookCapiService';
+import { paginateInMemoryKeyset } from '../services/keysetPagination';
+import { validateOrderCustomerDetails } from '../../lib/orderValidation';
 
 export const orderRouter = Router();
 
-// GET All Orders with cache & Eager Loading (Zero N+1 queries) - Requires Admin Privileges
+// GET Orders with Keyset (Seek Method) Pagination & Zero N+1 Eager Loading
 orderRouter.get('/', requireAdmin, cacheResponse({ ttlSeconds: 15, staleWhileRevalidateSeconds: 30, tag: 'orders' }), async (req, res) => {
   const includeCustomer = req.query.include === 'customer' || req.query.withCustomer === 'true';
+  const statusFilter = req.query.status ? String(req.query.status).trim() : null;
+  const isKeysetRequested = Boolean(req.query.cursor || req.query.limit || req.query.keyset === 'true');
 
   // Deduplicate storeOrders by ID before serving
   const seenIds = new Set<string>();
@@ -25,7 +29,43 @@ orderRouter.get('/', requireAdmin, cacheResponse({ ttlSeconds: 15, staleWhileRev
     return true;
   });
 
-  // Eager load customer data in 1 single batch query (Zero N+1 queries)
+  // Optional status filter
+  if (statusFilter && statusFilter.toLowerCase() !== 'all') {
+    orders = orders.filter(o => (o.status || '').toLowerCase() === statusFilter.toLowerCase());
+  }
+
+  // Ensure deterministic DESCENDING order by (createdAt, id)
+  orders.sort((a, b) => {
+    const timeA = new Date(a.createdAt || 0).getTime();
+    const timeB = new Date(b.createdAt || 0).getTime();
+    if (timeB !== timeA) return timeB - timeA;
+    return (b.id || '').localeCompare(a.id || '');
+  });
+
+  // 1. Keyset Seek Pagination Mode
+  if (isKeysetRequested) {
+    const limit = Number(req.query.limit) || 20;
+    const paginated = paginateInMemoryKeyset(orders, req.query.cursor as string, limit);
+
+    // Eager load customer data for ONLY the current page items
+    if (includeCustomer && paginated.data.length > 0) {
+      const phones = Array.from(new Set(paginated.data.map(o => o.phone).filter(Boolean)));
+      try {
+        const customers = await prisma.customer.findMany({
+          where: { phone: { in: phones } }
+        });
+        const customerMap = new Map(customers.map(c => [c.phone, c]));
+        paginated.data = paginated.data.map(o => ({
+          ...o,
+          customerDetails: o.phone ? (customerMap.get(o.phone) || null) : null
+        }));
+      } catch {}
+    }
+
+    return res.json(paginated);
+  }
+
+  // 2. Legacy Full-List Mode (for backwards compatibility with existing UI components)
   if (includeCustomer && orders.length > 0) {
     const phones = Array.from(new Set(orders.map(o => o.phone).filter(Boolean)));
     try {
@@ -105,9 +145,24 @@ orderRouter.post('/checkout', checkoutRateLimiter, async (req, res) => {
     if (!items || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ error: 'Order must contain at least one item.' });
     }
-    if (!customerName || !phone || !address) {
-      return res.status(400).json({ error: 'Customer name, phone number, and delivery address are required.' });
+
+    // Server-Side Strict Customer Details Validation (Anti-Spam & Courier Delivery Shield)
+    const validation = validateOrderCustomerDetails({
+      customerName: customerName || req.body.name,
+      phone,
+      address
+    });
+
+    if (!validation.isValid) {
+      return res.status(400).json({ 
+        error: validation.errors[0],
+        errors: validation.errors 
+      });
     }
+
+    const cleanCustomerName = validation.sanitized.name;
+    const cleanPhone = validation.sanitized.phone;
+    const cleanAddress = validation.sanitized.address;
 
     // 1. Authoritative Server-Side Stock & Price Verification (Indexed O(1) Map - Zero N+1 queries)
     let calculatedSubtotal = 0;
@@ -203,9 +258,10 @@ orderRouter.post('/checkout', checkoutRateLimiter, async (req, res) => {
 
     const confirmedOrder: BookOrder & { _shardMeta?: { shardIndex: number; partition: string } } = {
       id: orderId,
-      customerName: String(customerName).trim(),
-      phone: String(phone).trim(),
-      address: String(address).trim(),
+      customerName: cleanCustomerName,
+      name: cleanCustomerName,
+      phone: cleanPhone,
+      address: cleanAddress,
       deliveryZone: deliveryZone || (configuredMethods.length > 0 ? configuredMethods[0].title : 'Standard Delivery'),
       deliveryFee,
       deliveryCharge: deliveryFee,
@@ -306,6 +362,22 @@ orderRouter.post('/checkout', checkoutRateLimiter, async (req, res) => {
 
 // POST Create Order - with sharded partitioning & distributed counter
 orderRouter.post('/', checkoutRateLimiter, (req, res) => {
+  // Validate customer details to block dummy/fake orders
+  if (req.body.customerName || req.body.name || req.body.phone || req.body.address) {
+    const val = validateOrderCustomerDetails({
+      customerName: req.body.customerName || req.body.name,
+      phone: req.body.phone,
+      address: req.body.address
+    });
+    if (!val.isValid) {
+      return res.status(400).json({ error: val.errors[0], errors: val.errors });
+    }
+    req.body.customerName = val.sanitized.name;
+    req.body.name = val.sanitized.name;
+    req.body.phone = val.sanitized.phone;
+    req.body.address = val.sanitized.address;
+  }
+
   const orderId = req.body.id || `ORD-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
   const shardIndex = shardService.getShardIndex(orderId);
   const timePartition = shardService.getTimePartitionName('orders');

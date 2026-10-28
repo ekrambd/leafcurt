@@ -50,6 +50,11 @@ model Product {
   authorName         String?
   pdfUrl             String?
   slug               String?
+
+  @@index([createdAt(sort: Desc), id(sort: Desc)])
+  @@index([category, createdAt(sort: Desc)])
+  @@index([slug])
+  @@index([isAvailable])
 }
 
 model Order {
@@ -84,6 +89,10 @@ model Order {
   status             String?  @default("Pending")
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
+
+  @@index([createdAt(sort: Desc), id(sort: Desc)])
+  @@index([status, createdAt(sort: Desc)])
+  @@index([phone])
 }
 
 model Setting {
@@ -136,6 +145,9 @@ model Customer {
   password       String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+
+  @@index([registeredAt(sort: Desc), id(sort: Desc)])
+  @@index([totalSpent(sort: Desc)])
 }
 
 model Coupon {
@@ -170,6 +182,9 @@ model Review {
   images         String?  // JSON string array
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+
+  @@index([productId, createdAt(sort: Desc)])
+  @@index([rating])
 }
 
 model Brand {
@@ -235,4 +250,16 @@ model LandingPage {
   luckyDrawRules     String?  // JSON string array
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
+}
+
+model OtpToken {
+  id        String   @id @default(cuid())
+  phone     String
+  code      String
+  expiresAt DateTime
+  attempts  Int      @default(0)
+  verified  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([phone, expiresAt])
 }

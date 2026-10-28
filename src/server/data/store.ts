@@ -364,7 +364,26 @@ export function saveAbandonedCartsToDisk(carts: AbandonedCart[]): void {
   }
 }
 
+export function pruneExpiredAbandonedCarts(maxAgeDays = 30): number {
+  const cutoff = Date.now() - maxAgeDays * 24 * 60 * 60 * 1000;
+  const beforeCount = storeAbandonedCarts.length;
+  storeAbandonedCarts = storeAbandonedCarts.filter(cart => {
+    const time = new Date(cart.lastActivityAt || cart.updatedAt || cart.createdAt || 0).getTime();
+    return !isNaN(time) && time > cutoff;
+  });
+  if (storeAbandonedCarts.length !== beforeCount) {
+    saveAbandonedCartsToDisk(storeAbandonedCarts);
+  }
+  return beforeCount - storeAbandonedCarts.length;
+}
+
 export let storeAbandonedCarts: AbandonedCart[] = loadAbandonedCartsFromDisk();
+// Run auto-prune on startup and schedule every 12 hours
+pruneExpiredAbandonedCarts();
+const cartCleanupTimer = setInterval(() => pruneExpiredAbandonedCarts(), 12 * 60 * 60 * 1000);
+if (typeof cartCleanupTimer.unref === 'function') {
+  cartCleanupTimer.unref();
+}
 
 export const normalizePhoneNumber = (phone: string): string => {
   const digits = (phone || '').replace(/\D/g, '');
