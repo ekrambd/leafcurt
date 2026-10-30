@@ -1,5 +1,31 @@
 [
   {
+    "id": "ac-1793373050683-3zkmn",
+    "customerPhone": "01784067744",
+    "customerName": "Rakibul Hasan",
+    "customerAddress": "",
+    "customerDistrict": "Dhaka",
+    "customerEmail": "",
+    "items": [
+      {
+        "productId": "prod-1792732704580",
+        "productTitle": "Sweet Peach",
+        "productImage": "/uploads/file-1792732686278-136471442.jpg",
+        "quantity": 1,
+        "unitPrice": 850,
+        "totalPrice": 850
+      }
+    ],
+    "subtotal": 850,
+    "deliveryCharge": 70,
+    "totalAmount": 877,
+    "status": "abandoned",
+    "source": "storefront_checkout",
+    "lastActivityAt": "2026-10-30T15:10:52.250Z",
+    "createdAt": "2026-10-30T15:10:50.683Z",
+    "updatedAt": "2026-10-30T15:10:52.250Z"
+  },
+  {
     "id": "ac-1793302428869-y6lkw",
     "customerPhone": "01315861003",
     "customerName": "Roxy",
