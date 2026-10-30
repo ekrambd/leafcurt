@@ -946,6 +946,7 @@ export const dbService = {
     const updated = orders.filter(o => o.id !== id);
     setLocalData('noor_book_orders', updated);
     window.dispatchEvent(new Event('book-orders-updated'));
+    window.dispatchEvent(new Event('abandoned-carts-updated'));
   },
 
   // --- E-Commerce Products Management ---

@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { 
   ArrowLeft, CheckCircle, Package, RefreshCw, ShoppingBag, Truck, Calendar, 
   MapPin, AlertCircle, Edit3, FileText, FileSpreadsheet, MessageCircle, Camera, 
-  Copy, Phone, Check, Download 
+  Copy, Phone, Check, Download, ZoomIn, X 
 } from 'lucide-react';
 import { BookOrder } from '../types';
 import { InvoicePreview } from './InvoicePreview';
@@ -38,6 +38,7 @@ export function OrderDetailsView({ order, onClose, onUpdateStatus, onEditOrder }
   const { ecomSettings, instituteInfo } = useAppStore();
   const [isUpdating, setIsUpdating] = useState(false);
   const [showInvoice, setShowInvoice] = useState(false);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [isCapturing, setIsCapturing] = useState(false);
@@ -326,9 +327,18 @@ export function OrderDetailsView({ order, onClose, onUpdateStatus, onEditOrder }
                       <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
                         <td className="py-4">
                           <div className="flex items-center gap-3">
-                            <div className="w-12 h-12 bg-slate-100 rounded-lg flex items-center justify-center overflow-hidden flex-shrink-0">
+                            <div 
+                              className={`w-12 h-12 bg-slate-100 rounded-lg flex items-center justify-center overflow-hidden flex-shrink-0 relative group ${itemImg ? 'cursor-pointer hover:ring-2 hover:ring-teal-500' : ''}`}
+                              onClick={() => itemImg && setPreviewImage(itemImg)}
+                              title={itemImg ? "Click to view full image" : undefined}
+                            >
                               {itemImg ? (
-                                <img src={itemImg} alt={itemTitle} className="w-full h-full object-cover" />
+                                <>
+                                  <img src={itemImg} alt={itemTitle} className="w-full h-full object-cover" />
+                                  <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                    <ZoomIn className="w-4 h-4 text-white" />
+                                  </div>
+                                </>
                               ) : (
                                 <Package className="w-5 h-5 text-slate-400" />
                               )}
@@ -372,38 +382,64 @@ export function OrderDetailsView({ order, onClose, onUpdateStatus, onEditOrder }
             </table>
 
             {/* Cart Totals */}
-            <div className="mt-8 pt-6 border-t border-slate-200">
-              <div className="grid grid-cols-2 bg-slate-50 p-4 rounded-xl mb-2">
-                <span className="font-bold text-slate-800 text-sm">Cart Totals</span>
-                <span className="font-bold text-slate-800 text-sm text-right">Price</span>
-              </div>
-              <div className="px-4 space-y-4">
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-slate-600 font-medium">Sub Total</span>
-                  <span className="font-mono text-slate-800 font-bold">
-                    ৳ {order.totalPrice ? order.totalPrice - (order.deliveryCharge || 0) + (order.couponDiscount || order.discountAmount || 0) : ((order.price || 0) * (order.quantity || 1))}
-                  </span>
-                </div>
-                {order.couponDiscount && (
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-rose-500 font-medium">Discount</span>
-                    <span className="font-mono text-rose-600 font-bold">- ৳ {order.couponDiscount || order.discountAmount}</span>
+            {(() => {
+              // Strictly compute items subtotal to avoid double delivery counting
+              const calculatedItemsSubtotal = order.items && order.items.length > 0
+                ? (order.items as any[]).reduce((sum: number, it: any) => sum + ((it.variant?.price || it.product?.price || it.price || 0) * (it.quantity || 1)), 0)
+                : 0;
+
+              const deliveryCharge = order.deliveryCharge || 0;
+              const discount = Number(order.couponDiscount || order.discountAmount || 0);
+
+              let subtotal = 0;
+              if (calculatedItemsSubtotal > 0) {
+                subtotal = calculatedItemsSubtotal;
+              } else if (order.subtotal !== undefined && order.subtotal !== null && order.subtotal > 0) {
+                subtotal = order.subtotal;
+              } else if (order.totalPrice && order.totalPrice > deliveryCharge) {
+                // If totalPrice is present, subtotal is totalPrice - deliveryCharge
+                subtotal = order.totalPrice - deliveryCharge + discount;
+              } else {
+                subtotal = (order.price || 0) * (order.quantity || 1);
+              }
+
+              const totalPrice = subtotal + deliveryCharge - discount;
+
+              return (
+                <div className="mt-8 pt-6 border-t border-slate-200">
+                  <div className="grid grid-cols-2 bg-slate-50 p-4 rounded-xl mb-2">
+                    <span className="font-bold text-slate-800 text-sm">Cart Totals</span>
+                    <span className="font-bold text-slate-800 text-sm text-right">Price</span>
                   </div>
-                )}
-                <div className="flex justify-between items-center text-sm pb-4 border-b border-slate-100">
-                  <span className="text-slate-600 font-medium">Shipping</span>
-                  <span className="font-mono text-slate-800 font-bold">
-                    {order.deliveryCharge ? `৳ ${order.deliveryCharge}` : 'Free'}
-                  </span>
+                  <div className="px-4 space-y-4">
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-slate-600 font-medium">Sub Total</span>
+                      <span className="font-mono text-slate-800 font-bold">
+                        ৳ {subtotal}
+                      </span>
+                    </div>
+                    {discount > 0 && (
+                      <div className="flex justify-between items-center text-sm">
+                        <span className="text-rose-500 font-medium">Discount</span>
+                        <span className="font-mono text-rose-600 font-bold">- ৳ {discount}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between items-center text-sm pb-4 border-b border-slate-100">
+                      <span className="text-slate-600 font-medium">Shipping</span>
+                      <span className="font-mono text-slate-800 font-bold">
+                        {deliveryCharge ? `৳ ${deliveryCharge}` : 'Free'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center pt-2">
+                      <span className="font-bold text-slate-900">Total price</span>
+                      <span className="font-mono font-black text-orange-500 text-lg">
+                        ৳ {totalPrice}
+                      </span>
+                    </div>
+                  </div>
                 </div>
-                <div className="flex justify-between items-center pt-2">
-                  <span className="font-bold text-slate-900">Total price</span>
-                  <span className="font-mono font-black text-orange-500 text-lg">
-                    ৳ {order.totalAmount || order.totalPrice || ((order.price || 0) * (order.quantity || 1) + (order.deliveryCharge || 0))}
-                  </span>
-                </div>
-              </div>
-            </div>
+              );
+            })()}
           </div>
         </div>
 
@@ -539,6 +575,33 @@ export function OrderDetailsView({ order, onClose, onUpdateStatus, onEditOrder }
 
         </div>
             </div>
+      )}
+
+      {/* Product Image Full View Lightbox Modal */}
+      {previewImage && (
+        <div 
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in"
+          onClick={() => setPreviewImage(null)}
+        >
+          <div 
+            className="relative max-w-4xl max-h-[90vh] bg-white rounded-2xl p-2 shadow-2xl overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setPreviewImage(null)}
+              className="absolute top-4 right-4 z-10 p-2 bg-slate-900/70 hover:bg-slate-900 text-white rounded-full transition-colors cursor-pointer"
+              title="Close"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <img 
+              src={previewImage} 
+              alt="Product Full Preview" 
+              className="w-auto h-auto max-w-full max-h-[85vh] object-contain rounded-xl mx-auto" 
+            />
+          </div>
+        </div>
       )}
     </div>
   );

@@ -2,7 +2,7 @@ import React, { useRef, useState, useEffect } from 'react';
 import { BookOrder } from '../types';
 import { 
   Printer, MessageCircle, Copy, CheckCircle, Download, Camera, 
-  Share2, Check, ExternalLink, QrCode as QrIcon
+  Share2, Check, ExternalLink, QrCode as QrIcon, X, ZoomIn
 } from 'lucide-react';
 import QRCode from 'qrcode';
 import { useAppStore } from '../store/useAppStore';
@@ -60,6 +60,7 @@ export function InvoicePreview({ order }: Props) {
   const [isCapturing, setIsCapturing] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>('');
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
   
   const printRef = useRef<HTMLDivElement>(null);
 
@@ -220,11 +221,25 @@ export function InvoicePreview({ order }: Props) {
     }
   };
 
-  const subtotal = order.totalPrice 
-    ? Math.max(0, order.totalPrice - (order.deliveryCharge || 0) + (order.couponDiscount || order.discountAmount || 0)) 
-    : ((order.price || 0) * (order.quantity || 1));
+  const calculatedItemsSubtotal = order.items && order.items.length > 0
+    ? (order.items as any[]).reduce((sum: number, it: any) => sum + ((it.variant?.price || it.product?.price || it.price || 0) * (it.quantity || 1)), 0)
+    : 0;
+
   const deliveryCharge = order.deliveryCharge || 0;
-  const grandTotal = order.totalAmount || order.totalPrice || (subtotal + deliveryCharge);
+  const discount = Number(order.couponDiscount || order.discountAmount || 0);
+
+  let subtotal = 0;
+  if (calculatedItemsSubtotal > 0) {
+    subtotal = calculatedItemsSubtotal;
+  } else if (order.subtotal !== undefined && order.subtotal !== null && order.subtotal > 0) {
+    subtotal = order.subtotal;
+  } else if (order.totalPrice && order.totalPrice > deliveryCharge) {
+    subtotal = order.totalPrice - deliveryCharge + discount;
+  } else {
+    subtotal = (order.price || 0) * (order.quantity || 1);
+  }
+
+  const grandTotal = subtotal + deliveryCharge - discount;
   const isPaid = isOrderPaid(order);
   const codDue = isPaid ? 0 : grandTotal;
 
@@ -497,11 +512,20 @@ export function InvoicePreview({ order }: Props) {
                       <td className="py-1.5 pr-2">
                         <div className="flex items-center gap-1.5">
                           {itemImage && (
-                            <img 
-                              src={itemImage} 
-                              alt="" 
-                              className="w-5 h-5 rounded object-cover border border-slate-200 shrink-0" 
-                            />
+                            <div 
+                              className="relative group cursor-pointer shrink-0"
+                              onClick={() => setPreviewImage(itemImage)}
+                              title="Click to view full image"
+                            >
+                              <img 
+                                src={itemImage} 
+                                alt="" 
+                                className="w-6 h-6 rounded object-cover border border-slate-200 hover:ring-1 hover:ring-teal-500 transition-all" 
+                              />
+                              <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity rounded flex items-center justify-center">
+                                <ZoomIn className="w-3 h-3 text-white" />
+                              </div>
+                            </div>
                           )}
                           <div>
                             <span className="font-bold text-slate-900 leading-tight">
@@ -600,6 +624,33 @@ export function InvoicePreview({ order }: Props) {
 
         </div>
       </div>
+
+      {/* Product Image Full View Lightbox Modal */}
+      {previewImage && (
+        <div 
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in"
+          onClick={() => setPreviewImage(null)}
+        >
+          <div 
+            className="relative max-w-4xl max-h-[90vh] bg-white rounded-2xl p-2 shadow-2xl overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setPreviewImage(null)}
+              className="absolute top-4 right-4 z-10 p-2 bg-slate-900/70 hover:bg-slate-900 text-white rounded-full transition-colors cursor-pointer"
+              title="Close"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <img 
+              src={previewImage} 
+              alt="Product Full Preview" 
+              className="w-auto h-auto max-w-full max-h-[85vh] object-contain rounded-xl mx-auto" 
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

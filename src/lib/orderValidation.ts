@@ -125,33 +125,29 @@ export function validateBdPhone(phone: string): { isValid: boolean; error?: stri
  * Couriers require detailed delivery address (House, Road, Area, Thana/Upazila, District).
  * Rejects single-word entries (e.g. "Dhaka"), dummy strings, or too short entries.
  */
-export function validateRealAddress(address: string): { isValid: boolean; error?: string; cleanAddress: string } {
+export function validateRealAddress(address: string, isOptional: boolean = false): { isValid: boolean; error?: string; cleanAddress: string } {
   const cleanAddress = (address || '').trim().replace(/\s+/g, ' ');
 
   if (!cleanAddress) {
+    if (isOptional) {
+      return { isValid: true, cleanAddress: '' };
+    }
     return { isValid: false, error: 'সম্পূর্ণ ডেলিভারি ঠিকানা লিখুন (Please enter your delivery address).', cleanAddress: '' };
   }
 
-  if (cleanAddress.length < 10) {
+  if (cleanAddress.length < 5) {
+    if (isOptional) {
+      return { isValid: true, cleanAddress };
+    }
     return { 
       isValid: false, 
-      error: 'ডেলিভারি ঠিকানা অন্তত ১০ অক্ষরের হতে হবে—বাসা, রোড, এলাকা/গ্রাম উল্লেখ করুন (Address must be at least 10 characters with house/road/area).', 
+      error: 'ডেলিভারি ঠিকানা বাসা, রোড, এলাকা/গ্রাম উল্লেখ করুন (Address must include house/road/area).', 
       cleanAddress 
     };
   }
 
   if (cleanAddress.length > 300) {
     return { isValid: false, error: 'ঠিকানা অতিরিক্ত দীর্ঘ (Address is too long).', cleanAddress };
-  }
-
-  // Check if address is a single word (e.g. just "Dhaka" or "asdfghjklm")
-  const words = cleanAddress.split(/[\s,/-]+/).filter(w => w.trim().length > 0);
-  if (words.length < 2) {
-    return { 
-      isValid: false, 
-      error: 'শুধু এলাকার নাম নয়, সম্পূর্ণ ঠিকানা দিন (বাসা নং, রোড নং, এলাকা/থানা)। Courier requires a full address.', 
-      cleanAddress 
-    };
   }
 
   // Check against dummy address patterns
@@ -169,12 +165,6 @@ export function validateRealAddress(address: string): { isValid: boolean; error?
     return { isValid: false, error: 'অনুগ্রহ করে সঠিক ডেলিভারি ঠিকানা লিখুন (Invalid address characters).', cleanAddress };
   }
 
-  // Must contain at least some alphabetic or Bengali characters (not just pure numbers/symbols)
-  const hasLetters = /[a-zA-Z\u0980-\u09FF]/.test(cleanAddress);
-  if (!hasLetters) {
-    return { isValid: false, error: 'ঠিকানায় এলাকা বা বাসার নাম লিখুন (Address must include area or street name).', cleanAddress };
-  }
-
   return { isValid: true, cleanAddress };
 }
 
@@ -186,6 +176,7 @@ export function validateOrderCustomerDetails(data: {
   name?: string;
   phone?: string;
   address?: string;
+  allowOptionalAddress?: boolean;
 }): { isValid: boolean; errors: string[]; sanitized: { name: string; phone: string; address: string } } {
   const errors: string[] = [];
 
@@ -200,7 +191,7 @@ export function validateOrderCustomerDetails(data: {
     errors.push(phoneVal.error);
   }
 
-  const addressVal = validateRealAddress(data.address || '');
+  const addressVal = validateRealAddress(data.address || '', true);
   if (!addressVal.isValid && addressVal.error) {
     errors.push(addressVal.error);
   }

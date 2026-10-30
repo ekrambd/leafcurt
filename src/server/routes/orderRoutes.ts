@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { checkoutRateLimiter } from '../middleware/rateLimiter';
-import { storeOrders, storeProducts, storeSettings, saveOrdersToDisk, syncSelfRecoveredCart } from '../data/store';
+import { storeOrders, storeProducts, storeSettings, saveOrdersToDisk, syncSelfRecoveredCart, revertAbandonedCartOnOrderDelete } from '../data/store';
 import { BookOrder } from '../../types';
 import { cacheResponse } from '../middleware/cacheMiddleware';
 import { globalCache } from '../services/cacheEngine';
@@ -447,6 +447,9 @@ orderRouter.delete('/:id', requireAdmin, (req, res) => {
   if (index !== -1) {
     storeOrders.splice(index, 1);
     saveOrdersToDisk(storeOrders);
+
+    // If this order was recovered or converted from an abandoned cart, revert the cart back to pending
+    revertAbandonedCartOnOrderDelete(id);
 
     // Invalidate order caches
     globalCache.invalidateTag('orders');

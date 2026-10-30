@@ -511,7 +511,10 @@ export const syncSelfRecoveredCart = (customerPhone: string, orderId: string, _o
   const now = new Date().toISOString();
 
   storeAbandonedCarts = storeAbandonedCarts.map(cart => {
-    if (normalizePhoneNumber(cart.customerPhone) === cleanPhone && cart.status === 'abandoned') {
+    // Check against cleanPhone or raw phone match
+    const cartPhoneClean = normalizePhoneNumber(cart.customerPhone);
+    const isSamePhone = cartPhoneClean === cleanPhone || cart.customerPhone === customerPhone;
+    if (isSamePhone && cart.status === 'abandoned') {
       matched = true;
       return {
         ...cart,
@@ -563,6 +566,37 @@ export const deleteAbandonedCart = (cartId: string): boolean => {
     return true;
   }
   return false;
+};
+
+/**
+ * When an order is deleted by the admin, check if any abandoned cart was converted/recovered
+ * to this order. If so, revert its status back to 'abandoned' so the lead isn't lost or falsely marked recovered.
+ */
+export const revertAbandonedCartOnOrderDelete = (orderId: string): boolean => {
+  if (!orderId) return false;
+  let changed = false;
+  const now = new Date().toISOString();
+
+  storeAbandonedCarts = storeAbandonedCarts.map(cart => {
+    if (cart.recoveredOrderId === orderId) {
+      changed = true;
+      return {
+        ...cart,
+        status: 'abandoned',
+        recoveredOrderId: undefined,
+        recoveryChannel: undefined,
+        recoveryNotes: `Order #${orderId} was deleted; reverted to pending abandoned lead.`,
+        recoveredAt: undefined,
+        updatedAt: now
+      };
+    }
+    return cart;
+  });
+
+  if (changed) {
+    saveAbandonedCartsToDisk(storeAbandonedCarts);
+  }
+  return changed;
 };
 
 // ============================================================

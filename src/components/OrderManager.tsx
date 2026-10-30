@@ -392,13 +392,32 @@ export default function OrderManager({
   };
 
   const openEditOrder = (order: BookOrder) => {
+    // Calculate actual product unit price (avoiding total price or double delivery charge)
+    const effectiveUnitPrice = (() => {
+      if (order.items && order.items.length > 0) {
+        const firstItem = order.items[0];
+        const itemPrice = Number(firstItem.variant?.price || firstItem.product?.price || firstItem.price);
+        if (itemPrice > 0) return itemPrice;
+      }
+      if (order.subtotal && order.quantity) {
+        return Math.round(order.subtotal / order.quantity);
+      }
+      if (order.totalPrice && order.totalPrice > (order.deliveryCharge || 0)) {
+        // If order.price matches order.totalPrice, it was incorrectly set to total
+        if (order.price === order.totalPrice) {
+          return Math.round((order.totalPrice - (order.deliveryCharge || 0)) / (order.quantity || 1));
+        }
+      }
+      return order.price || 0;
+    })();
+
     setEditingOrder(order);
     setEditFormData({
       customerName: order.customerName || '',
       phone: order.phone || '',
       address: order.address || '',
       productTitle: order.productTitle || '',
-      price: order.price || 0,
+      price: effectiveUnitPrice,
       quantity: order.quantity || 1,
       deliveryCharge: order.deliveryCharge || 0,
       couponCode: order.couponCode || '',
@@ -438,12 +457,15 @@ export default function OrderManager({
         address: (editFormData.address || '').trim(),
         productTitle: (editFormData.productTitle || '').trim() || editingOrder.productTitle,
         price: Number(editFormData.price) || 0,
+        subtotal: (Number(editFormData.price) || 0) * Math.max(1, Number(editFormData.quantity) || 1),
         quantity: Math.max(1, Number(editFormData.quantity) || 1),
         deliveryCharge: Number(editFormData.deliveryCharge) || 0,
         couponCode: (editFormData.couponCode || '').trim() || undefined,
         luckyCouponCode: (editFormData.luckyCouponCode || '').trim() || undefined,
         discountAmount: discountAmount > 0 ? discountAmount : undefined,
         totalPrice,
+        total: totalPrice,
+        orderTotal: totalPrice,
         notes: (editFormData.notes || '').trim() || undefined
       };
 

@@ -1132,13 +1132,17 @@ export default function BookLandingPage({ onNavigateHome }: BookLandingPageProps
 
                 {/* Address */}
                 <div className="space-y-1">
-                  <label className="block font-bold text-slate-200">
-                    Complete delivery address <span className="text-red-500">*</span>
-                  </label>
+                  <div className="flex items-center justify-between">
+                    <label className="block font-bold text-slate-200">
+                      Complete delivery address
+                    </label>
+                    <span className="text-[10px] text-slate-400 font-medium px-2 py-0.5 rounded bg-white/5 border border-white/10">
+                      Optional
+                    </span>
+                  </div>
                   <textarea
-                    required
                     rows={2}
-                    placeholder="Mention House No., Road, Police Station, District"
+                    placeholder="Mention House No., Road, Police Station, District (Optional)"
                     value={customerAddress}
                     onChange={(e) => setCustomerAddress(e.target.value)}
                     onBlur={() => captureLandingAbandonedCart()}

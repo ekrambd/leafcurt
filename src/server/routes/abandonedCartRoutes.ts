@@ -7,7 +7,8 @@ import {
   calculateAbandonedCartMetrics,
   normalizePhoneNumber,
   storeOrders,
-  saveOrdersToDisk
+  saveOrdersToDisk,
+  saveAbandonedCartsToDisk
 } from '../data/store';
 import { BookOrder } from '../../types';
 import { requireAdmin } from '../middleware/adminAuth';
@@ -147,11 +148,12 @@ abandonedCartRouter.post('/:id/convert-to-order', requireAdmin, (req, res) => {
       address: cart.customerAddress || 'Address not specified',
       district: cart.customerDistrict || 'Dhaka',
       quantity: totalQty || 1,
-      price: effectiveTotal,
-      unitPrice: cart.items[0]?.unitPrice || effectiveTotal,
+      price: cart.items[0]?.unitPrice || (totalQty ? Math.round(cart.subtotal / totalQty) : cart.subtotal),
+      unitPrice: cart.items[0]?.unitPrice || (totalQty ? Math.round(cart.subtotal / totalQty) : cart.subtotal),
       deliveryCharge: effectiveDelivery,
       total: effectiveTotal,
       orderTotal: effectiveTotal,
+      totalPrice: effectiveTotal,
       subtotal: cart.subtotal,
       itemCount: totalQty,
       bookTitle: itemNames || (primaryItem ? primaryItem.productTitle : 'Recovered Product'),
@@ -182,6 +184,22 @@ abandonedCartRouter.post('/:id/convert-to-order', requireAdmin, (req, res) => {
 
     // Update cart status to admin_recovered
     const updatedCart = adminRecoverCart(id, 'admin_converted', `Converted to Order #${orderId}`, orderId);
+
+    // Also mark any other pending abandoned carts with the exact same phone number as converted
+    const cleanCartPhone = normalizePhoneNumber(cart.customerPhone);
+    if (cleanCartPhone) {
+      storeAbandonedCarts.forEach(c => {
+        if (c.id !== id && c.status === 'abandoned' && normalizePhoneNumber(c.customerPhone) === cleanCartPhone) {
+          c.status = 'admin_recovered';
+          c.recoveryChannel = 'admin_converted';
+          c.recoveredOrderId = orderId;
+          c.recoveredAt = now;
+          c.recoveryNotes = `Merged & Converted into Order #${orderId}`;
+          c.updatedAt = now;
+        }
+      });
+      saveAbandonedCartsToDisk(storeAbandonedCarts);
+    }
 
     res.json({
       success: true,

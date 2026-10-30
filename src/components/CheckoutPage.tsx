@@ -605,13 +605,13 @@ export default function CheckoutPage({
   const handlePlaceOrder = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Strict validation against fake/dummy names, non-BD phones, and incomplete addresses
-    const validation = validateOrderCustomerDetails({ name, phone, address });
+    // Validation against fake/dummy names and non-BD phones (Address is optional)
+    const validation = validateOrderCustomerDetails({ name, phone, address, allowOptionalAddress: true });
     if (!validation.isValid) {
       setFieldErrors({
         name: validateCustomerName(name).error,
         phone: validateBdPhone(phone).error,
-        address: validateRealAddress(address).error
+        address: address.trim() ? validateRealAddress(address, true).error : undefined
       });
       alert(validation.errors[0]);
       return;
@@ -620,7 +620,7 @@ export default function CheckoutPage({
     setFieldErrors({});
     const cleanCustomerName = validation.sanitized.name;
     const cleanPhone = validation.sanitized.phone;
-    const cleanAddress = validation.sanitized.address;
+    const cleanAddress = validation.sanitized.address || (thana && district ? `${thana}, ${district}` : (district || ''));
 
     if (cart.length === 0) {
       alert('Your shopping bag is empty.');
@@ -1295,47 +1295,37 @@ export default function CheckoutPage({
                         </select>
                       </div>
                     )}
-
-                    {/* Live Pathao Rate Preview Card */}
-                    {pathaoCalculatedPrice !== null && (
-                      <div className="mt-2 p-3 bg-white rounded-xl border border-sky-200/80 flex items-center justify-between text-xs">
-                        <div className="flex items-center gap-2">
-                          <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                          <span className="font-bold text-slate-800">পাঠাও ডেলিভারি চার্জ (লাইভ ক্যালকুলেশন):</span>
-                          <span className="text-[11px] text-slate-500 font-medium">({cartTotalWeight} kg পার্সেল)</span>
-                        </div>
-                        <div className="text-right">
-                          <span className="font-black text-sm text-[#0284c7]">৳{pathaoCalculatedPrice}</span>
-                        </div>
-                      </div>
-                    )}
                   </div>
 
-                  {/* 4. Full Address */}
+                  {/* 4. Full Address (Optional) */}
                   <div className="space-y-1.5">
-                    <label className="block text-xs font-bold text-slate-700">
-                      সম্পূর্ণ ডেলিভারি ঠিকানা (বাসা/রোড, থানা, এলাকা) *
-                    </label>
+                    <div className="flex items-center justify-between">
+                      <label className="block text-xs font-bold text-slate-700">
+                        সম্পূর্ণ ডেলিভারি ঠিকানা (বাসা/রোড, থানা, এলাকা)
+                      </label>
+                      <span className="text-[11px] font-medium text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
+                        ঐচ্ছিক (Optional)
+                      </span>
+                    </div>
                     <input
                       type="text"
-                      required
                       value={address}
                       onChange={(e) => {
                         setAddress(e.target.value);
                         if (fieldErrors.address) {
-                          const val = validateRealAddress(e.target.value);
+                          const val = validateRealAddress(e.target.value, true);
                           if (val.isValid) setFieldErrors(prev => ({ ...prev, address: undefined }));
                         }
                       }}
                       onBlur={() => {
                         captureCurrentCart();
                         if (address.trim()) {
-                          const val = validateRealAddress(address);
+                          const val = validateRealAddress(address, true);
                           if (!val.isValid) setFieldErrors(prev => ({ ...prev, address: val.error }));
                           else setFieldErrors(prev => ({ ...prev, address: undefined }));
                         }
                       }}
-                      placeholder="যেমন: বাড়ি # ১২, রোড # ৪, সেক্টর # ৩, উত্তরা, ঢাকা"
+                      placeholder="যেমন: বাড়ি # ১২, রোড # ৪, সেক্টর # ৩, উত্তরা, ঢাকা (না দিলেও অর্ডার হবে)"
                       className={`w-full px-4 py-3 bg-white border ${
                         fieldErrors.address 
                           ? 'border-rose-400 focus:border-rose-500 focus:ring-rose-500' 
@@ -1345,140 +1335,99 @@ export default function CheckoutPage({
                     {fieldErrors.address ? (
                       <p className="text-[11px] text-rose-600 font-medium">{fieldErrors.address}</p>
                     ) : (
-                      <p className="text-[10px] text-slate-400">কুরিয়ারের ডেলিভারিম্যানের সহজে খুঁজে পাওয়ার জন্য পূর্ণাঙ্গ ঠিকানা দিন (বাড়ি নং, রোড নং, এলাকা/গ্রাম)।</p>
+                      <p className="text-[10px] text-slate-400">বাসা/রোড নম্বর না দিলেও আপনার নির্বাচিত শহর ও জোন অনুযায়ী অর্ডার গ্রহণ করা হবে।</p>
                     )}
                   </div>
 
-                  {/* Dynamic Weight & Zone Delivery Method Selector */}
-                  <div className="pt-3 border-t border-slate-100 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                        <Truck className="w-4 h-4 text-[#0284c7]" />
-                        <span>ডেলিভারি চার্জ (Delivery Charge)</span>
-                      </label>
-                      <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-sky-50 text-[#0284c7] border border-sky-200 text-[11px] font-bold">
-                        <Scale className="w-3.5 h-3.5" />
-                        <span>পার্সেল মোট ওজন: {cartTotalWeight} kg</span>
+                  {/* Delivery Charge Selector (Only show manual delivery methods if dynamic Pathao is not auto-selected) */}
+                  {!selectedCityId || !selectedZoneId ? (
+                    <div className="pt-3 border-t border-slate-100 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                          <Truck className="w-4 h-4 text-[#0284c7]" />
+                          <span>ডেলিভারি চার্জ (Delivery Charge)</span>
+                        </label>
                       </div>
+
+                      {activeDeliveryMethods.length > 0 ? (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {activeDeliveryMethods.map((method) => {
+                            const isSelected = selectedDeliveryMethod?.id === method.id;
+                            const calc = methodCalculations[method.id] || calculateDeliveryCharge(method, cartSubtotal, cartTotalWeight);
+
+                            return (
+                              <div
+                                key={method.id}
+                                onClick={() => setSelectedDeliveryMethodId(method.id)}
+                                className={`p-3.5 rounded-2xl border text-xs cursor-pointer transition-all flex flex-col justify-between gap-2.5 ${
+                                  isSelected 
+                                    ? 'border-[#0284c7] bg-sky-50/60 text-slate-900 font-bold ring-2 ring-sky-300 shadow-xs'
+                                    : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/50 text-slate-700'
+                                }`}
+                              >
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="flex items-start gap-2.5 min-w-0">
+                                    <div className={`w-4 h-4 rounded-full border mt-0.5 shrink-0 flex items-center justify-center ${
+                                      isSelected ? 'border-[#0284c7] bg-[#0284c7]' : 'border-slate-300'
+                                    }`}>
+                                      {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                                    </div>
+                                    <div className="min-w-0">
+                                      <div className="font-extrabold text-slate-900 text-xs truncate">
+                                        {method.title}
+                                      </div>
+                                      <div className="flex items-center gap-1.5 mt-0.5">
+                                        {method.courierPartner && (
+                                          <span className="text-[10px] font-bold px-1.5 py-0.2 bg-white/90 border border-slate-200 text-slate-600 rounded">
+                                            {method.courierPartner}
+                                          </span>
+                                        )}
+                                        {method.estimatedDays && (
+                                          <span className="text-[10px] text-slate-500 font-medium flex items-center gap-0.5">
+                                            <Clock className="w-2.5 h-2.5" />
+                                            <span>{method.estimatedDays}</span>
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  <div className="text-right shrink-0">
+                                    <span className="font-black text-sm text-[#0284c7]">
+                                      {calc.isFreeDelivery ? 'FREE (৳০)' : `৳${calc.finalCharge}`}
+                                    </span>
+                                  </div>
+                                </div>
+
+                                {/* Weight / Rate breakdown pill */}
+                                <div className="pt-2 border-t border-slate-200/60 flex items-center justify-between text-[10px] text-slate-500">
+                                  <span className="truncate max-w-[200px]">{calc.breakdownText}</span>
+                                  {calc.pricingModel === 'weight_based' && (
+                                    <span className="text-[#0284c7] font-semibold shrink-0">ওজন ভিত্তিক</span>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <div className="p-4 rounded-2xl border border-dashed border-amber-300 bg-amber-50/60 text-slate-800 flex items-center justify-between gap-3 text-xs">
+                          <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-xl bg-amber-100 flex items-center justify-center shrink-0">
+                              <Truck className="w-5 h-5 text-amber-700" />
+                            </div>
+                            <div>
+                              <p className="font-extrabold text-slate-900 text-xs sm:text-sm">কোনো ডেলিভারি মেথড যোগ করা হয়নি</p>
+                              <p className="text-[11px] text-slate-500 mt-0.5">অ্যাডমিন প্যানেল (Settings &gt; Delivery) থেকে ডেলিভারি মেথড যোগ করলে এখানে সিলেক্ট করার অপশন আসবে।</p>
+                            </div>
+                          </div>
+                          <span className="font-bold text-xs text-slate-700 bg-white border border-slate-200 px-3 py-1.5 rounded-xl shrink-0 shadow-2xs">
+                            Tk. 0
+                          </span>
+                        </div>
+                      )}
                     </div>
-
-                    {/* Auto Pathao Rate Card when City & Zone selected */}
-                    {selectedCityId && selectedZoneId ? (
-                      <div className="p-4 rounded-2xl border-2 border-emerald-500/80 bg-gradient-to-r from-emerald-50/70 via-sky-50/50 to-white shadow-xs">
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="flex items-center gap-3 min-w-0">
-                            <div className="w-10 h-10 rounded-xl bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-sm">
-                              <Truck className="w-5 h-5" />
-                            </div>
-                            <div className="min-w-0">
-                              <div className="flex items-center gap-2">
-                                <span className="font-extrabold text-slate-900 text-sm">
-                                  {ecomSettings?.freeDeliveryEnabled && ecomSettings?.freeDeliveryMinPurchase && cartSubtotal >= ecomSettings.freeDeliveryMinPurchase
-                                    ? 'ফ্রি হোম ডেলিভারি (স্পেশাল অফার)'
-                                    : 'হোম ডেলিভারি (কুরিয়ার অটো চার্জ)'}
-                                </span>
-                                <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-                              </div>
-                              <p className="text-[11px] text-slate-600 mt-0.5 truncate">
-                                {district && thana ? `${district} • ${thana}` : 'জেলা ও থানা অনুযায়ী স্বয়ংক্রিয় রেট'} | পার্সেল ওজন: {cartTotalWeight} kg
-                              </p>
-                            </div>
-                          </div>
-
-                          <div className="text-right shrink-0">
-                            <div className="font-black text-base sm:text-lg text-emerald-700">
-                              {deliveryCalc.isFreeDelivery ? 'FREE (৳০)' : `৳${deliveryCost}`}
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="mt-2.5 pt-2 border-t border-emerald-100/80 flex items-center justify-between text-[11px] text-slate-500">
-                          <span className="flex items-center gap-1 text-emerald-700 font-medium">
-                            ✓ আপনার শহর ও জোনের দূরত্ব ও ওজনের ভিত্তিতে সরাসরি নির্ধারিত
-                          </span>
-                          <span className="font-bold text-slate-700">
-                            {pathaoCalculatedPrice !== null ? 'লাইভ রেট আপডেট সম্পন্ন' : 'হিসাব করা হচ্ছে...'}
-                          </span>
-                        </div>
-                      </div>
-                    ) : activeDeliveryMethods.length > 0 ? (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        {activeDeliveryMethods.map((method) => {
-                          const isSelected = selectedDeliveryMethod?.id === method.id;
-                          const calc = methodCalculations[method.id] || calculateDeliveryCharge(method, cartSubtotal, cartTotalWeight);
-
-                          return (
-                            <div
-                              key={method.id}
-                              onClick={() => setSelectedDeliveryMethodId(method.id)}
-                              className={`p-3.5 rounded-2xl border text-xs cursor-pointer transition-all flex flex-col justify-between gap-2.5 ${
-                                isSelected 
-                                  ? 'border-[#0284c7] bg-sky-50/60 text-slate-900 font-bold ring-2 ring-sky-300 shadow-xs'
-                                  : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/50 text-slate-700'
-                              }`}
-                            >
-                              <div className="flex items-start justify-between gap-2">
-                                <div className="flex items-start gap-2.5 min-w-0">
-                                  <div className={`w-4 h-4 rounded-full border mt-0.5 shrink-0 flex items-center justify-center ${
-                                    isSelected ? 'border-[#0284c7] bg-[#0284c7]' : 'border-slate-300'
-                                  }`}>
-                                    {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
-                                  </div>
-                                  <div className="min-w-0">
-                                    <div className="font-extrabold text-slate-900 text-xs truncate">
-                                      {method.title}
-                                    </div>
-                                    <div className="flex items-center gap-1.5 mt-0.5">
-                                      {method.courierPartner && (
-                                        <span className="text-[10px] font-bold px-1.5 py-0.2 bg-white/90 border border-slate-200 text-slate-600 rounded">
-                                          {method.courierPartner}
-                                        </span>
-                                      )}
-                                      {method.estimatedDays && (
-                                        <span className="text-[10px] text-slate-500 font-medium flex items-center gap-0.5">
-                                          <Clock className="w-2.5 h-2.5" />
-                                          <span>{method.estimatedDays}</span>
-                                        </span>
-                                      )}
-                                    </div>
-                                  </div>
-                                </div>
-
-                                <div className="text-right shrink-0">
-                                  <span className="font-black text-sm text-[#0284c7]">
-                                    {calc.isFreeDelivery ? 'FREE (৳০)' : `৳${calc.finalCharge}`}
-                                  </span>
-                                </div>
-                              </div>
-
-                              {/* Weight / Rate breakdown pill */}
-                              <div className="pt-2 border-t border-slate-200/60 flex items-center justify-between text-[10px] text-slate-500">
-                                <span className="truncate max-w-[200px]">{calc.breakdownText}</span>
-                                {calc.pricingModel === 'weight_based' && (
-                                  <span className="text-[#0284c7] font-semibold shrink-0">ওজন ভিত্তিক</span>
-                                )}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <div className="p-4 rounded-2xl border border-dashed border-amber-300 bg-amber-50/60 text-slate-800 flex items-center justify-between gap-3 text-xs">
-                        <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-xl bg-amber-100 flex items-center justify-center shrink-0">
-                            <Truck className="w-5 h-5 text-amber-700" />
-                          </div>
-                          <div>
-                            <p className="font-extrabold text-slate-900 text-xs sm:text-sm">কোনো ডেলিভারি মেথড যোগ করা হয়নি</p>
-                            <p className="text-[11px] text-slate-500 mt-0.5">অ্যাডমিন প্যানেল (Settings &gt; Delivery) থেকে ডেলিভারি মেথড যোগ করলে এখানে সিলেক্ট করার অপশন আসবে।</p>
-                          </div>
-                        </div>
-                        <span className="font-bold text-xs text-slate-700 bg-white border border-slate-200 px-3 py-1.5 rounded-xl shrink-0 shadow-2xs">
-                          Tk. 0
-                        </span>
-                      </div>
-                    )}
-                  </div>
+                  ) : null}
 
                 </div>
               </div>
