@@ -2047,22 +2047,24 @@ export default function StorefrontPage({ onGoToLogin, onGoToLanding }: Storefron
                 </div>
               )}
 
-              {/* Product Attributes (e.g. Weight: 600g, Unit: pcs, Size, Color) */}
-              {((Array.isArray(activeProductDetail.selectedAttributes) && activeProductDetail.selectedAttributes.length > 0) || activeProductDetail.unit) && (
+              {/* Product Attributes (e.g. Unit: pcs, Size, Color - excluding Weight) */}
+              {((Array.isArray(activeProductDetail.selectedAttributes) && activeProductDetail.selectedAttributes.some(a => !/weight|ওজন/i.test(a.attributeName || ''))) || (activeProductDetail.unit && !/kg|gm|g|gram|ওজন/i.test(activeProductDetail.unit))) && (
                 <div className="flex flex-wrap items-center gap-2 pt-1 pb-1">
-                  {Array.isArray(activeProductDetail.selectedAttributes) && activeProductDetail.selectedAttributes.map((attr, idx) => (
-                    <div 
-                      key={attr.attributeId || idx}
-                      className="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-50 border border-slate-200/90 rounded-xl text-xs font-medium text-slate-800 shadow-2xs"
-                    >
-                      <span className="text-slate-400 font-semibold">{attr.attributeName}:</span>
-                      <span className="font-bold text-slate-900 bg-white px-2 py-0.5 rounded-lg border border-slate-200/60">
-                        {Array.isArray(attr.values) ? attr.values.join(', ') : attr.values}
-                      </span>
-                    </div>
-                  ))}
+                  {Array.isArray(activeProductDetail.selectedAttributes) && activeProductDetail.selectedAttributes
+                    .filter(attr => !/weight|ওজন/i.test(attr.attributeName || ''))
+                    .map((attr, idx) => (
+                      <div 
+                        key={attr.attributeId || idx}
+                        className="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-50 border border-slate-200/90 rounded-xl text-xs font-medium text-slate-800 shadow-2xs"
+                      >
+                        <span className="text-slate-400 font-semibold">{attr.attributeName}:</span>
+                        <span className="font-bold text-slate-900 bg-white px-2 py-0.5 rounded-lg border border-slate-200/60">
+                          {Array.isArray(attr.values) ? attr.values.join(', ') : attr.values}
+                        </span>
+                      </div>
+                    ))}
 
-                  {activeProductDetail.unit && activeProductDetail.unit !== 'pcs' && (
+                  {activeProductDetail.unit && activeProductDetail.unit !== 'pcs' && !/kg|gm|g|gram|ওজন/i.test(activeProductDetail.unit) && (
                     <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-50 border border-slate-200/90 rounded-xl text-xs font-medium text-slate-800 shadow-2xs">
                       <span className="text-slate-400 font-semibold">Unit:</span>
                       <span className="font-bold text-slate-900 bg-white px-2 py-0.5 rounded-lg border border-slate-200/60 uppercase">
@@ -2093,52 +2095,6 @@ export default function StorefrontPage({ onGoToLogin, onGoToLanding }: Storefron
                   <Zap className="w-4 h-4 fill-current shrink-0" />
                   <span>BUY NOW</span>
                 </button>
-              </div>
-
-              {/* Trust Assurances */}
-              <div className="grid grid-cols-3 gap-2 py-3 border-y border-slate-100 text-[11px] sm:text-xs text-slate-700">
-                <div className="flex items-center gap-1.5 justify-center sm:justify-start">
-                  <Truck className="w-4 h-4 text-sky-600 shrink-0" />
-                  <span>হোম ডেলিভারি</span>
-                </div>
-                <div className="flex items-center gap-1.5 justify-center sm:justify-start">
-                  <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
-                  <span>১০০% ড্রাম সেফ</span>
-                </div>
-                <div className="flex items-center gap-1.5 justify-center sm:justify-start">
-                  <CheckCircle2 className="w-4 h-4 text-indigo-600 shrink-0" />
-                  <span>ক্যাশ অন ডেলিভারি</span>
-                </div>
-              </div>
-
-              {/* Clean Key Highlights */}
-              <div className="space-y-2 pt-1">
-                <h3 className="text-xs sm:text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                  <span>এক নজরে মূল সুবিধাসমূহ (Key Highlights)</span>
-                </h3>
-                <div className="space-y-1.5 text-xs sm:text-sm text-slate-700 bg-slate-50/70 p-3 sm:p-4 rounded-xl border border-slate-100">
-                  <div className="flex items-start gap-2">
-                    <span className="text-emerald-600 font-bold">✓</span>
-                    <span><strong>৫-ইন-১ মাল্টি-অ্যাকশন:</strong> ডিটারজেন্ট, দাগ তোলা, সফটনার, রঙ সুরক্ষা ও ৩০ দিনের ফ্রেঞ্চ সুবাস।</span>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <span className="text-emerald-600 font-bold">✓</span>
-                    <span><strong>১০০% মেশিনের ড্রাম সেফ:</strong> গুঁড়া সাবানের মতো ড্রাম, পাইপ বা সেন্সরে আঠালো তলানি ফেলে না।</span>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <span className="text-emerald-600 font-bold">✓</span>
-                    <span><strong>৫টি বায়ো-এনজাইম:</strong> কঠিন ময়লা, ঘামের গন্ধ ও দাগ নিখুঁতভাবে দূর করে।</span>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <span className="text-emerald-600 font-bold">✓</span>
-                    <span><strong>জিরো অপচয় ও সাশ্রয়ী:</strong> প্রতি ওয়াশে ১টি ক্যাপসুলই যথেষ্ট, অতিরিক্ত ঢালার সুযোগ নেই।</span>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <span className="text-emerald-600 font-bold">✓</span>
-                    <span><strong>ত্বকবান্ধব Neutral pH:</strong> ব্লিচ ও ফসফরাস মুক্ত, শিশুদের কাপড় ও স্পর্শকাতর ত্বকেও নিরাপদ।</span>
-                  </div>
-                </div>
               </div>
 
             </div>
@@ -2232,99 +2188,6 @@ export default function StorefrontPage({ onGoToLogin, onGoToLanding }: Storefron
                 </div>
               </div>
             )}
-
-            {/* 2. PROPERLY SEPARATED PRODUCT OVERVIEW & ADVANTAGES */}
-            <div className="max-w-4xl mx-auto">
-              <div className="text-center max-w-2xl mx-auto mb-8">
-                <span className="text-xs font-bold uppercase tracking-wider text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full">
-                  Smart Laundry Solution
-                </span>
-                <h3 className="text-xl sm:text-2xl font-bold text-slate-900 mt-2">
-                  কঠিন লন্ড্রি সমস্যার আধুনিক সমাধান
-                </h3>
-                <p className="text-xs sm:text-sm text-slate-600 mt-1">
-                  ঘামের দুর্গন্ধ কিংবা কঠিন দাগ—Leaf Curt Pods আপনার কাপড়কে রাখে ১০০% পরিষ্কার ও ড্রাম রাখে সুরক্ষিত।
-                </p>
-              </div>
-
-              {/* 3 Highlight Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-                <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-emerald-50/60 to-white border border-emerald-100 shadow-2xs">
-                  <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-lg mb-3">
-                    🌿
-                  </div>
-                  <h4 className="font-bold text-slate-900 text-sm sm:text-base mb-1.5">দুর্গন্ধকে বলুন বিদায়!</h4>
-                  <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-                    উন্নত Odor-Fighting Technology কাপড়ের দুর্গন্ধের মূল কারণ দূর করে পোশাকে এনে দেয় ফ্রেঞ্চ ফ্রেশ সুবাস।
-                  </p>
-                </div>
-
-                <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-sky-50/60 to-white border border-sky-100 shadow-2xs">
-                  <div className="w-10 h-10 rounded-xl bg-sky-100 text-sky-700 flex items-center justify-center font-bold text-lg mb-3">
-                    ✨
-                  </div>
-                  <h4 className="font-bold text-slate-900 text-sm sm:text-base mb-1.5">কঠিন দাগ দূরীকরণ</h4>
-                  <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-                    ৫ ধরনের সক্রিয় এনজাইম কাপড়ের তন্তুর গভীরে প্রবেশ করে তেল, চা ও কালির জেদি দাগ নিমেষেই পরিষ্কার করে।
-                  </p>
-                </div>
-
-                <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-indigo-50/60 to-white border border-indigo-100 shadow-2xs">
-                  <div className="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-lg mb-3">
-                    💧
-                  </div>
-                  <h4 className="font-bold text-slate-900 text-sm sm:text-base mb-1.5">কম পানিতে বেশি পরিষ্কার</h4>
-                  <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-                    সুপার-কনসেন্ট্রেটেড ফর্মুলা পানির অপচয় কমায়, কম ফোম হওয়ায় দ্রুত ধুয়ে যায় এবং ড্রামে কোনো তলানি জমতে দেয় না।
-                  </p>
-                </div>
-              </div>
-
-              {/* 6 Unbeatable Advantages Grid */}
-              <div className="bg-slate-50/80 rounded-2xl p-5 sm:p-7 border border-slate-200">
-                <h4 className="font-bold text-slate-900 text-base sm:text-lg mb-4 text-center">
-                  Leaf Curt পডসের ৬টি অনন্য সুবিধা
-                </h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
-                  <div className="bg-white p-3.5 rounded-xl border border-slate-200/80 shadow-2xs">
-                    <div className="font-bold text-xs sm:text-sm text-slate-900 mb-1 flex items-center gap-1.5">
-                      <span>🛡️</span> <span>উন্নত হাইজিন ও জীবাণুমুক্ত</span>
-                    </div>
-                    <p className="text-xs text-slate-600">কাপড়ের ব্যাকটেরিয়া ও ক্ষতিকর জীবাণু দূর করে স্বাস্থ্যসম্মত লন্ড্রি নিশ্চিত করে।</p>
-                  </div>
-                  <div className="bg-white p-3.5 rounded-xl border border-slate-200/80 shadow-2xs">
-                    <div className="font-bold text-xs sm:text-sm text-slate-900 mb-1 flex items-center gap-1.5">
-                      <span>🌱</span> <span>গভীর পরিষ্কার, কাপড়ে কোমল</span>
-                    </div>
-                    <p className="text-xs text-slate-600">প্রাকৃতিক বায়ো-এনজাইম কাপড়ের সুতা ও রঙের ক্ষতি না করে নিখুঁতভাবে পরিষ্কার রাখে।</p>
-                  </div>
-                  <div className="bg-white p-3.5 rounded-xl border border-slate-200/80 shadow-2xs">
-                    <div className="font-bold text-xs sm:text-sm text-slate-900 mb-1 flex items-center gap-1.5">
-                      <span>🧪</span> <span>নিরাপদ ও ক্ষতিকর ক্যামিক্যালমুক্ত</span>
-                    </div>
-                    <p className="text-xs text-slate-600">ফসফরাস ও ব্লিচিং এজেন্ট মুক্ত, কাপড়ে ক্ষতিকর রাসায়নিক অবশিষ্টাংশ তৈরি করে না।</p>
-                  </div>
-                  <div className="bg-white p-3.5 rounded-xl border border-slate-200/80 shadow-2xs">
-                    <div className="font-bold text-xs sm:text-sm text-slate-900 mb-1 flex items-center gap-1.5">
-                      <span>🤍</span> <span>ত্বকবান্ধব Neutral pH</span>
-                    </div>
-                    <p className="text-xs text-slate-600">হাতে মৃদু এবং পরিবারের ছোট শিশু ও সংবেদনশীল ত্বকের জন্য সম্পূর্ণ নিরাপদ।</p>
-                  </div>
-                  <div className="bg-white p-3.5 rounded-xl border border-slate-200/80 shadow-2xs">
-                    <div className="font-bold text-xs sm:text-sm text-slate-900 mb-1 flex items-center gap-1.5">
-                      <span>💦</span> <span>সহজে ড্রামে গলে যায়</span>
-                    </div>
-                    <p className="text-xs text-slate-600">১০০% পানিতে দ্রবণীয় জাপানি ফিল্ম—ড্রাম ও পাইপলাইনে কোনো শক্ত তলানি জমতে দেয় না।</p>
-                  </div>
-                  <div className="bg-white p-3.5 rounded-xl border border-slate-200/80 shadow-2xs">
-                    <div className="font-bold text-xs sm:text-sm text-slate-900 mb-1 flex items-center gap-1.5">
-                      <span>📦</span> <span>শক্ত ও টেকসই ডিজাইন</span>
-                    </div>
-                    <p className="text-xs text-slate-600">600N চাপ সহনশীল ফিল্ম হওয়ায় সংরক্ষণ বা ডেলিভারির সময় সহজে ফেটে যায় না।</p>
-                  </div>
-                </div>
-              </div>
-            </div>
 
           </div>
 
@@ -2835,17 +2698,19 @@ export default function StorefrontPage({ onGoToLogin, onGoToLanding }: Storefron
                               {product.title}
                             </h4>
 
-                            {/* Attribute Badge (e.g. 600g, Weight) */}
-                            {Array.isArray(product.selectedAttributes) && product.selectedAttributes.length > 0 && (
+                            {/* Attribute Badge (excluding weight) */}
+                            {Array.isArray(product.selectedAttributes) && product.selectedAttributes.some(a => !/weight|ওজন/i.test(a.attributeName || '')) && (
                               <div className="flex flex-wrap items-center justify-center gap-1 my-0.5">
-                                {product.selectedAttributes.map((attr, aIdx) => (
-                                  <span 
-                                    key={aIdx} 
-                                    className="inline-flex items-center text-[10px] font-bold text-sky-700 bg-sky-50 px-2 py-0.5 rounded-md border border-sky-200/80"
-                                  >
-                                    {Array.isArray(attr.values) ? attr.values.join(', ') : attr.values}
-                                  </span>
-                                ))}
+                                {product.selectedAttributes
+                                  .filter(attr => !/weight|ওজন/i.test(attr.attributeName || ''))
+                                  .map((attr, aIdx) => (
+                                    <span 
+                                      key={aIdx} 
+                                      className="inline-flex items-center text-[10px] font-bold text-sky-700 bg-sky-50 px-2 py-0.5 rounded-md border border-sky-200/80"
+                                    >
+                                      {Array.isArray(attr.values) ? attr.values.join(', ') : attr.values}
+                                    </span>
+                                  ))}
                               </div>
                             )}
 
@@ -3403,17 +3268,19 @@ export default function StorefrontPage({ onGoToLogin, onGoToLanding }: Storefron
                                 {product.title}
                               </h3>
 
-                              {/* Attribute Badge (e.g. 600g, Weight) */}
-                              {Array.isArray(product.selectedAttributes) && product.selectedAttributes.length > 0 && (
+                              {/* Attribute Badge (excluding weight) */}
+                              {Array.isArray(product.selectedAttributes) && product.selectedAttributes.some(a => !/weight|ওজন/i.test(a.attributeName || '')) && (
                                 <div className="flex flex-wrap items-center justify-center gap-1 my-0.5">
-                                  {product.selectedAttributes.map((attr, aIdx) => (
-                                    <span 
-                                      key={aIdx} 
-                                      className="inline-flex items-center text-[10px] font-bold text-sky-700 bg-sky-50 px-2 py-0.5 rounded-md border border-sky-200/80"
-                                    >
-                                      {Array.isArray(attr.values) ? attr.values.join(', ') : attr.values}
-                                    </span>
-                                  ))}
+                                  {product.selectedAttributes
+                                    .filter(attr => !/weight|ওজন/i.test(attr.attributeName || ''))
+                                    .map((attr, aIdx) => (
+                                      <span 
+                                        key={aIdx} 
+                                        className="inline-flex items-center text-[10px] font-bold text-sky-700 bg-sky-50 px-2 py-0.5 rounded-md border border-sky-200/80"
+                                      >
+                                        {Array.isArray(attr.values) ? attr.values.join(', ') : attr.values}
+                                      </span>
+                                    ))}
                                 </div>
                               )}
                               

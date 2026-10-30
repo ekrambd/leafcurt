@@ -141,6 +141,51 @@ export default function CheckoutPage({
   const [isBillingSame, setIsBillingSame] = useState(true);
   const [agreeTerms, setAgreeTerms] = useState(true);
 
+  // Animated typing demo placeholder for address input
+  const demoAddresses = useMemo(() => [
+    'বাড়ি # ১২, রোড # ৪, সেক্টর # ৩, উত্তরা, ঢাকা',
+    'ফ্ল্যাট ৪বি, বাড়ি ২৫, ধানমন্ডি ২/এ, ঢাকা',
+    'হাউস # ১০, রোড # ৭, বনশ্রী ব্লক-বি, রামপুরা, ঢাকা',
+    'দোকান নং ১৫, চকবাজার, কোতোয়ালী, চট্টগ্রাম',
+    'উপশহর রোড, হাউজিং এস্টেট, সিলেট সদর'
+  ], []);
+
+  const [placeholderText, setPlaceholderText] = useState(demoAddresses[0]);
+
+  useEffect(() => {
+    let currentIdx = 0;
+    let charIdx = 0;
+    let isDeleting = false;
+    let timer: any = null;
+
+    const tick = () => {
+      const fullText = demoAddresses[currentIdx];
+      if (!isDeleting) {
+        setPlaceholderText(fullText.slice(0, charIdx + 1));
+        charIdx++;
+        if (charIdx === fullText.length) {
+          isDeleting = true;
+          timer = setTimeout(tick, 2200); // pause on full text
+          return;
+        }
+        timer = setTimeout(tick, 60);
+      } else {
+        setPlaceholderText(fullText.slice(0, charIdx - 1));
+        charIdx--;
+        if (charIdx === 0) {
+          isDeleting = false;
+          currentIdx = (currentIdx + 1) % demoAddresses.length;
+          timer = setTimeout(tick, 400); // pause before typing next
+          return;
+        }
+        timer = setTimeout(tick, 30);
+      }
+    };
+
+    timer = setTimeout(tick, 1000);
+    return () => clearTimeout(timer);
+  }, [demoAddresses]);
+
   // Pathao Official Courier Integration State
   const [pathaoCities, setPathaoCities] = useState<{ city_id: number; city_name: string }[]>([]);
   const [pathaoZones, setPathaoZones] = useState<{ zone_id: number; zone_name: string }[]>([]);
@@ -267,7 +312,48 @@ export default function CheckoutPage({
     }
   }, [activeDeliveryMethods, selectedDeliveryMethodId]);
 
-  // Live Pathao Delivery Price Calculation based on total weight and selected city + zone
+  // Intelligent Auto-detect City and Zone from typed address string
+  useEffect(() => {
+    if (!address || address.trim().length < 3 || pathaoCities.length === 0) return;
+    const cleanAddr = address.toLowerCase();
+
+    // 1. Try to find matching city/district
+    const matchedCity = pathaoCities.find(c => {
+      const cName = c.city_name.toLowerCase();
+      // Match English or direct substring
+      return cleanAddr.includes(cName) || 
+        (cName.includes('dhaka') && (cleanAddr.includes('ঢাকা') || cleanAddr.includes('dhaka'))) ||
+        (cName.includes('chittagong') && (cleanAddr.includes('চট্টগ্রাম') || cleanAddr.includes('ctg') || cleanAddr.includes('chittagong'))) ||
+        (cName.includes('sylhet') && (cleanAddr.includes('সিলেট') || cleanAddr.includes('sylhet'))) ||
+        (cName.includes('rajshahi') && (cleanAddr.includes('রাজশাহী') || cleanAddr.includes('rajshahi'))) ||
+        (cName.includes('khulna') && (cleanAddr.includes('খুলনা') || cleanAddr.includes('khulna'))) ||
+        (cName.includes('rangpur') && (cleanAddr.includes('রংপুর') || cleanAddr.includes('rangpur'))) ||
+        (cName.includes('gazipur') && (cleanAddr.includes('গাজীপুর') || cleanAddr.includes('gazipur'))) ||
+        (cName.includes('narayanganj') && (cleanAddr.includes('নারায়ণগঞ্জ') || cleanAddr.includes('narayanganj')));
+    });
+
+    if (matchedCity && matchedCity.city_id !== selectedCityId) {
+      setSelectedCityId(matchedCity.city_id);
+      setDistrict(matchedCity.city_name);
+    }
+  }, [address, pathaoCities, selectedCityId]);
+
+  // Auto-detect zone once zones are loaded for that city
+  useEffect(() => {
+    if (!address || address.trim().length < 3 || pathaoZones.length === 0) return;
+    const cleanAddr = address.toLowerCase();
+
+    const matchedZone = pathaoZones.find(z => {
+      const zName = z.zone_name.toLowerCase();
+      if (zName.length < 3) return false;
+      return cleanAddr.includes(zName);
+    });
+
+    if (matchedZone && matchedZone.zone_id !== selectedZoneId) {
+      setSelectedZoneId(matchedZone.zone_id);
+      setThana(matchedZone.zone_name);
+    }
+  }, [address, pathaoZones, selectedZoneId]);
   useEffect(() => {
     if (!selectedCityId || !selectedZoneId) {
       setPathaoCalculatedPrice(null);
@@ -393,7 +479,8 @@ export default function CheckoutPage({
     !selectedPaymentGateway.title.toLowerCase().includes('Cash on');
 
   // Coupon Logic
-  const [couponAccordionOpen, setCouponAccordionOpen] = useState(true);
+  // Collapsed by default for first-time customers
+  const [couponAccordionOpen, setCouponAccordionOpen] = useState(false);
   const [couponCodeInput, setCouponCodeInput] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
   const [couponError, setCouponError] = useState('');
@@ -1208,134 +1295,57 @@ export default function CheckoutPage({
                     )}
                   </div>
 
-                  {/* 3. Delivery City & Zone Selector */}
-                  <div className="space-y-3 bg-slate-50/70 p-4 rounded-2xl border border-slate-200">
-                    <div className="flex items-center justify-between">
-                      <label className="block text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                        <MapPin className="w-4 h-4 text-sky-600" />
-                        <span>ডেলিভারি এলাকা ও জোন (City & Zone) *</span>
-                      </label>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {/* Pathao City Dropdown */}
-                      <div>
-                        <label className="block text-[11px] font-bold text-slate-600 mb-1">
-                          শহর / জেলা (City / District) *
-                        </label>
-                        <select
-                          value={selectedCityId || ''}
-                          onChange={(e) => {
-                            const cid = Number(e.target.value);
-                            setSelectedCityId(cid);
-                            const cityObj = pathaoCities.find(c => c.city_id === cid);
-                            if (cityObj) setDistrict(cityObj.city_name);
-                            captureCurrentCart();
-                          }}
-                          className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 font-semibold focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 cursor-pointer shadow-2xs"
-                        >
-                          <option value="">শহর / জেলা নির্বাচন করুন...</option>
-                          {pathaoCities.map(c => (
-                            <option key={c.city_id} value={c.city_id}>
-                              {c.city_name}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-
-                      {/* Pathao Zone Dropdown */}
-                      <div>
-                        <label className="block text-[11px] font-bold text-slate-600 mb-1">
-                          থানা / জোন (Zone / Thana) *
-                        </label>
-                        <select
-                          value={selectedZoneId || ''}
-                          onChange={(e) => {
-                            const zid = Number(e.target.value);
-                            setSelectedZoneId(zid);
-                            const zoneObj = pathaoZones.find(z => z.zone_id === zid);
-                            if (zoneObj) setThana(zoneObj.zone_name);
-                            captureCurrentCart();
-                          }}
-                          disabled={isLoadingPathao || pathaoZones.length === 0}
-                          className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 font-semibold focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 cursor-pointer shadow-2xs disabled:bg-slate-100 disabled:cursor-not-allowed"
-                        >
-                          <option value="">
-                            {isLoadingPathao ? 'জোন লোড হচ্ছে...' : 'থানা / জোন নির্বাচন করুন...'}
-                          </option>
-                          {pathaoZones.map(z => (
-                            <option key={z.zone_id} value={z.zone_id}>
-                              {z.zone_name}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-
-                    {/* Pathao Area (Optional detailed sub-area) */}
-                    {pathaoAreas.length > 0 && (
-                      <div>
-                        <label className="block text-[11px] font-bold text-slate-600 mb-1">
-                          নির্দিষ্ট এলাকা (Sub-Area / Sector)
-                        </label>
-                        <select
-                          value={selectedAreaId || ''}
-                          onChange={(e) => {
-                            setSelectedAreaId(Number(e.target.value) || null);
-                            captureCurrentCart();
-                          }}
-                          className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 font-medium focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500 cursor-pointer shadow-2xs"
-                        >
-                          <option value="">নির্দিষ্ট এলাকা নির্বাচন করুন (ঐচ্ছিক)</option>
-                          {pathaoAreas.map(a => (
-                            <option key={a.area_id} value={a.area_id}>
-                              {a.area_name}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* 4. Full Address (Optional) */}
+                  {/* 3. Full Address (Auto-detects City & Zone) */}
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between">
-                      <label className="block text-xs font-bold text-slate-700">
-                        সম্পূর্ণ ডেলিভারি ঠিকানা (বাসা/রোড, থানা, এলাকা)
+                      <label className="block text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                        <MapPin className="w-3.5 h-3.5 text-[#0284c7]" />
+                        <span>সম্পূর্ণ ডেলিভারি ঠিকানা (বাসা/রোড, থানা, এলাকা, জেলা)</span>
                       </label>
-                      <span className="text-[11px] font-medium text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
-                        ঐচ্ছিক (Optional)
+                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                        ✨ অটো-ক্যালকুলেশন
                       </span>
                     </div>
-                    <input
-                      type="text"
-                      value={address}
-                      onChange={(e) => {
-                        setAddress(e.target.value);
-                        if (fieldErrors.address) {
-                          const val = validateRealAddress(e.target.value, true);
-                          if (val.isValid) setFieldErrors(prev => ({ ...prev, address: undefined }));
-                        }
-                      }}
-                      onBlur={() => {
-                        captureCurrentCart();
-                        if (address.trim()) {
-                          const val = validateRealAddress(address, true);
-                          if (!val.isValid) setFieldErrors(prev => ({ ...prev, address: val.error }));
-                          else setFieldErrors(prev => ({ ...prev, address: undefined }));
-                        }
-                      }}
-                      placeholder="যেমন: বাড়ি # ১২, রোড # ৪, সেক্টর # ৩, উত্তরা, ঢাকা (না দিলেও অর্ডার হবে)"
-                      className={`w-full px-4 py-3 bg-white border ${
-                        fieldErrors.address 
-                          ? 'border-rose-400 focus:border-rose-500 focus:ring-rose-500' 
-                          : 'border-slate-200 focus:border-[#0284c7] focus:ring-[#0284c7]'
-                      } rounded-xl text-xs sm:text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-1 transition-all`}
-                    />
+
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={address}
+                        onChange={(e) => {
+                          setAddress(e.target.value);
+                          if (fieldErrors.address) {
+                            const val = validateRealAddress(e.target.value, true);
+                            if (val.isValid) setFieldErrors(prev => ({ ...prev, address: undefined }));
+                          }
+                        }}
+                        onBlur={() => {
+                          captureCurrentCart();
+                          if (address.trim()) {
+                            const val = validateRealAddress(address, true);
+                            if (!val.isValid) setFieldErrors(prev => ({ ...prev, address: val.error }));
+                            else setFieldErrors(prev => ({ ...prev, address: undefined }));
+                          }
+                        }}
+                        placeholder={`যেমন: ${placeholderText}`}
+                        className={`w-full px-4 py-3 bg-white border ${
+                          fieldErrors.address 
+                            ? 'border-rose-400 focus:border-rose-500 focus:ring-rose-500' 
+                            : 'border-slate-200 focus:border-[#0284c7] focus:ring-[#0284c7]'
+                        } rounded-xl text-xs sm:text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-1 transition-all`}
+                      />
+                    </div>
+
                     {fieldErrors.address ? (
                       <p className="text-[11px] text-rose-600 font-medium">{fieldErrors.address}</p>
                     ) : (
-                      <p className="text-[10px] text-slate-400">বাসা/রোড নম্বর না দিলেও আপনার নির্বাচিত শহর ও জোন অনুযায়ী অর্ডার গ্রহণ করা হবে।</p>
+                      <div className="flex items-center justify-between pt-0.5 text-[11px] text-slate-500">
+                        <span>💡 ঠিকানায় আপনার জেলা ও থানার নাম লিখলে পাঠাও ডেলিভারি চার্জ স্বয়ংক্রিয়ভাবে হিসাব হবে।</span>
+                        {(district || thana) && (
+                          <span className="font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 shrink-0">
+                            {district}{thana ? ` • ${thana}` : ''}
+                          </span>
+                        )}
+                      </div>
                     )}
                   </div>
 
@@ -1703,25 +1713,6 @@ export default function CheckoutPage({
         </form>
 
       </div>
-
-      {/* Floating Cart Widget (matching screenshot bottom-right) */}
-      {cart.length > 0 && (
-        <div 
-          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-          className="fixed bottom-24 right-4 sm:right-6 z-40 bg-gradient-to-r from-[#0284c7] to-[#16a34a] text-white p-3 sm:px-4 sm:py-3 rounded-2xl shadow-xl shadow-sky-600/30 flex items-center gap-2.5 cursor-pointer hover:opacity-95 transition-all hover:scale-105"
-        >
-          <div className="relative">
-            <ShoppingBag className="w-5 h-5" />
-            <span className="absolute -top-1.5 -right-1.5 bg-white text-[#0284c7] text-[10px] font-black w-4 h-4 rounded-full flex items-center justify-center shadow-xs">
-              {totalItemCount}
-            </span>
-          </div>
-          <div className="text-xs font-bold leading-tight hidden sm:block">
-            <div>{totalItemCount} Items</div>
-            <div className="text-[11px] font-mono text-sky-100">Tk.{cartSubtotal.toLocaleString()}</div>
-          </div>
-        </div>
-      )}
 
     </div>
   );
