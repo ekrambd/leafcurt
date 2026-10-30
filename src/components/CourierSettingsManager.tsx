@@ -34,10 +34,6 @@ export default function CourierSettingsManager() {
     message: ''
   });
 
-  // Steadfast Test State
-  const [steadfastTestStatus, setSteadfastTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
-  const [steadfastTestMessage, setSteadfastTestMessage] = useState('');
-
   // Pathao Test State
   const [pathaoTestStatus, setPathaoTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
   const [pathaoTestMessage, setPathaoTestMessage] = useState('');
@@ -91,19 +87,6 @@ export default function CourierSettingsManager() {
       });
     } finally {
       setIsSaving(false);
-    }
-  };
-
-  const handleTestSteadfast = async () => {
-    setSteadfastTestStatus('testing');
-    setSteadfastTestMessage('');
-    try {
-      const result = await ApiClient.testSteadfast();
-      setSteadfastTestStatus('success');
-      setSteadfastTestMessage(typeof result.balance === 'number'? `Current Balance: Tk.${result.balance}` : 'Connection verified successfully!');
-    } catch (error: any) {
-      setSteadfastTestStatus('error');
-      setSteadfastTestMessage(error?.message || 'Could not verify connection');
     }
   };
 
@@ -196,12 +179,11 @@ export default function CourierSettingsManager() {
         <div className="max-w-md pt-1">
           <div className="relative">
             <select
-              value={settings.defaultCourierProvider || 'pathao'}
-              onChange={(e) => setSettings({ ...settings, defaultCourierProvider: e.target.value as 'pathao' | 'steadfast' })}
-              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-extrabold text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:bg-white appearance-none cursor-pointer pr-10"
+              value="pathao"
+              disabled
+              className="w-full px-4 py-3 bg-slate-100 border border-slate-200 rounded-2xl text-xs font-extrabold text-slate-800 focus:outline-none appearance-none pr-10"
             >
-              <option value="pathao">send courier</option>
-              <option value="steadfast">Steadfast Courier</option>
+              <option value="pathao">Pathao Courier (Official Aladdin API)</option>
             </select>
             <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3.5 text-slate-500">
               <ChevronDown className="h-4 w-4" />
@@ -316,83 +298,6 @@ export default function CourierSettingsManager() {
               {webhookCopied ? 'Copied' : 'Copy the link'}
             </button>
           </div>
-        </div>
-
-        {/* 2. STEADFAST COURIER ROW */}
-        <div className="bg-white p-5 sm:p-6 rounded-3xl border border-slate-200/80 shadow-xs space-y-3.5 transition-all">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            {/* Left info */}
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-amber-500 text-slate-950 font-black flex items-center justify-center text-base shadow-sm shrink-0">
-                <Truck className="h-5 w-5 text-slate-950" />
-              </div>
-              <div>
-                <h4 className="text-sm font-extrabold text-slate-900">Steadfast Courier</h4>
-                <div className="flex items-center gap-2 mt-0.5">
-                  {steadfastTestStatus === 'idle' && (
-                    <span className="inline-flex items-center text-[11px] font-bold text-slate-400">
-                      connection active has
-                    </span>
-                  )}
-                  {steadfastTestStatus === 'testing' && (
-                    <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-600 animate-pulse">
-                      <RefreshCw className="h-3 w-3 animate-spin" />
-                      is being verified...
-                    </span>
-                  )}
-                  {steadfastTestStatus === 'success' && (
-                    <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600">
-                      <CheckCircle2 className="h-3.5 w-3.5" />
-                      is connected
-                    </span>
-                  )}
-                  {steadfastTestStatus === 'error' && (
-                    <span className="inline-flex items-center gap-1 text-[11px] font-bold text-rose-600">
-                      <AlertCircle className="h-3.5 w-3.5" />
-                      TruT
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Right test action button */}
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={handleTestSteadfast}
-                disabled={steadfastTestStatus === 'testing'}
-                className="px-4 py-2.5 bg-amber-600 hover:bg-amber-700 active:scale-95 text-white rounded-xl font-extrabold text-xs transition-all shadow-xs disabled:opacity-50 cursor-pointer flex items-center gap-1.5"
-              >
-                {steadfastTestStatus === 'testing' ? (
-                  <>
-                    <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                    Testing is going on...
-                  </>
-                ) : (
-                  <>
-                    <Send className="h-3.5 w-3.5" />
-                    do the test
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-
-          {/* Test Status Messages */}
-          {steadfastTestStatus === 'success' && (
-            <div className="p-3 bg-emerald-50 border border-emerald-200/80 rounded-2xl flex items-center space-x-2 text-emerald-800 text-xs font-semibold animate-in fade-in duration-200">
-              <Check className="h-4 w-4 text-emerald-600 shrink-0" />
-              <span>{steadfastTestMessage}</span>
-            </div>
-          )}
-
-          {steadfastTestStatus === 'error' && (
-            <div className="p-3 bg-rose-50 border border-rose-200 rounded-2xl flex items-center space-x-2 text-rose-800 text-xs font-semibold animate-in fade-in duration-200">
-              <AlertCircle className="h-4 w-4 text-rose-600 shrink-0" />
-              <span>{steadfastTestMessage}</span>
-            </div>
-          )}
         </div>
       </div>
 

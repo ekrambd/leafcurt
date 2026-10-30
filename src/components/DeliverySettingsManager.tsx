@@ -26,11 +26,7 @@ import { ConfirmDialog } from './ui/ConfirmDialog';
 import { BD_ALL_DISTRICTS, DHAKA_SUBURBS, calculateDeliveryCharge } from '../lib/deliveryCalculator';
 
 const COURIER_PARTNERS = [
-  { id: 'Steadfast', name: 'Steadfast Courier (স্টেডফাস্ট)', logo: '🚚' },
   { id: 'Pathao', name: 'Pathao Courier (পাঠাও)', logo: '⚡' },
-  { id: 'RedX', name: 'RedX Logistics (রেডএক্স)', logo: '📦' },
-  { id: 'Paperfly', name: 'Paperfly (পেপারফ্লাই)', logo: '✈️' },
-  { id: 'eCourier', name: 'eCourier', logo: '🌐' },
   { id: 'InHouse', name: 'In-House Rider (নিজস্ব ডেলিভারি)', logo: '🛵' }
 ];
 
@@ -165,21 +161,21 @@ export default function DeliverySettingsManager() {
   const handleOpenAddDelivery = () => {
     setEditingDelivery({
       id: `dm-${Date.now()}`,
-      title: 'ঢাকা মেট্রো সিটি হোম ডেলিভারি',
+      title: 'হোম ডেলিভারি (পাঠাও অটো রেট)',
       subtitle: '২৪-৪৮ ঘণ্টার মধ্যে হোম ডেলিভারি',
       status: 'Active',
-      mode: 'Weight based',
-      type: 'Weight based',
-      pricingModel: 'weight_based',
-      areaScope: 'inside_dhaka',
+      mode: 'Pathao API Auto',
+      type: 'Pathao API Auto',
+      pricingModel: 'flat',
+      areaScope: 'all',
       customDistricts: [],
-      baseWeightKg: 1.0,
-      baseCharge: 70,
-      deliveryCharge: 70,
-      additionalChargePerKg: 20,
+      baseWeightKg: 0.5,
+      baseCharge: 80,
+      deliveryCharge: 80,
+      additionalChargePerKg: 0,
       freeDeliveryThreshold: 2000,
       estimatedDays: '24-48 Hours',
-      courierPartner: 'Steadfast',
+      courierPartner: 'Pathao',
       minimumCharge: 0,
       maximumCharge: 0,
       updatedAt: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
@@ -208,7 +204,7 @@ export default function DeliverySettingsManager() {
       areaScope: editingDelivery.areaScope || 'all',
       customDistricts: editingDelivery.customDistricts || [],
       estimatedDays: editingDelivery.estimatedDays || '24-48 Hours',
-      courierPartner: editingDelivery.courierPartner || 'Steadfast',
+      courierPartner: editingDelivery.courierPartner || 'Pathao',
       updatedAt: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
     };
 
@@ -378,7 +374,7 @@ export default function DeliverySettingsManager() {
             <div>
               <label className="block text-slate-700 font-bold mb-1.5">কুরিয়ার পার্টনার (Courier Partner)</label>
               <select
-                value={editingDelivery.courierPartner || 'Steadfast'}
+                value={editingDelivery.courierPartner || 'Pathao'}
                 onChange={(e) => setEditingDelivery({ ...editingDelivery, courierPartner: e.target.value })}
                 className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-2 focus:ring-[#0284c7] focus:outline-none transition-colors font-medium cursor-pointer"
               >
@@ -388,218 +384,49 @@ export default function DeliverySettingsManager() {
               </select>
             </div>
 
-            {/* 4. Pricing Model Toggle */}
+            {/* 4. Automated Pathao Badge / Fallback charge */}
             <div>
-              <label className="block text-slate-700 font-bold mb-1.5">চার্জ নির্ধারণ পদ্ধতি (Pricing Model)</label>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setEditingDelivery({ ...editingDelivery, pricingModel: 'weight_based', type: 'Weight based', mode: 'Weight based' })}
-                  className={`py-2.5 px-3 rounded-xl font-bold flex items-center justify-center gap-2 border transition-all cursor-pointer ${
-                    editingDelivery.pricingModel === 'weight_based' || editingDelivery.type === 'Weight based'
-                      ? 'bg-sky-50 text-[#0284c7] border-[#0284c7] shadow-xs'
-                      : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
-                  }`}
-                >
-                  <Scale className="h-4 w-4" />
-                  <span>ওজন ভিত্তিক (Weight Based)</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setEditingDelivery({ ...editingDelivery, pricingModel: 'flat', type: 'Fixed', mode: 'Fixed' })}
-                  className={`py-2.5 px-3 rounded-xl font-bold flex items-center justify-center gap-2 border transition-all cursor-pointer ${
-                    editingDelivery.pricingModel === 'flat' || editingDelivery.type === 'Fixed'
-                      ? 'bg-sky-50 text-[#0284c7] border-[#0284c7] shadow-xs'
-                      : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
-                  }`}
-                >
-                  <Truck className="h-4 w-4" />
-                  <span>ফিক্সড রেট (Flat Rate)</span>
-                </button>
-              </div>
-            </div>
-
-            {/* 5. Area Scope Selector */}
-            <div className="md:col-span-2 space-y-2">
-              <label className="block text-slate-700 font-bold flex items-center gap-2">
-                <MapPin className="h-4 w-4 text-[#0284c7]" />
-                <span>ডেলিভারি এরিয়া জোন (Delivery Area Scope) *</span>
+              <label className="block text-slate-700 font-bold mb-1.5 flex items-center justify-between">
+                <span>ফলব্যাক ডেলিভারি চার্জ (Fallback Charge ৳) *</span>
+                <span className="text-[10px] text-slate-400">অফলাইন/ব্যাকআপ চার্জ</span>
               </label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {AREA_SCOPES.map(scope => {
-                  const isSelected = (editingDelivery.areaScope || 'all') === scope.id;
-                  return (
-                    <div
-                      key={scope.id}
-                      onClick={() => setEditingDelivery({ ...editingDelivery, areaScope: scope.id })}
-                      className={`p-3.5 rounded-2xl border cursor-pointer transition-all ${
-                        isSelected 
-                          ? 'border-[#0284c7] bg-sky-50/70 ring-2 ring-sky-300' 
-                          : 'border-slate-200 bg-slate-50/50 hover:bg-white hover:border-slate-300'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between mb-1">
-                        <span className={`text-[11px] font-extrabold px-2 py-0.5 rounded-md border ${scope.badgeColor}`}>
-                          {scope.label}
-                        </span>
-                        <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${
-                          isSelected ? 'border-[#0284c7] bg-[#0284c7]' : 'border-slate-300'
-                        }`}>
-                          {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
-                        </div>
-                      </div>
-                      <p className="text-[10px] text-slate-500 leading-snug">{scope.desc}</p>
-                    </div>
-                  );
-                })}
+              <div className="flex items-center">
+                <span className="px-3.5 py-2.5 bg-slate-100 text-slate-700 border border-r-0 border-slate-200 rounded-l-xl font-bold">৳</span>
+                <input
+                  type="number"
+                  min="0"
+                  required
+                  value={editingDelivery.deliveryCharge ?? editingDelivery.baseCharge ?? 80}
+                  onChange={(e) => setEditingDelivery({ 
+                    ...editingDelivery, 
+                    deliveryCharge: Number(e.target.value),
+                    baseCharge: Number(e.target.value)
+                  })}
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-r-xl text-slate-900 font-mono font-bold text-xs focus:bg-white focus:ring-2 focus:ring-[#0284c7] outline-none"
+                  placeholder="80"
+                />
               </div>
             </div>
 
-            {/* 6. Custom Districts Picker (shown only when custom_districts is active) */}
-            {editingDelivery.areaScope === 'custom_districts' && (
-              <div className="md:col-span-2 bg-purple-50/50 border border-purple-200 p-4 rounded-2xl space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Sparkles className="h-4 w-4 text-purple-600" />
-                    <span className="font-bold text-purple-900 text-xs">
-                      নির্ধারিত জেলা নির্বাচন করুন ({editingDelivery.customDistricts?.length || 0}টি নির্বাচিত)
-                    </span>
-                  </div>
-                  <div className="relative w-48">
-                    <Search className="h-3.5 w-3.5 absolute left-2.5 top-2.5 text-slate-400" />
-                    <input
-                      type="text"
-                      value={districtSearch}
-                      onChange={(e) => setDistrictSearch(e.target.value)}
-                      placeholder="জেলা খুঁজুন..."
-                      className="w-full pl-8 pr-3 py-1 bg-white border border-purple-200 rounded-lg text-[11px] focus:outline-none focus:ring-1 focus:ring-purple-400"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap gap-1.5 max-h-40 overflow-y-auto p-1 bg-white rounded-xl border border-purple-100">
-                  {filteredDistrictsForPicker.map(dist => {
-                    const isChecked = (editingDelivery.customDistricts || []).includes(dist);
-                    return (
-                      <button
-                        type="button"
-                        key={dist}
-                        onClick={() => toggleCustomDistrict(dist)}
-                        className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition-all cursor-pointer ${
-                          isChecked 
-                            ? 'bg-purple-600 text-white border-purple-700 shadow-2xs' 
-                            : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-                        }`}
-                      >
-                        {isChecked ? `✓ ${dist}` : dist}
-                      </button>
-                    );
-                  })}
-                </div>
+            {/* Pathao Automated Info Banner */}
+            <div className="md:col-span-2 bg-gradient-to-r from-emerald-50 via-sky-50 to-white p-4 rounded-2xl border border-emerald-200 flex items-start gap-3">
+              <div className="p-2 bg-emerald-500 text-white rounded-xl shrink-0 mt-0.5 shadow-xs">
+                <Zap className="h-4 w-4" />
               </div>
-            )}
-
-            {/* 7. Weight-Based Pricing Parameters */}
-            {(editingDelivery.pricingModel === 'weight_based' || editingDelivery.type === 'Weight based') ? (
-              <div className="md:col-span-2 bg-gradient-to-r from-sky-50/80 via-blue-50/50 to-indigo-50/80 p-5 rounded-2xl border border-sky-200 space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Scale className="h-4 w-4 text-[#0284c7]" />
-                    <h4 className="text-xs font-black text-slate-900 uppercase tracking-wide">
-                      Weight-Based Billing Formula (ওজন ভিত্তিক চার্জ ফর্মুলা)
-                    </h4>
-                  </div>
-                  <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-sky-100 text-[#0284c7]">
-                    Standard Courier Standard
+              <div className="text-xs space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="font-extrabold text-slate-900">
+                    পাঠাও অটোমেটেড ক্যালকুলেশন সক্রিয় (Pathao API Live Auto Rate)
                   </span>
+                  <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
                 </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-slate-700 font-bold mb-1">বেস ওজন (Base Weight kg)</label>
-                    <div className="flex items-center">
-                      <input
-                        type="number"
-                        step="0.1"
-                        min="0.1"
-                        required
-                        value={editingDelivery.baseWeightKg ?? 1.0}
-                        onChange={(e) => setEditingDelivery({ ...editingDelivery, baseWeightKg: Number(e.target.value) })}
-                        className="w-full px-3 py-2 bg-white border border-sky-300 rounded-l-xl text-slate-900 font-mono font-bold focus:ring-2 focus:ring-[#0284c7] outline-none"
-                      />
-                      <span className="px-3 py-2 bg-sky-100 text-sky-800 border border-l-0 border-sky-300 rounded-r-xl font-bold">kg</span>
-                    </div>
-                    <p className="text-[10px] text-slate-500 mt-1">সাধারণত ১ম ১.০ কেজি</p>
-                  </div>
-
-                  <div>
-                    <label className="block text-slate-700 font-bold mb-1">বেস চার্জ (Base Charge ৳) *</label>
-                    <div className="flex items-center">
-                      <span className="px-3 py-2 bg-sky-100 text-sky-800 border border-r-0 border-sky-300 rounded-l-xl font-bold">৳</span>
-                      <input
-                        type="number"
-                        min="0"
-                        required
-                        value={editingDelivery.baseCharge ?? editingDelivery.deliveryCharge ?? 70}
-                        onChange={(e) => setEditingDelivery({ 
-                          ...editingDelivery, 
-                          baseCharge: Number(e.target.value),
-                          deliveryCharge: Number(e.target.value)
-                        })}
-                        className="w-full px-3 py-2 bg-white border border-sky-300 rounded-r-xl text-slate-900 font-mono font-bold focus:ring-2 focus:ring-[#0284c7] outline-none"
-                      />
-                    </div>
-                    <p className="text-[10px] text-slate-500 mt-1">১ম বেস ওজনের নির্দিষ্ট চার্জ</p>
-                  </div>
-
-                  <div>
-                    <label className="block text-slate-700 font-bold mb-1">অতিরিক্ত প্রতি কেজি (Extra Per Kg ৳)</label>
-                    <div className="flex items-center">
-                      <span className="px-3 py-2 bg-sky-100 text-sky-800 border border-r-0 border-sky-300 rounded-l-xl font-bold">+৳</span>
-                      <input
-                        type="number"
-                        min="0"
-                        required
-                        value={editingDelivery.additionalChargePerKg ?? 20}
-                        onChange={(e) => setEditingDelivery({ ...editingDelivery, additionalChargePerKg: Number(e.target.value) })}
-                        className="w-full px-3 py-2 bg-white border border-sky-300 rounded-r-xl text-slate-900 font-mono font-bold focus:ring-2 focus:ring-[#0284c7] outline-none"
-                      />
-                    </div>
-                    <p className="text-[10px] text-slate-500 mt-1">বেস ওজনের পর প্রতি অতিরিক্ত ১ কেজিতে</p>
-                  </div>
-                </div>
-
-                <div className="p-3 bg-white/80 rounded-xl border border-sky-200 text-[11px] text-slate-600 flex items-center gap-2">
-                  <Info className="h-4 w-4 text-[#0284c7] shrink-0" />
-                  <span>
-                    ফর্মুলা: ১ম <strong>{editingDelivery.baseWeightKg || 1} কেজি</strong> পর্যন্ত <strong>৳{editingDelivery.baseCharge ?? 70}</strong>। এরপর প্রতি অতিরিক্ত কেজিতে <strong>+৳{editingDelivery.additionalChargePerKg ?? 20}</strong> যোগ হবে। (ভগ্নাংশ থাকলে পরবর্তী পূর্ণ কেজিতে রাউন্ড আপ হবে)।
-                  </span>
-                </div>
+                <p className="text-slate-600 text-[11px] leading-relaxed">
+                  চেকআউটে গ্রাহক যখন তাঁর <strong>শহর (City)</strong> ও <strong>থানা (Zone)</strong> সিলেক্ট করবেন এবং কার্টের পণ্যগুলোর মোট <strong>ওজন (Weight kg)</strong> অনুযায়ী পাঠাও এর রিয়েল-টাইম লাইভ কুরিয়ার চার্জ সরাসরি চলে আসবে। তাই কোনো ম্যানুয়াল বেস ওজন বা প্রতি কেজি অতিরিক্ত চার্জ ফর্মুলা লেখার প্রয়োজন নেই।
+                </p>
               </div>
-            ) : (
-              <div className="md:col-span-2 bg-slate-50 p-4 rounded-2xl border border-slate-200">
-                <label className="block text-slate-700 font-bold mb-1">স্থির ডেলিভারি চার্জ (Flat Delivery Charge ৳) *</label>
-                <div className="flex items-center max-w-xs">
-                  <span className="px-3.5 py-2.5 bg-slate-200 text-slate-700 border border-r-0 border-slate-300 rounded-l-xl font-bold">৳</span>
-                  <input
-                    type="number"
-                    min="0"
-                    required
-                    value={editingDelivery.deliveryCharge ?? 80}
-                    onChange={(e) => setEditingDelivery({ 
-                      ...editingDelivery, 
-                      deliveryCharge: Number(e.target.value),
-                      baseCharge: Number(e.target.value)
-                    })}
-                    className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-r-xl text-slate-900 font-mono font-bold text-sm focus:ring-2 focus:ring-[#0284c7] outline-none"
-                  />
-                </div>
-                <p className="text-[10px] text-slate-500 mt-1">পার্সেলের ওজন যাই হোক না কেন এই নির্ধারিত চার্জ প্রযোজ্য হবে।</p>
-              </div>
-            )}
+            </div>
 
-            {/* 8. Free Delivery Threshold */}
+            {/* 5. Free Delivery Threshold */}
             <div>
               <label className="block text-slate-700 font-bold mb-1.5 flex items-center justify-between">
                 <span>ফ্রি ডেলিভারি অফার লিমিট (Free Delivery Threshold ৳)</span>
@@ -619,7 +446,7 @@ export default function DeliverySettingsManager() {
               <p className="text-[10px] text-slate-500 mt-1">অর্ডার এই পরিমাণের বেশি হলে স্বয়ংক্রিয়ভাবে ফ্রি ডেলিভারি (৳০) দেওয়া হবে।</p>
             </div>
 
-            {/* 9. Status Toggle */}
+            {/* 6. Status Toggle */}
             <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 flex items-center justify-between">
               <div>
                 <h4 className="text-xs font-bold text-slate-900">মেথড স্ট্যাটাস (Active / Inactive)</h4>
@@ -637,63 +464,6 @@ export default function DeliverySettingsManager() {
                   {editingDelivery.status === 'Active' ? 'Active' : 'Inactive'}
                 </span>
               </label>
-            </div>
-
-            {/* 10. Live Interactive Simulation Sandbox */}
-            <div className="md:col-span-2 bg-slate-900 text-white p-5 rounded-2xl border border-slate-800 space-y-3">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
-                <div className="flex items-center gap-2">
-                  <Calculator className="h-4 w-4 text-sky-400" />
-                  <span className="font-black text-xs uppercase tracking-wider text-sky-300">
-                    Live Calculation Sandbox (লাইভ টেস্ট সিমুলেশন)
-                  </span>
-                </div>
-                <span className="text-[10px] text-slate-400">
-                  কুরিয়ার বিলিং ফর্মুলা সঠিক কিনা তাৎক্ষণিক পরীক্ষা করুন
-                </span>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-[11px] text-slate-300 font-medium mb-1">টেস্ট পার্সেল ওজন (Cart Weight kg):</label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    min="0.1"
-                    value={testWeightKg}
-                    onChange={(e) => setTestWeightKg(Number(e.target.value))}
-                    className="w-full px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-white font-mono text-xs focus:ring-1 focus:ring-sky-400 outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[11px] text-slate-300 font-medium mb-1">টেস্ট অর্ডার সাবটোটাল (Subtotal ৳):</label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={testOrderSubtotal}
-                    onChange={(e) => setTestOrderSubtotal(Number(e.target.value))}
-                    className="w-full px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-white font-mono text-xs focus:ring-1 focus:ring-sky-400 outline-none"
-                  />
-                </div>
-              </div>
-
-              {simulationResult && (
-                <div className="p-3.5 bg-slate-800/90 rounded-xl border border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div>
-                    <div className="text-[11px] text-slate-400">কাস্টমারের জন্য হিসাব:</div>
-                    <div className="text-xs font-bold text-sky-300 mt-0.5">
-                      {simulationResult.breakdownText}
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-[10px] text-slate-400 block uppercase">সর্বমোট ডেলিভারি ফি:</span>
-                    <span className="text-xl font-mono font-black text-emerald-400">
-                      {simulationResult.isFreeDelivery ? 'FREE (৳০)' : `৳${simulationResult.finalCharge}`}
-                    </span>
-                  </div>
-                </div>
-              )}
             </div>
 
           </div>
@@ -827,7 +597,7 @@ export default function DeliverySettingsManager() {
                           </div>
                           <div className="flex items-center gap-1.5 mt-0.5">
                             <span className="text-[10px] px-1.5 py-0.2 bg-slate-100 text-slate-600 rounded font-bold">
-                              {dm.courierPartner || 'Steadfast'}
+                              {dm.courierPartner || 'Pathao'}
                             </span>
                             {dm.subtitle && (
                               <span className="text-[10px] text-slate-400 truncate max-w-xs">{dm.subtitle}</span>
@@ -841,33 +611,20 @@ export default function DeliverySettingsManager() {
                     <td className="px-4 py-3.5">
                       <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold border ${scopeInfo.badgeColor}`}>
                         <MapPin className="h-3 w-3" />
-                        <span>{scopeInfo.label.split('(')[0].trim()}</span>
+                        <span>সারাদেশ (পাঠাও এপিআই)</span>
                       </span>
-                      {dm.areaScope === 'custom_districts' && dm.customDistricts && (
-                        <div className="text-[10px] text-slate-400 mt-0.5">
-                          {dm.customDistricts.length}টি জেলা নির্ধারিত
-                        </div>
-                      )}
                     </td>
 
                     {/* Pricing & Rate */}
                     <td className="px-4 py-3.5">
-                      {isWeight ? (
-                        <div>
-                          <div className="font-mono font-black text-slate-900 text-xs">
-                            ৳{baseCharge} <span className="text-[10px] text-slate-500 font-normal">({baseWeight}kg পর্যন্ত)</span>
-                          </div>
-                          <div className="text-[10px] text-[#0284c7] font-semibold">
-                            +৳{extraPerKg} প্রতি অতিরিক্ত কেজি
-                          </div>
+                      <div>
+                        <div className="font-mono font-black text-slate-900 text-xs flex items-center gap-1.5">
+                          <span className="text-emerald-600 font-bold">পাঠাও লাইভ অটো রেট</span>
                         </div>
-                      ) : (
-                        <div>
-                          <div className="font-mono font-black text-slate-900 text-xs">
-                            ৳{dm.deliveryCharge} <span className="text-[10px] text-slate-500 font-normal">(ফিক্সড)</span>
-                          </div>
+                        <div className="text-[10px] text-slate-400 mt-0.5">
+                          ফলব্যাক ব্যাকআপ: ৳{baseCharge}
                         </div>
-                      )}
+                      </div>
 
                       {dm.freeDeliveryThreshold && dm.freeDeliveryThreshold > 0 && (
                         <span className="inline-block mt-0.5 text-[9px] px-1.5 py-0.2 bg-emerald-50 text-emerald-700 rounded border border-emerald-200 font-bold">
@@ -912,7 +669,7 @@ export default function DeliverySettingsManager() {
                               baseCharge: dm.baseCharge ?? dm.deliveryCharge ?? 70,
                               additionalChargePerKg: dm.additionalChargePerKg || 20,
                               freeDeliveryThreshold: dm.freeDeliveryThreshold || 0,
-                              courierPartner: dm.courierPartner || 'Steadfast',
+                              courierPartner: dm.courierPartner || 'Pathao',
                               estimatedDays: dm.estimatedDays || '24-48 Hours'
                             });
                             setIsAddingDelivery(false);

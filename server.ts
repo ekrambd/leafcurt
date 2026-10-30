@@ -5,6 +5,10 @@ import fs from "fs";
 import crypto from "crypto";
 import zlib from "zlib";
 import dotenv from "dotenv";
+
+dotenv.config({ path: '.env.local' });
+dotenv.config();
+
 import { createServer as createViteServer } from "vite";
 import { app } from "./src/server/app";
 import { storeProducts, loadSettingsFromDisk } from "./src/server/data/store";

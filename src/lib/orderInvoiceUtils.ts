@@ -139,9 +139,7 @@ export function buildWhatsAppInvoiceUrl(
   const total = order.totalAmount || order.totalPrice || ((order.price || 0) * (order.quantity || 1) + (order.deliveryCharge || 0));
   const paymentMethod = order.paymentMethod === 'COD' || !order.paymentMethod ? 'Cash on Delivery' : order.paymentMethod;
 
-  const message = `${invoiceUrl}
-
-❖ *ORDER CONFIRMED — ${storeName.toUpperCase()}*
+  const message = `❖ *ORDER CONFIRMED — ${storeName.toUpperCase()}*
 Order #${orderShortId} · Thank you for your order!
 
 ❖ *Order Breakdown:*

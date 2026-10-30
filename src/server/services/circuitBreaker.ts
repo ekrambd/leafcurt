@@ -133,7 +133,7 @@ export class CircuitBreaker {
 // Registry of circuit breakers for all external services
 export const circuitBreakerRegistry = {
   fcm: new CircuitBreaker('FirebaseCloudMessaging', { failureThreshold: 3, resetTimeoutMs: 10000, timeoutMs: 4000 }),
-  steadfastCourier: new CircuitBreaker('SteadfastCourierAPI', { failureThreshold: 4, resetTimeoutMs: 20000, timeoutMs: 6000 }),
+  pathaoCourier: new CircuitBreaker('PathaoCourierAPI', { failureThreshold: 4, resetTimeoutMs: 20000, timeoutMs: 8000 }),
   metaPixel: new CircuitBreaker('MetaConversionsAPI', { failureThreshold: 5, resetTimeoutMs: 15000, timeoutMs: 4000 }),
   geminiAI: new CircuitBreaker('GoogleGeminiAPI', { failureThreshold: 3, resetTimeoutMs: 15000, timeoutMs: 10000 }),
   firestore: new CircuitBreaker('FirestoreDatabase', { failureThreshold: 5, resetTimeoutMs: 10000, timeoutMs: 5000 })

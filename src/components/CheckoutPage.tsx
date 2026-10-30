@@ -30,6 +30,7 @@ import { getCustomerSession, setCustomerSession } from '../lib/customerAuth';
 import { BD_ALL_DISTRICTS, DHAKA_SUBURBS, calculateCartTotalWeight, calculateDeliveryCharge, filterDeliveryMethodsForDistrict } from '../lib/deliveryCalculator';
 import { loyaltyClubService } from '../lib/loyaltyClubService';
 import { validateCustomerName, validateBdPhone, validateRealAddress, validateOrderCustomerDetails } from '../lib/orderValidation';
+import { ApiClient } from '../services/apiClient';
 
 const BD_DISTRICTS = [
   'Dhaka',
@@ -101,6 +102,7 @@ const BD_DISTRICTS = [
 interface CartItem {
   product: Product;
   quantity: number;
+  variant?: any;
   selectedColor?: string;
   selectedSize?: string;
   selectedVariant?: string;
@@ -139,6 +141,99 @@ export default function CheckoutPage({
   const [isBillingSame, setIsBillingSame] = useState(true);
   const [agreeTerms, setAgreeTerms] = useState(true);
 
+  // Pathao Official Courier Integration State
+  const [pathaoCities, setPathaoCities] = useState<{ city_id: number; city_name: string }[]>([]);
+  const [pathaoZones, setPathaoZones] = useState<{ zone_id: number; zone_name: string }[]>([]);
+  const [pathaoAreas, setPathaoAreas] = useState<{ area_id: number; area_name: string }[]>([]);
+  const [selectedCityId, setSelectedCityId] = useState<number | null>(null);
+  const [selectedZoneId, setSelectedZoneId] = useState<number | null>(null);
+  const [selectedAreaId, setSelectedAreaId] = useState<number | null>(null);
+  const [isLoadingPathao, setIsLoadingPathao] = useState(false);
+  const [pathaoCalculatedPrice, setPathaoCalculatedPrice] = useState<number | null>(null);
+  const [pathaoPriceDetails, setPathaoPriceDetails] = useState<{ price: number; final_price: number; discount?: number } | null>(null);
+
+  // Fetch Pathao Cities on load
+  useEffect(() => {
+    let isMounted = true;
+    ApiClient.getPathaoCities()
+      .then(res => {
+        if (!isMounted) return;
+        const list = res?.data?.data || res?.data || [];
+        if (Array.isArray(list) && list.length > 0) {
+          setPathaoCities(list);
+          // Try to select Dhaka by default if available
+          const dhaka = list.find((c: any) => c.city_name?.toLowerCase().includes('dhaka'));
+          if (dhaka) {
+            setSelectedCityId(dhaka.city_id);
+            setDistrict(dhaka.city_name);
+          } else {
+            setSelectedCityId(list[0].city_id);
+            setDistrict(list[0].city_name);
+          }
+        }
+      })
+      .catch(() => {
+        // Fallback or offline, non-blocking
+      });
+    return () => { isMounted = false; };
+  }, []);
+
+  // Fetch Pathao Zones when City changes
+  useEffect(() => {
+    if (!selectedCityId) {
+      setPathaoZones([]);
+      setSelectedZoneId(null);
+      return;
+    }
+    let isMounted = true;
+    setIsLoadingPathao(true);
+    ApiClient.getPathaoZones(selectedCityId)
+      .then(res => {
+        if (!isMounted) return;
+        const list = res?.data?.data || res?.data || [];
+        if (Array.isArray(list)) {
+          setPathaoZones(list);
+          if (list.length > 0) {
+            setSelectedZoneId(list[0].zone_id);
+            setThana(list[0].zone_name);
+          } else {
+            setSelectedZoneId(null);
+            setThana('');
+          }
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (isMounted) setIsLoadingPathao(false);
+      });
+    return () => { isMounted = false; };
+  }, [selectedCityId]);
+
+  // Fetch Pathao Areas when Zone changes
+  useEffect(() => {
+    if (!selectedZoneId) {
+      setPathaoAreas([]);
+      setSelectedAreaId(null);
+      return;
+    }
+    let isMounted = true;
+    ApiClient.getPathaoAreas(selectedZoneId)
+      .then(res => {
+        if (!isMounted) return;
+        const list = res?.data?.data || res?.data || [];
+        if (Array.isArray(list)) {
+          setPathaoAreas(list);
+          if (list.length > 0) {
+            setSelectedAreaId(list[0].area_id);
+          } else {
+            setSelectedAreaId(null);
+          }
+        }
+      })
+      .catch(() => {});
+    return () => { isMounted = false; };
+  }, [selectedZoneId]);
+
   // Calculate Cart Subtotal & Total Parcel Weight
   const cartSubtotal = useMemo(() => {
     return cart.reduce((total, item) => {
@@ -172,6 +267,47 @@ export default function CheckoutPage({
     }
   }, [activeDeliveryMethods, selectedDeliveryMethodId]);
 
+  // Live Pathao Delivery Price Calculation based on total weight and selected city + zone
+  useEffect(() => {
+    if (!selectedCityId || !selectedZoneId) {
+      setPathaoCalculatedPrice(null);
+      setPathaoPriceDetails(null);
+      return;
+    }
+
+    let isMounted = true;
+    const timeoutId = setTimeout(() => {
+      ApiClient.calculatePathaoPrice({
+        recipientCity: selectedCityId,
+        recipientZone: selectedZoneId,
+        itemWeight: Math.max(0.5, Number(cartTotalWeight) || 0.5),
+        itemType: 2, // Parcel
+        deliveryType: 48 // Normal delivery
+      })
+      .then(res => {
+        if (!isMounted) return;
+        if (res && res.data) {
+          // Standard Delivery Fee is res.data.price (e.g. ৳130)
+          const baseDeliveryFee = typeof res.data.price === 'number' ? res.data.price : (res.data.final_price || 130);
+          setPathaoCalculatedPrice(baseDeliveryFee);
+          setPathaoPriceDetails({
+            price: baseDeliveryFee,
+            final_price: typeof res.data.final_price === 'number' ? res.data.final_price : baseDeliveryFee,
+            discount: res.data.discount || res.data.promo_discount || 0
+          });
+        }
+      })
+      .catch(() => {
+        // Fallback gracefully without breaking checkout
+      });
+    }, 300);
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timeoutId);
+    };
+  }, [selectedCityId, selectedZoneId, cartTotalWeight]);
+
   const selectedDeliveryMethod = useMemo(() => {
     if (activeDeliveryMethods.length === 0) return null;
     return activeDeliveryMethods.find(m => m.id === selectedDeliveryMethodId) || activeDeliveryMethods[0] || null;
@@ -190,13 +326,28 @@ export default function CheckoutPage({
         res.finalCharge = 0;
         res.isFreeDelivery = true;
         res.breakdownText = `ফ্রি ডেলিভারি (স্পেশাল অফার ৳${ecomSettings.freeDeliveryMinPurchase}+)`;
+      } else if (pathaoCalculatedPrice !== null && (method.courierPartner === 'Pathao' || !method.courierPartner)) {
+        res.finalCharge = pathaoCalculatedPrice;
+        res.breakdownText = `পাঠাও অফিসিয়াল রিয়েল-টাইম রেট (${cartTotalWeight} kg)`;
       }
       map[method.id] = res;
     });
     return map;
-  }, [activeDeliveryMethods, cartSubtotal, cartTotalWeight, ecomSettings]);
+  }, [activeDeliveryMethods, cartSubtotal, cartTotalWeight, ecomSettings, pathaoCalculatedPrice]);
 
   const deliveryCalc = useMemo(() => {
+    if (pathaoCalculatedPrice !== null && (!selectedDeliveryMethod || selectedDeliveryMethod.courierPartner === 'Pathao')) {
+      const globalFree = ecomSettings?.freeDeliveryEnabled && 
+                         ecomSettings?.freeDeliveryMinPurchase && 
+                         cartSubtotal >= ecomSettings.freeDeliveryMinPurchase;
+      return {
+        finalCharge: globalFree ? 0 : pathaoCalculatedPrice,
+        isFreeDelivery: Boolean(globalFree),
+        breakdownText: globalFree ? `ফ্রি ডেলিভারি (স্পেশাল অফার ৳${ecomSettings.freeDeliveryMinPurchase}+)` : `পাঠাও অফিসিয়াল রেট (${cartTotalWeight} kg)`,
+        effectiveWeightKg: cartTotalWeight
+      };
+    }
+
     if (!selectedDeliveryMethod) {
       return {
         finalCharge: 0,
@@ -206,9 +357,9 @@ export default function CheckoutPage({
       };
     }
     return methodCalculations[selectedDeliveryMethod.id] || calculateDeliveryCharge(selectedDeliveryMethod, cartSubtotal, cartTotalWeight);
-  }, [selectedDeliveryMethod, methodCalculations, cartSubtotal, cartTotalWeight]);
+  }, [selectedDeliveryMethod, methodCalculations, cartSubtotal, cartTotalWeight, pathaoCalculatedPrice, ecomSettings]);
 
-  const deliveryCost = selectedDeliveryMethod ? deliveryCalc.finalCharge : 0;
+  const deliveryCost = pathaoCalculatedPrice !== null ? deliveryCalc.finalCharge : (selectedDeliveryMethod ? deliveryCalc.finalCharge : 0);
 
   // Payment Gateways from Admin
   const activePaymentGateways = useMemo<PaymentGatewayItem[]>(() => {
@@ -497,6 +648,13 @@ export default function CheckoutPage({
         address: cleanAddress,
         district: district,
         thana: thana.trim() || undefined,
+        recipientCity: selectedCityId || undefined,
+        recipientCityName: pathaoCities.find(c => c.city_id === selectedCityId)?.city_name,
+        recipientZone: selectedZoneId || undefined,
+        recipientZoneName: pathaoZones.find(z => z.zone_id === selectedZoneId)?.zone_name,
+        recipientArea: selectedAreaId || undefined,
+        recipientAreaName: pathaoAreas.find(a => a.area_id === selectedAreaId)?.area_name,
+        courierProvider: 'pathao',
         notes: (specialNotes.trim() ? specialNotes.trim() + '\n' : '') + (bogoEligible ? '[BOGO APPLIED: 11th+ Coupon Usage - Free Gift]' : '') || undefined,
         deliveryArea: selectedDeliveryMethod?.title || 'Standard Delivery',
         deliveryZone: selectedDeliveryMethod?.title || 'Standard Delivery',
@@ -565,8 +723,15 @@ export default function CheckoutPage({
             phone: phone.trim(),
             address: address.trim(),
             testEventCode: (typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('meta_test_code') : undefined) || undefined,
-            deliveryZone: selectedDeliveryMethod?.title || 'Standard Delivery',
+            deliveryZone: selectedDeliveryMethod?.title || 'Pathao Courier',
             deliveryMethodId: selectedDeliveryMethod?.id,
+            recipientCity: selectedCityId || undefined,
+            recipientCityName: pathaoCities.find(c => c.city_id === selectedCityId)?.city_name,
+            recipientZone: selectedZoneId || undefined,
+            recipientZoneName: pathaoZones.find(z => z.zone_id === selectedZoneId)?.zone_name,
+            recipientArea: selectedAreaId || undefined,
+            recipientAreaName: pathaoAreas.find(a => a.area_id === selectedAreaId)?.area_name,
+            courierProvider: 'pathao',
             deliveryCharge: deliveryCost,
             deliveryFee: deliveryCost,
             memberDiscount: memberDiscountAmount,
@@ -840,9 +1005,17 @@ export default function CheckoutPage({
               
               {/* Card 1: Order Review */}
               <div className="bg-white rounded-2xl p-6 sm:p-7 border border-slate-200/80 shadow-2xs space-y-5">
-                <div className="flex items-center gap-2">
-                  <div className="w-1 h-5 bg-[#f97316] rounded-full"></div>
-                  <h2 className="text-base font-bold text-slate-900">Order review</h2>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-1 h-5 bg-[#f97316] rounded-full"></div>
+                    <h2 className="text-base font-bold text-slate-900">Order review</h2>
+                  </div>
+                  {cart.length > 0 && (
+                    <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-sky-50 text-[#0284c7] border border-sky-200 text-xs font-bold shadow-2xs">
+                      <Scale className="w-3.5 h-3.5" />
+                      <span>মোট পার্সেল ওজন: {cartTotalWeight} kg</span>
+                    </div>
+                  )}
                 </div>
 
                 {cart.length === 0 ? (
@@ -875,6 +1048,23 @@ export default function CheckoutPage({
                             <h3 className="text-xs sm:text-sm font-semibold text-slate-900 truncate">
                               {item.product.title}
                             </h3>
+
+                            {/* Attribute Badge / Variant in Item Row */}
+                            {(item.variant?.name || (Array.isArray(item.product.selectedAttributes) && item.product.selectedAttributes.length > 0)) && (
+                              <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
+                                {item.variant?.name ? (
+                                  <span className="text-[10px] font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded border border-purple-200">
+                                    {item.variant.name}
+                                  </span>
+                                ) : (
+                                  item.product.selectedAttributes?.map((attr, aIdx) => (
+                                    <span key={aIdx} className="text-[10px] font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                                      {attr.attributeName}: {Array.isArray(attr.values) ? attr.values.join(', ') : attr.values}
+                                    </span>
+                                  ))
+                                )}
+                              </div>
+                            )}
                             
                             <div className="flex items-center gap-2">
                               {item.product.price === 0 && (
@@ -1018,68 +1208,107 @@ export default function CheckoutPage({
                     )}
                   </div>
 
-                  {/* 3. District & Delivery Zone Selector */}
-                  <div className="space-y-2">
+                  {/* 3. Delivery City & Zone Selector */}
+                  <div className="space-y-3 bg-slate-50/70 p-4 rounded-2xl border border-slate-200">
                     <div className="flex items-center justify-between">
-                      <label className="block text-xs font-bold text-slate-700 flex items-center gap-1.5">
-                        <MapPin className="w-3.5 h-3.5 text-[#0284c7]" />
-                        <span>জেলা ও ডেলিভারি জোন (District / Area) *</span>
+                      <label className="block text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                        <MapPin className="w-4 h-4 text-sky-600" />
+                        <span>ডেলিভারি এলাকা ও জোন (City & Zone) *</span>
                       </label>
-                      <span className="text-[10px] text-slate-500 font-medium">
-                        {district.toLowerCase().includes('dhaka') && !DHAKA_SUBURBS.some(s => district.toLowerCase().includes(s))
-                          ? '📍 ঢাকা মেট্রো সিটি'
-                          : DHAKA_SUBURBS.some(s => district.toLowerCase().includes(s))
-                          ? '📍 ঢাকা উপশহর জোন'
-                          : '📍 সারাদেশ (ঢাকার বাইরে)'}
-                      </span>
                     </div>
 
-                    {/* Quick District Pills */}
-                    <div className="flex flex-wrap gap-1.5">
-                      {[
-                        { label: 'ঢাকা সিটি', value: 'Dhaka' },
-                        { label: 'গাজীপুর', value: 'Gazipur' },
-                        { label: 'নারায়ণগঞ্জ', value: 'Narayanganj' },
-                        { label: 'চট্টগ্রাম', value: 'Chattogram' },
-                        { label: 'সিলেট', value: 'Sylhet' },
-                        { label: 'রাজশাহী', value: 'Rajshahi' },
-                        { label: 'খুলনা', value: 'Khulna' },
-                        { label: 'বরিশাল', value: 'Barishal' },
-                        { label: 'রংপুর', value: 'Rangpur' }
-                      ].map(pill => (
-                        <button
-                          key={pill.value}
-                          type="button"
-                          onClick={() => {
-                            setDistrict(pill.value);
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {/* Pathao City Dropdown */}
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                          শহর / জেলা (City / District) *
+                        </label>
+                        <select
+                          value={selectedCityId || ''}
+                          onChange={(e) => {
+                            const cid = Number(e.target.value);
+                            setSelectedCityId(cid);
+                            const cityObj = pathaoCities.find(c => c.city_id === cid);
+                            if (cityObj) setDistrict(cityObj.city_name);
                             captureCurrentCart();
                           }}
-                          className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-all cursor-pointer ${
-                            district.toLowerCase() === pill.value.toLowerCase()
-                              ? 'bg-[#0284c7] text-white border-[#0284c7] shadow-xs'
-                              : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
-                          }`}
+                          className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 font-semibold focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 cursor-pointer shadow-2xs"
                         >
-                          {pill.label}
-                        </button>
-                      ))}
+                          <option value="">শহর / জেলা নির্বাচন করুন...</option>
+                          {pathaoCities.map(c => (
+                            <option key={c.city_id} value={c.city_id}>
+                              {c.city_name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Pathao Zone Dropdown */}
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                          থানা / জোন (Zone / Thana) *
+                        </label>
+                        <select
+                          value={selectedZoneId || ''}
+                          onChange={(e) => {
+                            const zid = Number(e.target.value);
+                            setSelectedZoneId(zid);
+                            const zoneObj = pathaoZones.find(z => z.zone_id === zid);
+                            if (zoneObj) setThana(zoneObj.zone_name);
+                            captureCurrentCart();
+                          }}
+                          disabled={isLoadingPathao || pathaoZones.length === 0}
+                          className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 font-semibold focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 cursor-pointer shadow-2xs disabled:bg-slate-100 disabled:cursor-not-allowed"
+                        >
+                          <option value="">
+                            {isLoadingPathao ? 'জোন লোড হচ্ছে...' : 'থানা / জোন নির্বাচন করুন...'}
+                          </option>
+                          {pathaoZones.map(z => (
+                            <option key={z.zone_id} value={z.zone_id}>
+                              {z.zone_name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
                     </div>
 
-                    {/* Full 64 District Dropdown */}
-                    <select
-                      value={district}
-                      onChange={(e) => {
-                        setDistrict(e.target.value);
-                        captureCurrentCart();
-                      }}
-                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-800 font-medium focus:bg-white focus:outline-none focus:border-[#0284c7] focus:ring-1 focus:ring-[#0284c7] transition-all cursor-pointer"
-                    >
-                      {BD_ALL_DISTRICTS.map(d => (
-                        <option key={d} value={d}>
-                          {d} {d === 'Dhaka' ? '(ঢাকা মেট্রো)' : DHAKA_SUBURBS.includes(d.toLowerCase()) ? '(উপশহর)' : ''}
-                        </option>
-                      ))}
-                    </select>
+                    {/* Pathao Area (Optional detailed sub-area) */}
+                    {pathaoAreas.length > 0 && (
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                          নির্দিষ্ট এলাকা (Sub-Area / Sector)
+                        </label>
+                        <select
+                          value={selectedAreaId || ''}
+                          onChange={(e) => {
+                            setSelectedAreaId(Number(e.target.value) || null);
+                            captureCurrentCart();
+                          }}
+                          className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 font-medium focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500 cursor-pointer shadow-2xs"
+                        >
+                          <option value="">নির্দিষ্ট এলাকা নির্বাচন করুন (ঐচ্ছিক)</option>
+                          {pathaoAreas.map(a => (
+                            <option key={a.area_id} value={a.area_id}>
+                              {a.area_name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+
+                    {/* Live Pathao Rate Preview Card */}
+                    {pathaoCalculatedPrice !== null && (
+                      <div className="mt-2 p-3 bg-white rounded-xl border border-sky-200/80 flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-2">
+                          <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                          <span className="font-bold text-slate-800">পাঠাও ডেলিভারি চার্জ (লাইভ ক্যালকুলেশন):</span>
+                          <span className="text-[11px] text-slate-500 font-medium">({cartTotalWeight} kg পার্সেল)</span>
+                        </div>
+                        <div className="text-right">
+                          <span className="font-black text-sm text-[#0284c7]">৳{pathaoCalculatedPrice}</span>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* 4. Full Address */}
@@ -1125,7 +1354,7 @@ export default function CheckoutPage({
                     <div className="flex items-center justify-between">
                       <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
                         <Truck className="w-4 h-4 text-[#0284c7]" />
-                        <span>ডেলিভারি মেথড নির্বাচন করুন (Delivery Method)</span>
+                        <span>ডেলিভারি চার্জ (Delivery Charge)</span>
                       </label>
                       <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-sky-50 text-[#0284c7] border border-sky-200 text-[11px] font-bold">
                         <Scale className="w-3.5 h-3.5" />
@@ -1133,7 +1362,46 @@ export default function CheckoutPage({
                       </div>
                     </div>
 
-                    {activeDeliveryMethods.length > 0 ? (
+                    {/* Auto Pathao Rate Card when City & Zone selected */}
+                    {selectedCityId && selectedZoneId ? (
+                      <div className="p-4 rounded-2xl border-2 border-emerald-500/80 bg-gradient-to-r from-emerald-50/70 via-sky-50/50 to-white shadow-xs">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="w-10 h-10 rounded-xl bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-sm">
+                              <Truck className="w-5 h-5" />
+                            </div>
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="font-extrabold text-slate-900 text-sm">
+                                  {ecomSettings?.freeDeliveryEnabled && ecomSettings?.freeDeliveryMinPurchase && cartSubtotal >= ecomSettings.freeDeliveryMinPurchase
+                                    ? 'ফ্রি হোম ডেলিভারি (স্পেশাল অফার)'
+                                    : 'হোম ডেলিভারি (কুরিয়ার অটো চার্জ)'}
+                                </span>
+                                <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                              </div>
+                              <p className="text-[11px] text-slate-600 mt-0.5 truncate">
+                                {district && thana ? `${district} • ${thana}` : 'জেলা ও থানা অনুযায়ী স্বয়ংক্রিয় রেট'} | পার্সেল ওজন: {cartTotalWeight} kg
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="text-right shrink-0">
+                            <div className="font-black text-base sm:text-lg text-emerald-700">
+                              {deliveryCalc.isFreeDelivery ? 'FREE (৳০)' : `৳${deliveryCost}`}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="mt-2.5 pt-2 border-t border-emerald-100/80 flex items-center justify-between text-[11px] text-slate-500">
+                          <span className="flex items-center gap-1 text-emerald-700 font-medium">
+                            ✓ আপনার শহর ও জোনের দূরত্ব ও ওজনের ভিত্তিতে সরাসরি নির্ধারিত
+                          </span>
+                          <span className="font-bold text-slate-700">
+                            {pathaoCalculatedPrice !== null ? 'লাইভ রেট আপডেট সম্পন্ন' : 'হিসাব করা হচ্ছে...'}
+                          </span>
+                        </div>
+                      </div>
+                    ) : activeDeliveryMethods.length > 0 ? (
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         {activeDeliveryMethods.map((method) => {
                           const isSelected = selectedDeliveryMethod?.id === method.id;
@@ -1392,6 +1660,16 @@ export default function CheckoutPage({
                 <div className="flex justify-between text-xs sm:text-sm text-slate-600">
                   <span>Sub total</span>
                   <span className="font-semibold text-slate-900">Tk.{cartSubtotal.toLocaleString()}</span>
+                </div>
+
+                <div className="flex justify-between text-xs sm:text-sm text-slate-600">
+                  <span className="flex items-center gap-1.5">
+                    <span>Total parcel weight</span>
+                    <span className="text-[10px] text-slate-400 font-normal">({cart.reduce((sum, item) => sum + item.quantity, 0)} items)</span>
+                  </span>
+                  <span className="font-bold text-slate-800 font-mono">
+                    {cartTotalWeight} kg
+                  </span>
                 </div>
 
                 <div className="flex justify-between text-xs sm:text-sm text-slate-600">

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Product, CategoryItem, Brand, ProductSpecRow, ProductFeatureCard } from '../types';
+import { Product, CategoryItem, Brand, ProductSpecRow, ProductFeatureCard, ProductUnit, ProductAttribute, ProductVariant } from '../types';
 import { dbService } from '../lib/dbService';
 import { uploadDataUrlToStorage, uploadFileToStorage } from '../lib/storageService';
 import { 
@@ -119,12 +119,28 @@ export default function ProductManager({
   const [facebookUrl, setFacebookUrl] = useState('');
   const [linkedinUrl, setLinkedinUrl] = useState('');
 
+  // Measurement Units & Variation Attributes State
+  const [storeUnits, setStoreUnits] = useState<ProductUnit[]>([]);
+  const [storeAttributes, setStoreAttributes] = useState<ProductAttribute[]>([]);
+  const [productUnit, setProductUnit] = useState<string>('pcs');
+  const [selectedAttrIds, setSelectedAttrIds] = useState<string[]>([]);
+  const [selectedAttrValues, setSelectedAttrValues] = useState<Record<string, string[]>>({});
+  const [isAddingNewUnitInline, setIsAddingNewUnitInline] = useState(false);
+  const [inlineUnitName, setInlineUnitName] = useState('');
+  const [inlineUnitCode, setInlineUnitCode] = useState('');
+  const [isAddingNewAttrInline, setIsAddingNewAttrInline] = useState(false);
+  const [inlineAttrName, setInlineAttrName] = useState('');
+  const [inlineAttrType, setInlineAttrType] = useState<'text' | 'color' | 'select'>('select');
+  const [inlineAttrValuesText, setInlineAttrValuesText] = useState('');
+
   useEffect(() => {
     async function loadData() {
       try {
-        const [settings, brandsData] = await Promise.all([
+        const [settings, brandsData, unitsData, attrsData] = await Promise.all([
           dbService.getEcomSettings(),
-          dbService.getBrands()
+          dbService.getBrands(),
+          dbService.getUnits(),
+          dbService.getAttributes()
         ]);
         let loadedCats: CategoryItem[] = [];
         if (settings.categoryItems && settings.categoryItems.length > 0) {
@@ -138,19 +154,25 @@ export default function ProductManager({
         }
         setStoreCategories(loadedCats);
         setStoreBrands(brandsData || []);
+        setStoreUnits(unitsData || []);
+        setStoreAttributes(attrsData || []);
         if (loadedCats.length > 0 && (!category || !loadedCats.some(c => c.name.trim().toLowerCase() === category.trim().toLowerCase()))) {
           setCategory(loadedCats[0].name);
         }
       } catch (err) {
-        console.error('Failed to load store categories and brands:', err);
+        console.error('Failed to load store categories, brands, units, and attributes:', err);
       }
     }
     loadData();
     window.addEventListener('ecom-settings-updated', loadData);
     window.addEventListener('brands-updated', loadData);
+    window.addEventListener('units-updated', loadData);
+    window.addEventListener('attributes-updated', loadData);
     return () => {
       window.removeEventListener('ecom-settings-updated', loadData);
       window.removeEventListener('brands-updated', loadData);
+      window.removeEventListener('units-updated', loadData);
+      window.removeEventListener('attributes-updated', loadData);
     };
   }, []);
 
@@ -244,6 +266,20 @@ export default function ProductManager({
       setSeoKeywordsText((product.seoKeywords || []).join(', '));
       setHasVariants(product.hasVariants ?? false);
       setVariants(product.variants || []);
+      setProductUnit(product.unit || 'pcs');
+
+      // Hydrate selected attributes if previously saved
+      if (product.selectedAttributes && product.selectedAttributes.length > 0) {
+        setSelectedAttrIds(product.selectedAttributes.map(a => a.attributeId));
+        const valMap: Record<string, string[]> = {};
+        product.selectedAttributes.forEach(a => {
+          valMap[a.attributeId] = a.values || [];
+        });
+        setSelectedAttrValues(valMap);
+      } else {
+        setSelectedAttrIds([]);
+        setSelectedAttrValues({});
+      }
 
       setImage(product.image || '');
       setImageMode(product.image && product.image.startsWith('data:') ? 'upload' : 'url');
@@ -322,6 +358,11 @@ export default function ProductManager({
       setSamplePages([]);
       setHasVariants(false);
       setVariants([]);
+      setProductUnit('pcs');
+      setSelectedAttrIds([]);
+      setSelectedAttrValues({});
+      setIsAddingNewUnitInline(false);
+      setIsAddingNewAttrInline(false);
       setSamplePages([]);
       setPdfUrl('');
       setTranslation('');
@@ -535,6 +576,152 @@ export default function ProductManager({
     }
   };
 
+  // Generate combinations of variants from selected attributes
+  const generateVariantsFromAttributes = () => {
+    const activeAttrs = selectedAttrIds
+      .map(id => ({
+        id,
+        name: storeAttributes.find(a => a.id === id)?.name || id,
+        values: selectedAttrValues[id] || []
+      }))
+      .filter(a => a.values.length > 0);
+
+    if (activeAttrs.length === 0) {
+      setFeedback({
+        isOpen: true,
+        type: 'error',
+        title: 'No Attribute Values Selected',
+        message: 'Please pick at least one attribute and select its values (e.g. Size: M, L or Weight: 0.5kg, 1kg).'
+      });
+      return;
+    }
+
+    // Cartesian product of attribute values
+    const combinations: Record<string, string>[] = activeAttrs.reduce<Record<string, string>[]>(
+      (acc, attr) => {
+        const result: Record<string, string>[] = [];
+        for (const prev of acc) {
+          for (const val of attr.values) {
+            result.push({ ...prev, [attr.name]: val });
+          }
+        }
+        return result;
+      },
+      [{}]
+    );
+
+    const basePriceNum = Number(price) || 0;
+    const baseRegPriceNum = Number(regularPrice) || basePriceNum;
+
+    const newGeneratedVariants: ProductVariant[] = combinations.map((combo, idx) => {
+      const nameParts = Object.values(combo);
+      const variantName = nameParts.join(' / ');
+
+      // Find color code if color attribute is part of combo
+      let variantColor: string | undefined;
+      const colorVal = combo['Color'] || combo['color'];
+      if (colorVal) {
+        const colorAttr = storeAttributes.find(a => a.name.toLowerCase() === 'color');
+        const matchedVal = colorAttr?.values.find(v => v.name.toLowerCase() === colorVal.toLowerCase());
+        if (matchedVal?.code) variantColor = matchedVal.code;
+      }
+
+      // Check if variant with same attributes or name already exists to preserve custom price/image
+      const existing = variants.find(v => v.name.trim().toLowerCase() === variantName.trim().toLowerCase());
+
+      // Parse weight in Kg if a Weight attribute was part of combo
+      let variantWeightKg: number | undefined;
+      for (const [key, val] of Object.entries(combo)) {
+        if (key.toLowerCase().includes('weight')) {
+          const raw = String(val).toLowerCase().trim();
+          const kgM = raw.match(/([\d.]+)\s*kg/i);
+          if (kgM && kgM[1]) variantWeightKg = Number(kgM[1]);
+          const gM = raw.match(/([\d.]+)\s*g/i);
+          if (gM && gM[1]) variantWeightKg = Number(gM[1]) / 1000;
+        }
+      }
+
+      return {
+        id: existing?.id || `var-${Date.now()}-${idx}-${Math.random().toString(36).slice(2, 5)}`,
+        name: variantName,
+        price: existing?.price !== undefined ? existing.price : basePriceNum,
+        regularPrice: existing?.regularPrice !== undefined ? existing.regularPrice : (baseRegPriceNum > basePriceNum ? baseRegPriceNum : undefined),
+        costPrice: existing?.costPrice ?? (Number(costPrice) || 0),
+        stock: existing?.stock ?? 100,
+        image: existing?.image || image || undefined,
+        color: existing?.color || variantColor,
+        weightKg: existing?.weightKg !== undefined ? existing.weightKg : variantWeightKg,
+        attributes: combo
+      };
+    });
+
+    setVariants(newGeneratedVariants);
+    setHasVariants(true);
+    setFeedback({
+      isOpen: true,
+      type: 'success',
+      title: 'Variants Generated!',
+      message: `Generated ${newGeneratedVariants.length} variant combinations from selected attributes.`
+    });
+  };
+
+  const handleCreateInlineUnit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inlineUnitName.trim() || !inlineUnitCode.trim()) return;
+    try {
+      const newUnit: ProductUnit = {
+        id: `unit-${Date.now()}`,
+        name: inlineUnitName.trim(),
+        code: inlineUnitCode.trim().toLowerCase(),
+        description: 'Custom added unit'
+      };
+      await dbService.saveUnit(newUnit);
+      setProductUnit(newUnit.code);
+      setInlineUnitName('');
+      setInlineUnitCode('');
+      setIsAddingNewUnitInline(false);
+      const refreshed = await dbService.getUnits();
+      setStoreUnits(refreshed);
+    } catch (err) {
+      console.error('Failed saving inline unit:', err);
+    }
+  };
+
+  const handleCreateInlineAttribute = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inlineAttrName.trim()) return;
+    try {
+      const rawVals = inlineAttrValuesText
+        .split(',')
+        .map(v => v.trim())
+        .filter(Boolean);
+      const newAttr: ProductAttribute = {
+        id: `attr-${Date.now()}`,
+        name: inlineAttrName.trim(),
+        type: inlineAttrType,
+        description: 'Custom added attribute',
+        values: rawVals.map((v, i) => ({
+          id: `val-${Date.now()}-${i}`,
+          name: v
+        }))
+      };
+      await dbService.saveAttribute(newAttr);
+      setInlineAttrName('');
+      setInlineAttrValuesText('');
+      setIsAddingNewAttrInline(false);
+      const refreshed = await dbService.getAttributes();
+      setStoreAttributes(refreshed);
+      // Auto-select the newly created attribute
+      setSelectedAttrIds(prev => [...prev, newAttr.id]);
+      setSelectedAttrValues(prev => ({
+        ...prev,
+        [newAttr.id]: newAttr.values.map(v => v.name)
+      }));
+    } catch (err) {
+      console.error('Failed saving inline attribute:', err);
+    }
+  };
+
   const handleVariantImageUrlPrompt = (idx: number) => {
     const current = variants[idx]?.image || '';
     const url = window.prompt('Give Variant Image Link / URL:', current);
@@ -663,6 +850,15 @@ export default function ProductManager({
       pageCount: pages === '' ? undefined : Number(pages),
       samplePdfUrl: samplePdfUrlState || undefined,
       samplePages: samplePages.length > 0 ? samplePages : undefined,
+      unit: productUnit || 'pcs',
+      selectedAttributes: selectedAttrIds.map(id => {
+        const found = storeAttributes.find(a => a.id === id);
+        return {
+          attributeId: id,
+          attributeName: found?.name || id,
+          values: selectedAttrValues[id] || []
+        };
+      }).filter(a => a.values.length > 0),
       hasVariants,
       variants: hasVariants ? variants : [],
       createdAt: editingProduct?.createdAt || new Date().toISOString()
@@ -1396,6 +1592,73 @@ export default function ProductManager({
                         </select>
                       </div>
 
+                      {/* Product Measurement Unit */}
+                      <div className="md:col-span-10 bg-slate-50/80 p-3 rounded-xl border border-slate-200">
+                        <div className="flex items-center justify-between mb-1.5">
+                          <label className="text-[11px] font-bold text-slate-800 flex items-center gap-1.5">
+                            <span className="w-5 h-5 rounded-md bg-teal-100/70 text-teal-800 flex items-center justify-center font-bold text-[10px]">
+                              {productUnit.toUpperCase().slice(0, 3)}
+                            </span>
+                            <span>Product Unit / পরিমাপের একক (pcs, kg, g, L, etc.)</span>
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => setIsAddingNewUnitInline(!isAddingNewUnitInline)}
+                            className="text-[11px] font-bold text-teal-600 hover:text-teal-700 flex items-center gap-1 cursor-pointer"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                            <span>{isAddingNewUnitInline ? 'Cancel Add Unit' : '+ Add New Unit'}</span>
+                          </button>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-2">
+                          <select
+                            value={productUnit}
+                            onChange={(e) => setProductUnit(e.target.value)}
+                            className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:ring-2 focus:ring-teal-500 outline-none min-w-[160px]"
+                          >
+                            {storeUnits.map(u => (
+                              <option key={u.id} value={u.code}>
+                                {u.name} ({u.code})
+                              </option>
+                            ))}
+                          </select>
+                          <span className="text-[11px] text-slate-500">
+                            Current unit: <strong className="text-teal-700 font-mono">{productUnit}</strong>.
+                          </span>
+                        </div>
+
+                        {/* Inline Add New Unit Form */}
+                        {isAddingNewUnitInline && (
+                          <div className="mt-2.5 p-3 bg-white rounded-lg border border-teal-200/80 shadow-2xs space-y-2">
+                            <span className="text-[11px] font-bold text-teal-800 block">Add New Measurement Unit to Database</span>
+                            <div className="flex flex-wrap sm:flex-nowrap gap-2">
+                              <input
+                                type="text"
+                                placeholder="Unit name (e.g. Kilogram, Dozen)"
+                                value={inlineUnitName}
+                                onChange={(e) => setInlineUnitName(e.target.value)}
+                                className="flex-1 px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs"
+                              />
+                              <input
+                                type="text"
+                                placeholder="Code (e.g. kg, dz)"
+                                value={inlineUnitCode}
+                                onChange={(e) => setInlineUnitCode(e.target.value)}
+                                className="w-28 px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-mono font-bold text-teal-700"
+                              />
+                              <button
+                                type="button"
+                                onClick={handleCreateInlineUnit}
+                                className="px-3 py-1.5 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-xs font-bold shrink-0 cursor-pointer"
+                              >
+                                Save Unit
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
                       {/* Detailed Description */}
                       <div className="md:col-span-10">
                         <label className="block text-[11px] font-bold text-slate-700 mb-1">
@@ -1471,15 +1734,188 @@ export default function ProductManager({
                         className="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500 cursor-pointer"
                       />
                       <label htmlFor="has_variants" className="font-bold text-slate-800 cursor-pointer">
-                        Has Variants <span className="text-[11px] font-normal text-slate-400">such as: Color, White/B&W</span>
+                        Has Variants <span className="text-[11px] font-normal text-slate-400">(Size, Color, Weight: 0.5kg/1kg, Pattern, Material, etc.)</span>
                       </label>
                     </div>
 
                     {hasVariants && (
-                      <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 sm:p-4 mt-2 space-y-2">
-                        <div className="flex items-center justify-between mb-1">
-                          <label className="block text-xs font-bold text-slate-800">Variant OptionsVariants</label>
-                          <span className="text-[11px] text-slate-500">You can set different images and prices for each variant</span>
+                      <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 sm:p-4 mt-2 space-y-4">
+                        {/* ATTRIBUTE SELECTOR & GENERATOR */}
+                        <div className="bg-white rounded-xl p-3.5 border border-purple-200/80 shadow-2xs space-y-3">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-purple-50 pb-2.5">
+                            <div>
+                              <span className="text-xs font-bold text-purple-900 flex items-center gap-1.5">
+                                <Sliders className="w-3.5 h-3.5 text-purple-600" />
+                                <span>Attribute-based Variant Generator</span>
+                              </span>
+                              <span className="text-[11px] text-slate-500 block">
+                                Choose attributes & values to auto-generate ecommerce variants (e.g. Size + Color, or Weight)
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setIsAddingNewAttrInline(!isAddingNewAttrInline)}
+                              className="text-[11px] font-bold text-purple-600 hover:text-purple-700 flex items-center gap-1 cursor-pointer self-start sm:self-auto"
+                            >
+                              <Plus className="w-3.5 h-3.5" />
+                              <span>{isAddingNewAttrInline ? 'Cancel Add' : '+ Add New Attribute'}</span>
+                            </button>
+                          </div>
+
+                          {/* Inline Add New Attribute */}
+                          {isAddingNewAttrInline && (
+                            <div className="p-3 bg-purple-50/50 rounded-lg border border-purple-200 space-y-2">
+                              <span className="text-[11px] font-bold text-purple-900 block">Create New Attribute</span>
+                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                <input
+                                  type="text"
+                                  placeholder="Attribute Name (e.g. Weight, Flavor)"
+                                  value={inlineAttrName}
+                                  onChange={(e) => setInlineAttrName(e.target.value)}
+                                  className="px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs"
+                                />
+                                <input
+                                  type="text"
+                                  placeholder="Values separated by comma (e.g. 0.5 kg, 1 kg, 2 kg)"
+                                  value={inlineAttrValuesText}
+                                  onChange={(e) => setInlineAttrValuesText(e.target.value)}
+                                  className="px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs sm:col-span-2"
+                                />
+                              </div>
+                              <div className="flex justify-end">
+                                <button
+                                  type="button"
+                                  onClick={handleCreateInlineAttribute}
+                                  className="px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs font-bold cursor-pointer"
+                                >
+                                  Save Attribute to DB
+                                </button>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Attribute checkboxes & value pickers */}
+                          <div className="space-y-2.5">
+                            <span className="text-[11px] font-bold text-slate-700 block">Select Attributes to Use:</span>
+                            <div className="flex flex-wrap gap-2">
+                              {storeAttributes.map(attr => {
+                                const isChecked = selectedAttrIds.includes(attr.id);
+                                return (
+                                  <button
+                                    type="button"
+                                    key={attr.id}
+                                    onClick={() => {
+                                      if (isChecked) {
+                                        setSelectedAttrIds(selectedAttrIds.filter(id => id !== attr.id));
+                                      } else {
+                                        setSelectedAttrIds([...selectedAttrIds, attr.id]);
+                                        // Default pick first few values
+                                        if (!selectedAttrValues[attr.id] || selectedAttrValues[attr.id].length === 0) {
+                                          setSelectedAttrValues(prev => ({
+                                            ...prev,
+                                            [attr.id]: attr.values.slice(0, 3).map(v => v.name)
+                                          }));
+                                        }
+                                      }
+                                    }}
+                                    className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer flex items-center gap-1.5 ${
+                                      isChecked
+                                        ? 'bg-purple-600 text-white border-purple-600 shadow-xs'
+                                        : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                                    }`}
+                                  >
+                                    <span>{attr.name}</span>
+                                    <span className="text-[10px] opacity-80">({attr.values.length})</span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+
+                            {/* Active attribute value selector pills */}
+                            {selectedAttrIds.length > 0 && (
+                              <div className="space-y-3 pt-2 border-t border-slate-100">
+                                {selectedAttrIds.map(attrId => {
+                                  const attr = storeAttributes.find(a => a.id === attrId);
+                                  if (!attr) return null;
+                                  const currentPicked = selectedAttrValues[attrId] || [];
+
+                                  return (
+                                    <div key={attrId} className="bg-slate-50/70 p-2.5 rounded-lg border border-slate-200">
+                                      <div className="flex items-center justify-between mb-1.5">
+                                        <span className="text-xs font-bold text-slate-800">{attr.name} values:</span>
+                                        <div className="flex gap-2">
+                                          <button
+                                            type="button"
+                                            onClick={() => setSelectedAttrValues(prev => ({ ...prev, [attrId]: attr.values.map(v => v.name) }))}
+                                            className="text-[10px] font-bold text-purple-600 hover:underline cursor-pointer"
+                                          >
+                                            Select all
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={() => setSelectedAttrValues(prev => ({ ...prev, [attrId]: [] }))}
+                                            className="text-[10px] font-bold text-slate-400 hover:underline cursor-pointer"
+                                          >
+                                            Clear
+                                          </button>
+                                        </div>
+                                      </div>
+
+                                      <div className="flex flex-wrap gap-1.5">
+                                        {attr.values.map(val => {
+                                          const isValPicked = currentPicked.includes(val.name);
+                                          return (
+                                            <button
+                                              type="button"
+                                              key={val.id}
+                                              onClick={() => {
+                                                const newVals = isValPicked
+                                                  ? currentPicked.filter(v => v !== val.name)
+                                                  : [...currentPicked, val.name];
+                                                setSelectedAttrValues(prev => ({ ...prev, [attrId]: newVals }));
+                                              }}
+                                              className={`px-2.5 py-1 rounded-md text-xs font-semibold border transition-all cursor-pointer flex items-center gap-1.5 ${
+                                                isValPicked
+                                                  ? 'bg-purple-100/80 text-purple-900 border-purple-300 font-bold'
+                                                  : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                                              }`}
+                                            >
+                                              {val.code && (
+                                                <span
+                                                  className="w-2.5 h-2.5 rounded-full border border-slate-300"
+                                                  style={{ backgroundColor: val.code }}
+                                                />
+                                              )}
+                                              <span>{val.name}</span>
+                                            </button>
+                                          );
+                                        })}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+
+                                <div className="flex justify-end pt-1">
+                                  <button
+                                    type="button"
+                                    onClick={generateVariantsFromAttributes}
+                                    className="px-4 py-2 bg-purple-600 hover:bg-purple-700 active:scale-95 text-white rounded-xl text-xs font-bold shadow-xs transition-all cursor-pointer flex items-center gap-1.5"
+                                  >
+                                    <Sparkles className="w-3.5 h-3.5" />
+                                    <span>Auto-Generate Variants From Attributes</span>
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* EXISTING / GENERATED VARIANTS LIST */}
+                        <div className="flex items-center justify-between mb-1 pt-1">
+                          <label className="block text-xs font-bold text-slate-800">
+                            Product Variant List ({variants.length})
+                          </label>
+                          <span className="text-[11px] text-slate-500">Each variant can have independent price, image & sku</span>
                         </div>
                         {variants.map((v, idx) => (
                           <div key={v.id || idx} className="flex flex-wrap sm:flex-nowrap gap-2 items-center bg-white p-2 rounded-lg border border-slate-200 shadow-2xs">

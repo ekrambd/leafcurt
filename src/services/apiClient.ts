@@ -112,36 +112,6 @@ export class ApiClient {
     });
   }
 
-  // Steadfast Courier Dispatch
-  static dispatchSteadfast(order: BookOrder): Promise<{ success: boolean; trackingCode?: string; message?: string }> {
-    return this.request<{ success: boolean; trackingCode?: string; message?: string }>('/courier/steadfast/dispatch', {
-      method: 'POST',
-      body: JSON.stringify({ order })
-    });
-  }
-
-  static testSteadfast(): Promise<{ success: boolean; balance?: number; message?: string }> {
-    return this.request('/courier/steadfast/test');
-  }
-
-  static getSteadfastStatus(trackingCode: string): Promise<{ success: boolean; status: string }> {
-    return this.request(`/courier/steadfast/status/${encodeURIComponent(trackingCode)}`);
-  }
-
-  static checkSteadfastFraud(phone: string): Promise<{
-    success: boolean;
-    phone?: string;
-    totalParcels?: number;
-    deliveredParcels?: number;
-    returnedParcels?: number;
-    cancelledParcels?: number;
-    successRatio?: number;
-    source?: string;
-    message?: string;
-  }> {
-    return this.request(`/courier/steadfast/fraud-check/${encodeURIComponent(phone)}`);
-  }
-
   // Pathao Courier Integration
   static testPathao(credentials?: any): Promise<{ success: boolean; message?: string; storesCount?: number; stores?: any[] }> {
     return this.request('/courier/pathao/test', {
@@ -166,6 +136,34 @@ export class ApiClient {
 
   static getPathaoAreas(zoneId: number | string): Promise<any> {
     return this.request(`/courier/pathao/zones/${zoneId}/areas`);
+  }
+
+  static calculatePathaoPrice(payload: {
+    storeId?: string | number;
+    itemType?: number;
+    deliveryType?: number;
+    itemWeight: number;
+    recipientCity: number;
+    recipientZone: number;
+  }): Promise<{
+    message?: string;
+    type?: string;
+    code?: number;
+    data?: {
+      price: number;
+      discount?: number;
+      promo_discount?: number;
+      plan_id?: number;
+      cod_enabled?: number;
+      cod_percentage?: number;
+      additional_charge?: number;
+      final_price: number;
+    };
+  }> {
+    return this.request('/courier/pathao/price-plan', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
   }
 
   static dispatchPathao(payload: {

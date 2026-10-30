@@ -16,6 +16,8 @@ import { customerRouter } from './routes/customerRoutes';
 import { couponRouter } from './routes/couponRoutes';
 import { reviewRouter } from './routes/reviewRoutes';
 import { brandRouter } from './routes/brandRoutes';
+import { unitRouter } from './routes/unitRoutes';
+import { attributeRouter } from './routes/attributeRoutes';
 import { contactRouter } from './routes/contactRoutes';
 import { landingRouter } from './routes/landingRoutes';
 import { instituteRouter } from './routes/instituteRoutes';
@@ -87,7 +89,7 @@ app.get('/api/system/metrics', (_req, res) => {
     cache: globalCache.getStats(),
     circuitBreakers: {
       fcm: circuitBreakerRegistry.fcm.getStats(),
-      steadfast: circuitBreakerRegistry.steadfastCourier.getStats(),
+      pathao: circuitBreakerRegistry.pathaoCourier?.getStats() || { status: 'CLOSED' },
       metaPixel: circuitBreakerRegistry.metaPixel.getStats(),
       geminiAI: circuitBreakerRegistry.geminiAI.getStats(),
       firestore: circuitBreakerRegistry.firestore.getStats()
@@ -126,6 +128,8 @@ app.use('/api/customers', customerRouter);
 app.use('/api/coupons', couponRouter);
 app.use('/api/reviews', reviewRouter);
 app.use('/api/brands', brandRouter);
+app.use('/api/units', unitRouter);
+app.use('/api/attributes', attributeRouter);
 app.use('/api/contact-messages', contactRouter);
 app.use('/api/landing-pages', landingRouter);
 app.use('/api/institute', instituteRouter);

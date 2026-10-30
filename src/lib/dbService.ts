@@ -15,11 +15,11 @@ const limit: any = () => null;
 const startAfter: any = () => null;
 const deleteField: any = () => null;
 const onSnapshot: any = () => () => {};
-import { BookOrder, Product, EcomSettings, Customer, PaymentGatewayItem, DeliveryMethodItem, Coupon, LandingPageData, InstituteInfo, Review, Brand, ContactMessage, AbandonedCart, AbandonedCartItem, AbandonedCartMetrics, VideoReviewsSettings, VideoReviewItem, HeroBannerItem } from '../types';
+import { BookOrder, Product, EcomSettings, Customer, PaymentGatewayItem, DeliveryMethodItem, Coupon, LandingPageData, InstituteInfo, Review, Brand, ContactMessage, AbandonedCart, AbandonedCartItem, AbandonedCartMetrics, VideoReviewsSettings, VideoReviewItem, HeroBannerItem, ProductUnit, ProductAttribute } from '../types';
 import { ApiClient } from '../services/apiClient';
 
 function stripIntegrationSecrets(settings: EcomSettings): EcomSettings {
-  const { pixelId: _pixelId, metaApiToken: _metaApiToken, steadfastApiKey: _steadfastApiKey, steadfastSecretKey: _steadfastSecretKey, ...safe } = settings;
+  const { pixelId: _pixelId, metaApiToken: _metaApiToken, pathaoClientSecret: _pathaoClientSecret, pathaoClientPassword: _pathaoClientPassword, ...safe } = settings;
   return safe;
 }
 
@@ -29,6 +29,8 @@ import {
   DEFAULT_PRODUCTS,
   DEFAULT_COUPONS,
   DEFAULT_BRANDS,
+  DEFAULT_UNITS,
+  DEFAULT_ATTRIBUTES,
   DEFAULT_PAYMENT_GATEWAYS,
   DEFAULT_DELIVERY_METHODS,
   DEFAULT_HERO_BANNERS,
@@ -42,6 +44,8 @@ export {
   DEFAULT_PRODUCTS,
   DEFAULT_COUPONS,
   DEFAULT_BRANDS,
+  DEFAULT_UNITS,
+  DEFAULT_ATTRIBUTES,
   DEFAULT_PAYMENT_GATEWAYS,
   DEFAULT_DELIVERY_METHODS,
   DEFAULT_HERO_BANNERS,
@@ -1128,7 +1132,7 @@ export const dbService = {
     };
   },
 
-  // --- E-Commerce Settings (Pixel, GTM, Steadfast) ---
+  // --- E-Commerce Settings (Pixel, GTM, Pathao) ---
   async getEcomSettings(): Promise<EcomSettings> {
     let result = DEFAULT_ECOM_SETTINGS;
     const localSaved = getLocalData<EcomSettings | null>('noor_ecom_settings', null);
@@ -1248,8 +1252,8 @@ export const dbService = {
           ...sanitized,
           pixelId: deleteField(),
           metaApiToken: deleteField(),
-          steadfastApiKey: deleteField(),
-          steadfastSecretKey: deleteField()
+          pathaoClientSecret: deleteField(),
+          pathaoClientPassword: deleteField()
         }, { merge: true });
       } catch (e) {
         console.error('Error saving ecom settings to Firestore:', e);
@@ -1436,15 +1440,6 @@ export const dbService = {
     const orders = await this.getBookOrders();
     this._ordersCache = null; // invalidate cache
     return orders.filter(o => o.phone && o.phone.replace(/\s+/g, '') === cleanPhone);
-  },
-
-  // --- Steadfast Courier Integration Dispatch Helper ---
-  async sendToSteadfastCourier(order: BookOrder): Promise<{ success: boolean; trackingCode?: string; message?: string }> {
-    if (order.steadfastTrackingCode) {
-      return { success: false, message: 'এই অর্ডারT ইতিমধ্যে Steadfast-এ পাঠানো হয়েছে।' };
-    }
-    const result = await ApiClient.dispatchSteadfast(order);
-    return result;
   },
 
   // --- Pathao Courier Integration Dispatch Helper ---
@@ -1894,6 +1889,165 @@ export const dbService = {
     setLocalData('noor_brands', brands);
     window.dispatchEvent(new CustomEvent('brands-updated', { detail: brands }));
     window.dispatchEvent(new CustomEvent('ecom-brands-updated', { detail: brands }));
+  },
+
+  // --- Units Management ---
+  async getUnits(): Promise<ProductUnit[]> {
+    try {
+      const res = await fetch('/api/units', { cache: 'no-cache' });
+      if (res.ok) {
+        const serverUnits = await res.json();
+        if (Array.isArray(serverUnits) && serverUnits.length > 0) {
+          setLocalData('ecom_units', serverUnits);
+          return serverUnits;
+        }
+      }
+    } catch {}
+
+    const list = getLocalData<ProductUnit[]>('ecom_units', DEFAULT_UNITS);
+    if (!list || list.length === 0) {
+      setLocalData('ecom_units', DEFAULT_UNITS);
+      return DEFAULT_UNITS;
+    }
+    return list;
+  },
+
+  async saveUnit(unit: ProductUnit): Promise<ProductUnit> {
+    const finalUnit: ProductUnit = {
+      ...unit,
+      id: unit.id || `unit-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
+    };
+
+    try {
+      await fetch('/api/units', {
+        method: 'POST',
+        headers: getAdminAuthHeaders(),
+        body: JSON.stringify(finalUnit)
+      });
+    } catch (e) {
+      console.warn('Failed saving unit to server API:', e);
+    }
+
+    const current = await this.getUnits();
+    const idx = current.findIndex(u => u.id === finalUnit.id || u.code.toLowerCase() === finalUnit.code.toLowerCase());
+    let updated: ProductUnit[];
+    if (idx >= 0) {
+      updated = [...current];
+      updated[idx] = finalUnit;
+    } else {
+      updated = [...current, finalUnit];
+    }
+    setLocalData('ecom_units', updated);
+    window.dispatchEvent(new CustomEvent('units-updated', { detail: updated }));
+    return finalUnit;
+  },
+
+  async deleteUnit(id: string): Promise<void> {
+    try {
+      await fetch(`/api/units/${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+        headers: getAdminAuthHeaders()
+      });
+    } catch (e) {
+      console.warn('Failed deleting unit from server API:', e);
+    }
+
+    const current = await this.getUnits();
+    const updated = current.filter(u => u.id !== id);
+    setLocalData('ecom_units', updated);
+    window.dispatchEvent(new CustomEvent('units-updated', { detail: updated }));
+  },
+
+  async saveUnits(units: ProductUnit[]): Promise<void> {
+    try {
+      await fetch('/api/units/batch', {
+        method: 'POST',
+        headers: getAdminAuthHeaders(),
+        body: JSON.stringify(units)
+      });
+    } catch {}
+    setLocalData('ecom_units', units);
+    window.dispatchEvent(new CustomEvent('units-updated', { detail: units }));
+  },
+
+  // --- Attributes Management ---
+  async getAttributes(): Promise<ProductAttribute[]> {
+    try {
+      const res = await fetch('/api/attributes', { cache: 'no-cache' });
+      if (res.ok) {
+        const serverAttrs = await res.json();
+        if (Array.isArray(serverAttrs) && serverAttrs.length > 0) {
+          setLocalData('ecom_attributes', serverAttrs);
+          return serverAttrs;
+        }
+      }
+    } catch {}
+
+    const list = getLocalData<ProductAttribute[]>('ecom_attributes', DEFAULT_ATTRIBUTES);
+    if (!list || list.length === 0) {
+      setLocalData('ecom_attributes', DEFAULT_ATTRIBUTES);
+      return DEFAULT_ATTRIBUTES;
+    }
+    return list;
+  },
+
+  async saveAttribute(attr: ProductAttribute): Promise<ProductAttribute> {
+    const finalAttr: ProductAttribute = {
+      ...attr,
+      id: attr.id || `attr-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      values: attr.values || []
+    };
+
+    try {
+      await fetch('/api/attributes', {
+        method: 'POST',
+        headers: getAdminAuthHeaders(),
+        body: JSON.stringify(finalAttr)
+      });
+    } catch (e) {
+      console.warn('Failed saving attribute to server API:', e);
+    }
+
+    const current = await this.getAttributes();
+    const idx = current.findIndex(a => a.id === finalAttr.id || a.name.toLowerCase() === finalAttr.name.toLowerCase());
+    let updated: ProductAttribute[];
+    if (idx >= 0) {
+      updated = [...current];
+      updated[idx] = finalAttr;
+    } else {
+      updated = [...current, finalAttr];
+    }
+    setLocalData('ecom_attributes', updated);
+    window.dispatchEvent(new CustomEvent('attributes-updated', { detail: updated }));
+    return finalAttr;
+  },
+
+  async deleteAttribute(id: string): Promise<void> {
+    try {
+      await fetch(`/api/attributes/${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+        headers: getAdminAuthHeaders()
+      });
+    } catch (e) {
+      console.warn('Failed deleting attribute from server API:', e);
+    }
+
+    const current = await this.getAttributes();
+    const updated = current.filter(a => a.id !== id);
+    setLocalData('ecom_attributes', updated);
+    window.dispatchEvent(new CustomEvent('attributes-updated', { detail: updated }));
+  },
+
+  async saveAttributes(attrs: ProductAttribute[]): Promise<void> {
+    try {
+      await fetch('/api/attributes/batch', {
+        method: 'POST',
+        headers: getAdminAuthHeaders(),
+        body: JSON.stringify(attrs)
+      });
+    } catch {}
+    setLocalData('ecom_attributes', attrs);
+    window.dispatchEvent(new CustomEvent('attributes-updated', { detail: attrs }));
   },
 
   // --- Contact Form Messages Management ---

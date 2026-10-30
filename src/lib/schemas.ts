@@ -139,8 +139,7 @@ export const EcomSettingsSchema = z.object({
   pixelId: z.string().optional(),
   gtmId: z.string().optional(),
   metaApiToken: z.string().optional(),
-  steadfastApiKey: z.string().optional(),
-  steadfastSecretKey: z.string().optional(),
+
   deliveryChargeInsideDhaka: z.number().default(60),
   deliveryChargeOutsideDhaka: z.number().default(110),
   bkashNumber: z.string().optional(),
@@ -175,8 +174,7 @@ export const BookOrderSchema = z.object({
   status: z.string(),
   createdAt: z.string(),
   notes: z.string().optional(),
-  steadfastTrackingCode: z.string().optional(),
-  steadfastStatus: z.string().optional(),
+
   couponCode: z.string().optional(),
   discountAmount: z.number().optional()
 });

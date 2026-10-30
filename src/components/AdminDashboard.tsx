@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { 
-  Users, LogOut, Menu, X, Check, ShoppingBag, ShoppingCart, ClipboardList, Package, LayoutDashboard, User, Code, Truck, CreditCard, Tag, Boxes, Store, Globe, Layout, Layers, Bell, Coins, Send, Sparkles, Eye, Bookmark, Camera, HeartHandshake, Zap, Mail, Award, BookOpen, Video
+  Users, LogOut, Menu, X, Check, ShoppingBag, ShoppingCart, ClipboardList, Package, LayoutDashboard, User, Code, Truck, CreditCard, Tag, Boxes, Store, Globe, Layout, Layers, Bell, Coins, Send, Sparkles, Eye, Bookmark, Camera, HeartHandshake, Zap, Mail, Award, BookOpen, Video, Scale, Sliders
 } from 'lucide-react';
 import { dbService, subscribeToOrders } from '../lib/dbService';
 import { ApiClient } from '../services/apiClient';
@@ -17,6 +17,8 @@ const ContactMessagesManager = lazy(() => import('./ContactMessagesManager'));
 const StockInventoryManager = lazy(() => import('./StockInventoryManager'));
 const CategoryManager = lazy(() => import('./CategoryManager'));
 const BrandManager = lazy(() => import('./BrandManager'));
+const UnitManager = lazy(() => import('./UnitManager'));
+const AttributeManager = lazy(() => import('./AttributeManager'));
 const LandingPageManager = lazy(() => import('./LandingPageManager'));
 const PixelSettingsManager = lazy(() => import('./PixelSettingsManager'));
 const CourierSettingsManager = lazy(() => import('./CourierSettingsManager'));
@@ -118,29 +120,29 @@ export default function AdminDashboard({ adminEmail, onLogout }: AdminDashboardP
         setStoreSettings(settings);
         dbService.getAbandonedCarts('abandoned').then(res => setAbandonedCount(res.metrics?.totalAbandoned || 0)).catch(() => {});
 
-        // Run auto-sync of Steadfast courier status in the background
+        // Run auto-sync of Pathao courier status in the background
         setTimeout(async () => {
           try {
-            const inTransit = orderList.filter(o => o.steadfastTrackingCode && o.status !== 'Delivered' && o.status !== 'Cancelled');
+            const inTransit = orderList.filter(o => o.pathaoConsignmentId && o.status !== 'Delivered' && o.status !== 'Return' && o.status !== 'Cancelled');
             if (inTransit.length > 0) {
               const settings = await dbService.getEcomSettings();
               const earnRate = settings.pointsEarnRate || 10;
               
               for (const order of inTransit) {
                 try {
-                  const result = await ApiClient.getSteadfastStatus(order.steadfastTrackingCode!);
-                  const normalized = result.status.toLowerCase();
-                  const newStatus = normalized === 'delivered'
+                  const result = await ApiClient.getPathaoStatus(order.pathaoConsignmentId!);
+                  const normalized = (result.status || '').toLowerCase();
+                  const newStatus = normalized.includes('delivered') || normalized === 'successful'
                     ? 'Delivered'
-                    : normalized.includes('cancelled')
-                      ? 'Cancelled'
+                    : (normalized.includes('return') || normalized.includes('cancelled') || normalized.includes('failed'))
+                      ? 'Return'
                       : order.status;
 
                   if (newStatus !== order.status) {
                     await dbService.updateBookOrder({ 
                       ...order, 
                       status: newStatus, 
-                      steadfastStatus: result.status 
+                      pathaoStatus: result.status 
                     });
 
                     if (settings.pointsEnabled) {
@@ -161,12 +163,12 @@ export default function AdminDashboard({ adminEmail, onLogout }: AdminDashboardP
                     }
                   }
                 } catch (singleErr) {
-                  console.warn('Auto steadfast sync failed for order:', order.id, singleErr);
+                  console.warn('Auto Pathao sync failed for order:', order.id, singleErr);
                 }
               }
             }
           } catch (syncErr) {
-            console.error('Error running steadfast auto-sync:', syncErr);
+            console.error('Error running Pathao auto-sync:', syncErr);
           }
         }, 1500);
         dbService.getGlobalViews().then(setViewsOverview).catch(() => {});
@@ -346,6 +348,8 @@ export default function AdminDashboard({ adminEmail, onLogout }: AdminDashboardP
     { id: 'products' as const, label: 'Products', icon: Package },
     { id: 'category_management' as const, label: 'Categories', icon: Layers },
     { id: 'brand_management' as const, label: 'Brands', icon: Bookmark },
+    { id: 'unit_management' as const, label: 'Units', icon: Scale },
+    { id: 'attribute_management' as const, label: 'Attributes', icon: Sliders },
 
     // --- Group 4: Marketing & Content ---
     { id: 'header_marketing' as any, isHeader: true, label: 'Marketing' },
@@ -654,6 +658,12 @@ export default function AdminDashboard({ adminEmail, onLogout }: AdminDashboardP
                 )}
                 {activeTab === 'brand_management' && (
                   <BrandManager />
+                )}
+                {activeTab === 'unit_management' && (
+                  <UnitManager />
+                )}
+                {activeTab === 'attribute_management' && (
+                  <AttributeManager />
                 )}
                 {activeTab === 'slider_management' && (
                   <SliderManager />

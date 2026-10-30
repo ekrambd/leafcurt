@@ -75,6 +75,14 @@ export default function AuthenticProductDetailPage({
   // Tab Navigation State
   const [activeTab, setActiveTab] = useState<'specification' | 'features' | 'video' | 'reviews'>('specification');
 
+  // Variant Selection State
+  const [selectedVariant, setSelectedVariant] = useState<any>(() => {
+    if (product.variants && product.variants.length > 0) {
+      return product.variants[0];
+    }
+    return null;
+  });
+
   // Quantity Stepper State for E-Commerce Actions
   const [quantity, setQuantity] = useState<number>(1);
 
@@ -793,17 +801,61 @@ export default function AuthenticProductDetailPage({
             {/* 3. Price Display */}
             <div className="p-4 rounded-2xl bg-[#f8fafc] border border-slate-200 flex flex-wrap items-baseline gap-3 shadow-2xs">
               <span className="text-2xl sm:text-3xl font-extrabold text-[#033b75]">
-                {formatPriceText(product.price)}
+                {formatPriceText(selectedVariant?.price ?? product.price)}
               </span>
-              {(product.regularPrice || product.price > 0) && (
+              {(selectedVariant?.regularPrice || product.regularPrice || product.price > 0) && (
                 <span className="text-base sm:text-lg text-slate-400 line-through">
-                  {formatPriceText(product.regularPrice || Math.round(product.price * 1.25))}
+                  {formatPriceText(selectedVariant?.regularPrice || product.regularPrice || Math.round(product.price * 1.25))}
                 </span>
               )}
               <span className="text-xs bg-emerald-100 text-emerald-800 font-bold px-2.5 py-1 rounded-md">
                 {product.discountPercentage ? `SAVE ${product.discountPercentage}%` : 'বিশেষ মূল্যছাড়'}
               </span>
             </div>
+
+            {/* Product Variants / Weights Selection */}
+            {product.hasVariants && Array.isArray(product.variants) && product.variants.length > 0 && (
+              <div className="space-y-2 pt-1">
+                <label className="block text-xs font-bold text-slate-700 flex items-center justify-between">
+                  <span>ভ্যারিয়েন্ট / সাইজ নির্বাচন করুন (Variant):</span>
+                  {selectedVariant && (
+                    <span className="text-[11px] font-semibold text-purple-700 bg-purple-50 px-2 py-0.5 rounded border border-purple-200">
+                      {selectedVariant.name}
+                    </span>
+                  )}
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {product.variants.map((v) => {
+                    const isSelected = selectedVariant?.id === v.id;
+                    return (
+                      <button
+                        key={v.id}
+                        type="button"
+                        onClick={() => setSelectedVariant(v)}
+                        className={`px-3.5 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer flex items-center gap-1.5 ${
+                          isSelected
+                            ? 'bg-purple-600 text-white border-purple-600 shadow-xs ring-2 ring-purple-200'
+                            : 'bg-white text-slate-700 border-slate-200 hover:border-purple-300 hover:bg-purple-50/50'
+                        }`}
+                      >
+                        {v.color && (
+                          <span
+                            className="w-3 h-3 rounded-full border border-white/50 shrink-0 shadow-xs"
+                            style={{ backgroundColor: v.color }}
+                          />
+                        )}
+                        <span>{v.name}</span>
+                        {v.price && v.price !== product.price && (
+                          <span className={`text-[10px] ml-0.5 font-normal ${isSelected ? 'text-purple-100' : 'text-slate-500'}`}>
+                            ({formatPriceText(v.price)})
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* 4. Quantity Stepper + ADD TO CART & BUY NOW Buttons */}
             <div className="space-y-3.5 pt-1">
@@ -835,7 +887,19 @@ export default function AuthenticProductDetailPage({
                 {/* ADD TO CART */}
                 <button
                   type="button"
-                  onClick={() => onAddToCart && onAddToCart(product, quantity)}
+                  onClick={() => {
+                    if (onAddToCart) {
+                      const itemProduct: Product = selectedVariant
+                        ? {
+                            ...product,
+                            price: selectedVariant.price || product.price,
+                            regularPrice: selectedVariant.regularPrice || product.regularPrice,
+                            coverImage: selectedVariant.image || product.coverImage
+                          }
+                        : product;
+                      (onAddToCart as any)(itemProduct, quantity, selectedVariant);
+                    }
+                  }}
                   className="w-full bg-[#033b75] hover:bg-[#022a54] text-white py-3.5 px-6 rounded-xl font-bold uppercase tracking-wider text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition-all active:scale-95 cursor-pointer"
                 >
                   <ShoppingBag className="w-4 h-4" />
@@ -845,7 +909,19 @@ export default function AuthenticProductDetailPage({
                 {/* BUY NOW */}
                 <button
                   type="button"
-                  onClick={() => onBuyNow && onBuyNow(product, quantity)}
+                  onClick={() => {
+                    if (onBuyNow) {
+                      const itemProduct: Product = selectedVariant
+                        ? {
+                            ...product,
+                            price: selectedVariant.price || product.price,
+                            regularPrice: selectedVariant.regularPrice || product.regularPrice,
+                            coverImage: selectedVariant.image || product.coverImage
+                          }
+                        : product;
+                      (onBuyNow as any)(itemProduct, quantity, selectedVariant);
+                    }
+                  }}
                   className="w-full bg-gradient-to-r from-[#0284c7] to-[#16a34a] hover:from-[#0369a1] hover:to-[#15803d] text-white py-3.5 px-6 rounded-xl font-bold uppercase tracking-wider text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition-all active:scale-95 cursor-pointer"
                 >
                   <Zap className="w-4 h-4 fill-current" />

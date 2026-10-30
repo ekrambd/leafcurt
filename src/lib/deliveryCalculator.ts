@@ -77,29 +77,98 @@ export const BD_ALL_DISTRICTS = [
 ];
 
 /**
- * Calculates a product's individual unit weight in kg.
+ * Parses any weight string like "600 g", "600g", "0.5 kg", "1.2kg", "250gm" into kilograms.
  */
-export function calculateProductWeight(product: Product): number {
+export function parseWeightStringToKg(str?: string | null): number | null {
+  if (!str) return null;
+  const raw = str.toLowerCase().trim();
+
+  // Match e.g. "0.5 kg", "1kg", "2.5 kg"
+  const kgMatch = raw.match(/([\d.]+)\s*(?:kg|kgs|kilogram|kilograms)/i);
+  if (kgMatch && kgMatch[1]) {
+    const val = Number(kgMatch[1]);
+    if (!isNaN(val) && val > 0) return Number(val.toFixed(3));
+  }
+
+  // Match e.g. "600 g", "600g", "250 gm", "500 grams"
+  const gMatch = raw.match(/([\d.]+)\s*(?:g|gm|gms|gram|grams)/i);
+  if (gMatch && gMatch[1]) {
+    const grams = Number(gMatch[1]);
+    if (!isNaN(grams) && grams > 0) {
+      return Number((grams / 1000).toFixed(3));
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Calculates a product's individual unit weight in kg.
+ * Supports:
+ * - Product variant or selectedVariant string (e.g., "600g", "1 kg")
+ * - Direct product.weightKg
+ * - Variant attributes (e.g. attributes.Weight: "600g")
+ * - Product attributes & selectedAttributes
+ * - product.unit and product.weightBadge
+ */
+export function calculateProductWeight(
+  product: Product,
+  variant?: any | null,
+  selectedVariantStr?: string | null
+): number {
+  // 1. Direct variant weightKg if specified
+  if (variant?.weightKg && variant.weightKg > 0) {
+    return Number(variant.weightKg);
+  }
+
+  // 2. Variant attributes object, e.g. { Weight: "600g" } or { weight: "0.5 kg" }
+  if (variant?.attributes && typeof variant.attributes === 'object') {
+    for (const [key, val] of Object.entries(variant.attributes)) {
+      if (key.toLowerCase().includes('weight') && typeof val === 'string') {
+        const parsed = parseWeightStringToKg(val);
+        if (parsed !== null) return parsed;
+      }
+    }
+  }
+
+  // 3. Variant name or selected variant string, e.g. "CASIO - 600g" or "600g"
+  const varName = variant?.name || selectedVariantStr;
+  if (varName) {
+    const parsed = parseWeightStringToKg(varName);
+    if (parsed !== null) return parsed;
+  }
+
+  // 4. Product selectedAttributes (e.g. Weight attribute with values like "600g", "1 kg")
+  if (Array.isArray(product.selectedAttributes)) {
+    for (const attr of product.selectedAttributes) {
+      if (attr.attributeName?.toLowerCase().includes('weight') && Array.isArray(attr.values) && attr.values.length > 0) {
+        const parsed = parseWeightStringToKg(attr.values[0]);
+        if (parsed !== null) return parsed;
+      }
+    }
+  }
+
+  // 5. Product direct weightKg
   if (product.weightKg && product.weightKg > 0) {
     return Number(product.weightKg);
   }
 
-  // Attempt parsing weight from weightBadge (e.g. "Basis weight: 25g/pcs" or "Weight: 1kg")
+  // 6. Check product.unit if specified like "600g" or "1kg"
+  if (product.unit) {
+    const parsed = parseWeightStringToKg(product.unit);
+    if (parsed !== null) return parsed;
+  }
+
+  // 7. Attempt parsing weight from weightBadge (e.g. "Basis weight: 600g" or "Weight: 1kg")
   if (product.weightBadge) {
-    const raw = product.weightBadge.toLowerCase();
-    const kgMatch = raw.match(/([\d.]+)\s*kg/);
-    if (kgMatch && kgMatch[1]) {
-      return Number(kgMatch[1]);
-    }
-    const gMatch = raw.match(/([\d.]+)\s*g/);
-    if (gMatch && gMatch[1]) {
-      const grams = Number(gMatch[1]);
-      // If it says "25g/pcs", a pack of 20 pods = 500g = 0.5kg
-      if (grams <= 50) {
-        return 0.5; // Standard 20-30 pod box
-      }
-      return Number((grams / 1000).toFixed(2));
-    }
+    const parsed = parseWeightStringToKg(product.weightBadge);
+    if (parsed !== null) return parsed;
+  }
+
+  // 8. Attempt parsing weight from title or subtitle if present (e.g. "Honey 600g")
+  const titleParsed = parseWeightStringToKg(product.title) || parseWeightStringToKg(product.subtitle);
+  if (titleParsed !== null) {
+    return titleParsed;
   }
 
   // Fallback realistic ecommerce unit parcel weight
@@ -109,14 +178,21 @@ export function calculateProductWeight(product: Product): number {
 /**
  * Calculates total weight of all items in cart (in kg).
  */
-export function calculateCartTotalWeight(cart: { product: Product; quantity: number }[]): number {
+export function calculateCartTotalWeight(
+  cart: Array<{
+    product: Product;
+    quantity: number;
+    variant?: any;
+    selectedVariant?: string;
+  }>
+): number {
   if (!cart || cart.length === 0) return 0.5;
   const total = cart.reduce((sum, item) => {
-    const unitWeight = calculateProductWeight(item.product);
+    const unitWeight = calculateProductWeight(item.product, item.variant, item.selectedVariant);
     const qty = Math.max(1, Number(item.quantity) || 1);
     return sum + (unitWeight * qty);
   }, 0);
-  return Number(Math.max(0.2, total).toFixed(2));
+  return Number(Math.max(0.1, total).toFixed(2));
 }
 
 /**

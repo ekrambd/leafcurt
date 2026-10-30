@@ -1,6 +1,5 @@
 import { Router } from 'express';
-import { storeSettings, updateStoreSettings } from '../data/store';
-import { SteadfastCourierService } from '../services/steadfastService';
+import { storeSettings, updateStoreSettings, storeOrders, saveOrdersToDisk } from '../data/store';
 import { PathaoCourierService } from '../services/pathaoService';
 import { FacebookCapiService } from '../services/facebookCapiService';
 import { requireAdmin } from '../middleware/adminAuth';
@@ -20,8 +19,6 @@ const handleGetSettings = (_req: any, res: any) => {
   const { 
     pixelId: _pixelId, 
     metaApiToken: _metaApiToken, 
-    steadfastApiKey: _steadfastApiKey, 
-    steadfastSecretKey: _steadfastSecretKey,
     pathaoClientSecret: _pathaoClientSecret,
     pathaoClientPassword: _pathaoClientPassword,
     ...publicSettings 
@@ -36,8 +33,6 @@ const handlePostSettings = (req: any, res: any) => {
   const { 
     pixelId: _pixelId, 
     metaApiToken: _metaApiToken, 
-    steadfastApiKey: _steadfastApiKey, 
-    steadfastSecretKey: _steadfastSecretKey,
     ...safeSettings 
   } = req.body;
   const updated = updateStoreSettings(safeSettings);
@@ -54,54 +49,7 @@ settingsRouter.post('/', requireAdmin, handlePostSettings);
 settingsRouter.post('/ecom', requireAdmin, handlePostSettings);
 
 // ==========================================
-// STEADFAST COURIER DISPATCH WITH CIRCUIT BREAKER
-// ==========================================
-courierRouter.get('/steadfast/test', requireAdmin, async (_req, res) => {
-  try {
-    const result = await circuitBreakerRegistry.steadfastCourier.execute(
-      () => SteadfastCourierService.testConnection()
-    );
-    res.json(result);
-  } catch (err: any) {
-    res.status(502).json({ success: false, message: err.message || 'Steadfast connection failed' });
-  }
-});
-
-courierRouter.get('/steadfast/status/:trackingCode', requireAdmin, async (req, res) => {
-  try {
-    const result = await circuitBreakerRegistry.steadfastCourier.execute(
-      () => SteadfastCourierService.getStatus(req.params.trackingCode)
-    );
-    res.json(result);
-  } catch (err: any) {
-    res.status(502).json({ success: false, message: err.message || 'Steadfast status check failed' });
-  }
-});
-
-courierRouter.post('/steadfast/dispatch', requireAdmin, async (req, res) => {
-  try {
-    const result = await circuitBreakerRegistry.steadfastCourier.execute(
-      () => SteadfastCourierService.dispatchOrder(req.body)
-    );
-    res.json(result);
-  } catch (err: any) {
-    res.status(500).json({ success: false, error: err.message || 'Dispatch failed' });
-  }
-});
-
-courierRouter.get('/steadfast/fraud-check/:phone', requireAdmin, async (req, res) => {
-  try {
-    const result = await circuitBreakerRegistry.steadfastCourier.execute(
-      () => SteadfastCourierService.checkDeliveryRatio(req.params.phone)
-    );
-    res.json(result);
-  } catch (err: any) {
-    res.status(500).json({ success: false, message: err.message || 'Courier fraud check failed' });
-  }
-});
-
-// ==========================================
-// PATHAO COURIER DISPATCH & INTEGRATION
+// PATHAO COURIER DISPATCH & INTEGRATION (ONLY OFFICIAL)
 // ==========================================
 courierRouter.post('/pathao/test', requireAdmin, async (req, res) => {
   try {
@@ -123,7 +71,8 @@ courierRouter.get('/pathao/stores', requireAdmin, async (req, res) => {
   }
 });
 
-courierRouter.get('/pathao/cities', requireAdmin, async (req, res) => {
+// Cities, Zones & Areas - Open to storefront for live checkout address selection
+courierRouter.get('/pathao/cities', async (_req, res) => {
   try {
     const result = await PathaoCourierService.getCities();
     res.json(result);
@@ -132,7 +81,7 @@ courierRouter.get('/pathao/cities', requireAdmin, async (req, res) => {
   }
 });
 
-courierRouter.get('/pathao/cities/:cityId/zones', requireAdmin, async (req, res) => {
+courierRouter.get('/pathao/cities/:cityId/zones', async (req, res) => {
   try {
     const result = await PathaoCourierService.getZones(req.params.cityId);
     res.json(result);
@@ -141,12 +90,33 @@ courierRouter.get('/pathao/cities/:cityId/zones', requireAdmin, async (req, res)
   }
 });
 
-courierRouter.get('/pathao/zones/:zoneId/areas', requireAdmin, async (req, res) => {
+courierRouter.get('/pathao/zones/:zoneId/areas', async (req, res) => {
   try {
     const result = await PathaoCourierService.getAreas(req.params.zoneId);
     res.json(result);
   } catch (err: any) {
     res.status(502).json({ success: false, message: err.message || 'Failed to fetch Pathao areas' });
+  }
+});
+
+// Live Dynamic Price Calculation API for Checkout
+courierRouter.post('/pathao/price-plan', async (req, res) => {
+  try {
+    const { storeId, itemType, deliveryType, itemWeight, recipientCity, recipientZone } = req.body || {};
+    if (!recipientCity || !recipientZone) {
+      return res.status(400).json({ success: false, message: 'recipientCity and recipientZone are required' });
+    }
+    const result = await PathaoCourierService.calculatePrice({
+      storeId,
+      itemType: Number(itemType) || 2,
+      deliveryType: Number(deliveryType) || 48,
+      itemWeight: Number(itemWeight) || 0.5,
+      recipientCity: Number(recipientCity),
+      recipientZone: Number(recipientZone)
+    });
+    res.json(result);
+  } catch (err: any) {
+    res.status(502).json({ success: false, message: err.message || 'Failed to calculate Pathao delivery price' });
   }
 });
 
@@ -168,11 +138,40 @@ courierRouter.get('/pathao/status/:consignmentId', requireAdmin, async (req, res
   }
 });
 
-// Pathao Webhook Receiver
+// Pathao Webhook Receiver - Auto updates order status on Delivery / Return
 courierRouter.post('/pathao/webhook', async (req, res) => {
   try {
-    const eventData = req.body;
+    const eventData = req.body || {};
     console.log('[Pathao Webhook Event Received]:', JSON.stringify(eventData));
+
+    const consignmentId = eventData.consignment_id || eventData.consignmentId || eventData.merchant_order_id;
+    const rawStatus = (eventData.order_status || eventData.status || '').toLowerCase();
+
+    if (consignmentId) {
+      const matchIndex = storeOrders.findIndex(
+        o => o.pathaoConsignmentId === consignmentId || o.id === consignmentId
+      );
+
+      if (matchIndex !== -1) {
+        let newStatus = storeOrders[matchIndex].status;
+        if (rawStatus.includes('delivered') || rawStatus === 'successful') {
+          newStatus = 'Delivered';
+        } else if (rawStatus.includes('return') || rawStatus.includes('cancelled') || rawStatus.includes('failed')) {
+          newStatus = 'Return';
+        }
+
+        storeOrders[matchIndex] = {
+          ...storeOrders[matchIndex],
+          status: newStatus,
+          pathaoStatus: eventData.order_status || eventData.status,
+          updatedAt: new Date().toISOString()
+        };
+        saveOrdersToDisk(storeOrders);
+        globalCache.invalidateTag('orders');
+        console.log(`[Pathao Auto-Update]: Order ${storeOrders[matchIndex].id} status changed to ${newStatus}`);
+      }
+    }
+
     res.status(200).json({ success: true, message: 'Webhook event processed' });
   } catch (err: any) {
     res.status(400).json({ success: false, error: err.message });

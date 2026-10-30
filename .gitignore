@@ -39,3 +39,7 @@ lerna-debug.log*
 Thumbs.db
 .vscode/
 .idea/
+
+# User Uploaded Media (Server disk only - do not commit to Git)
+public/uploads/*
+!public/uploads/.gitkeep

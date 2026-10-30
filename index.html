@@ -19,8 +19,12 @@
     <link rel="preconnect" href="https://images.unsplash.com" crossorigin />
     <link rel="dns-prefetch" href="https://images.unsplash.com" />
     
-    <!-- Brand Favicon -->
-    <link rel="icon" type="image/svg+xml" href="/favicon/favicon.svg" />
+    <!-- Standard Favicons & Google Search Icons from /public/favicon -->
+    <link rel="icon" type="image/x-icon" href="/favicon/favicon.ico" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon/favicon-16x16.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/favicon/apple-touch-icon.png" />
+    <link rel="manifest" href="/favicon/site.webmanifest" />
     <link rel="alternate icon" type="image/x-icon" href="/favicon.ico" />
     <link rel="alternate" type="application/json" href="/ai-catalog.json" title="AI Agent Product Catalog" />
     
@@ -36,17 +40,27 @@
     <meta name="twitter:title" content="Leaf Curt | Premium 5-in-1 Laundry Detergent Pods" />
     <meta name="twitter:description" content="Shop Leaf Curt 5-in-1 Laundry Detergent Pods with Cash on Delivery nationwide in Bangladesh." />
 
-    <!-- Schema.org Structured Data (JSON-LD) -->
-    <script type="application/ld+json">
+    <!-- Schema.org Structured Data (JSON-LD) with Logo and SearchAction for Google Search -->
+    <script type="application/ld+json" id="website-schema">
     {
       "@context": "https://schema.org",
       "@type": "WebSite",
       "name": "Leaf Curt",
+      "url": "https://leafcurt.com/",
       "potentialAction": {
         "@type": "SearchAction",
         "target": "/shop?search={search_term_string}",
         "query-input": "required name=search_term_string"
       }
+    }
+    </script>
+    <script type="application/ld+json" id="organization-schema">
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "Leaf Curt",
+      "url": "https://leafcurt.com/",
+      "logo": "https://leafcurt.com/favicon/android-chrome-512x512.png"
     }
     </script>
   </head>

@@ -17,7 +17,7 @@ export interface CustomerCourierRatio {
   storeOrdersCount: number;
   storeDeliveredCount: number;
   storeCancelledCount: number;
-  source: 'steadfast' | 'internal' | 'combined';
+  source: 'internal';
   recommendation: string;
   summaryText: string;
 }
@@ -78,31 +78,12 @@ export async function checkCustomerCourierRatio(
     o.status === 'Cancelled' || o.status === 'Returned' || (o.status as string) === 'cancelled'
   ).length;
 
-  let extTotal = 0;
-  let extDelivered = 0;
-  let extReturned = 0;
-  let extCancelled = 0;
-  let source: 'steadfast' | 'internal' | 'combined' = 'internal';
-
-  // 2. Fetch Steadfast Courier Central Fraud / Delivery History
-  try {
-    const extRes = await ApiClient.checkSteadfastFraud(phone);
-    if (extRes && extRes.success) {
-      extTotal = Number(extRes.totalParcels || 0);
-      extDelivered = Number(extRes.deliveredParcels || 0);
-      extReturned = Number(extRes.returnedParcels || 0);
-      extCancelled = Number(extRes.cancelledParcels || 0);
-      source = storeOrdersCount > 0 ? 'combined' : 'steadfast';
-    }
-  } catch (err) {
-    // Graceful fallback to internal store history
-  }
-
-  // 3. Combine metrics intelligently
-  const totalParcels = Math.max(extTotal, storeOrdersCount);
-  const deliveredParcels = Math.max(extDelivered, storeDeliveredCount);
-  const returnedParcels = Math.max(extReturned, storeCancelledCount);
-  const cancelledParcels = Math.max(extCancelled, storeCancelledCount);
+  // Internal store order performance metrics
+  const totalParcels = storeOrdersCount;
+  const deliveredParcels = storeDeliveredCount;
+  const returnedParcels = storeCancelledCount;
+  const cancelledParcels = storeCancelledCount;
+  const source: 'internal' = 'internal';
 
   let successRatio = 100;
   let returnRatio = 0;

@@ -1,3 +1,9 @@
+import dotenv from 'dotenv';
+try {
+  dotenv.config({ path: '.env.local' });
+  dotenv.config();
+} catch {}
+
 export interface PathaoCredentials {
   clientId?: string;
   clientSecret?: string;
@@ -160,6 +166,43 @@ export class PathaoCourierService {
 
   static async getAreas(zoneId: number | string, customCreds?: PathaoCredentials) {
     return this.authorizedRequest(`/aladdin/api/v1/zones/${zoneId}/area-list`, customCreds);
+  }
+
+  static async calculatePrice(params: {
+    storeId?: string | number;
+    itemType?: number;
+    deliveryType?: number;
+    itemWeight: number;
+    recipientCity: number;
+    recipientZone: number;
+  }, customCreds?: PathaoCredentials) {
+    const { storeId: defaultStoreId } = this.getResolvedConfig(customCreds);
+    let storeId = Number(params.storeId || defaultStoreId);
+    if (!storeId) {
+      try {
+        const storeRes = await this.getStores(customCreds);
+        const stores = storeRes.data?.data || storeRes.data || [];
+        if (stores.length > 0) {
+          storeId = Number(stores[0].store_id);
+        }
+      } catch (e) {
+        console.warn('Could not auto-fetch store for price calculation:', e);
+      }
+    }
+
+    const payload = {
+      store_id: storeId || 1,
+      item_type: params.itemType || 2, // 2: Parcel
+      delivery_type: params.deliveryType || 48, // 48: Normal Delivery
+      item_weight: Math.max(0.5, Math.min(10, Number(params.itemWeight) || 0.5)),
+      recipient_city: Number(params.recipientCity),
+      recipient_zone: Number(params.recipientZone)
+    };
+
+    return this.authorizedRequest('/aladdin/api/v1/merchant/price-plan', customCreds, {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
   }
 
   static async dispatchOrder(params: PathaoDispatchParams) {

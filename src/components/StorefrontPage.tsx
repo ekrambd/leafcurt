@@ -333,6 +333,7 @@ export default function StorefrontPage({ onGoToLogin, onGoToLanding }: Storefron
     }
     return initialList[0] || BLANK_STORE_PRODUCT;
   });
+  const [activeVariant, setActiveVariant] = useState<any>(null);
   const [activeImageIndex, setActiveImageIndex] = useState<number>(0);
   const [isZoomModalOpen, setIsZoomModalOpen] = useState<boolean>(false);
   const [isHoverZooming, setIsHoverZooming] = useState<boolean>(false);
@@ -787,20 +788,21 @@ export default function StorefrontPage({ onGoToLogin, onGoToLanding }: Storefron
 
   // Dynamic Favicon and Document Title Sync
   useEffect(() => {
-    if (displayStoreLogo) {
-      let link = document.head.querySelector<HTMLLinkElement>('link[rel="icon"]');
-      if (!link) {
-        link = document.createElement('link');
-        link.rel = 'icon';
-        document.head.appendChild(link);
-      }
-      link.href = displayStoreLogo;
+    // If admin set custom store logo in Profile, keep favicon in sync; otherwise fallback to /favicon/favicon.ico
+    const currentFavicon = displayStoreLogo || '/favicon/favicon.ico';
+    let link = document.head.querySelector<HTMLLinkElement>('link[rel="icon"]');
+    if (!link) {
+      link = document.createElement('link');
+      link.rel = 'icon';
+      document.head.appendChild(link);
     }
+    link.href = currentFavicon;
+
     if (displayStoreName) {
       updateMetaTags(
         `${displayStoreName} | Official Store`, 
         aboutSettings?.description || 'Welcome to our official store', 
-        displayStoreLogo,
+        displayStoreLogo || '/favicon/android-chrome-512x512.png', 
         window.location.href
       );
     }
@@ -954,24 +956,30 @@ export default function StorefrontPage({ onGoToLogin, onGoToLanding }: Storefron
   };
 
   // Add to Cart Helper
-  const handleAddToCart = useCallback((product: Product, quantity = 1) => {
+  const handleAddToCart = useCallback((product: Product, quantity = 1, variant?: any) => {
     const eventId = createEventId('cart');
+    const finalPrice = variant?.price || product.price || 0;
     trackEvent('AddToCart', {
       content_name: product.title,
       content_ids: [product.id],
       content_type: 'product',
-      value: (product.price || 0) * quantity,
+      value: finalPrice * quantity,
       currency: 'BDT',
       num_items: quantity,
       contents: [{
         id: product.id,
         name: product.title,
         quantity: quantity,
-        item_price: product.price
+        item_price: finalPrice
       }]
     }, eventId);
-    addToCartAction({ product, quantity });
-    showToast(`Added ${product.title} to your bag.`, 'success');
+    addToCartAction({
+      product,
+      quantity,
+      variant,
+      selectedVariant: variant?.name
+    });
+    showToast(`Added ${product.title}${variant ? ` (${variant.name})` : ''} to your bag.`, 'success');
   }, [addToCartAction, showToast]);
 
   const handleRemoveFromCart = useCallback((productId: string) => {
@@ -989,6 +997,7 @@ export default function StorefrontPage({ onGoToLogin, onGoToLanding }: Storefron
   // Open Full Product Detail Page with dynamic SEO deep-link URL
   const openProductDetail = useCallback((product: StoreProductItem) => {
     setActiveProductDetail(product);
+    setActiveVariant(product.variants && product.variants.length > 0 ? product.variants[0] : null);
     setActiveImageIndex(0);
     setActiveNav('product_detail');
     const slug = getProductSlug(product);
@@ -1999,10 +2008,75 @@ export default function StorefrontPage({ onGoToLogin, onGoToLanding }: Storefron
                 )}
               </div>
 
+              {/* Variant / Weight Selector if product has variants */}
+              {activeProductDetail.hasVariants && Array.isArray(activeProductDetail.variants) && activeProductDetail.variants.length > 0 && (
+                <div className="space-y-2 pt-1 pb-1">
+                  <label className="block text-xs font-bold text-slate-800">
+                    ভ্যারিয়েন্ট / সাইজ নির্বাচন করুন (Variant):
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {activeProductDetail.variants.map((v) => {
+                      const isCurrent = (activeVariant?.id === v.id);
+                      return (
+                        <button
+                          key={v.id}
+                          type="button"
+                          onClick={() => setActiveVariant(v)}
+                          className={`px-3.5 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer flex items-center gap-1.5 ${
+                            isCurrent
+                              ? 'bg-purple-600 text-white border-purple-600 shadow-xs ring-2 ring-purple-200'
+                              : 'bg-white text-slate-700 border-slate-200 hover:border-purple-300 hover:bg-purple-50/50'
+                          }`}
+                        >
+                          {v.color && (
+                            <span
+                              className="w-2.5 h-2.5 rounded-full border border-white/50 shrink-0 shadow-xs"
+                              style={{ backgroundColor: v.color }}
+                            />
+                          )}
+                          <span>{v.name}</span>
+                          {v.price && v.price !== activeProductDetail.price && (
+                            <span className={`text-[10px] ml-0.5 ${isCurrent ? 'text-purple-100' : 'text-slate-500'}`}>
+                              ({formatPrice(v.price)})
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Product Attributes (e.g. Weight: 600g, Unit: pcs, Size, Color) */}
+              {((Array.isArray(activeProductDetail.selectedAttributes) && activeProductDetail.selectedAttributes.length > 0) || activeProductDetail.unit) && (
+                <div className="flex flex-wrap items-center gap-2 pt-1 pb-1">
+                  {Array.isArray(activeProductDetail.selectedAttributes) && activeProductDetail.selectedAttributes.map((attr, idx) => (
+                    <div 
+                      key={attr.attributeId || idx}
+                      className="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-50 border border-slate-200/90 rounded-xl text-xs font-medium text-slate-800 shadow-2xs"
+                    >
+                      <span className="text-slate-400 font-semibold">{attr.attributeName}:</span>
+                      <span className="font-bold text-slate-900 bg-white px-2 py-0.5 rounded-lg border border-slate-200/60">
+                        {Array.isArray(attr.values) ? attr.values.join(', ') : attr.values}
+                      </span>
+                    </div>
+                  ))}
+
+                  {activeProductDetail.unit && activeProductDetail.unit !== 'pcs' && (
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-50 border border-slate-200/90 rounded-xl text-xs font-medium text-slate-800 shadow-2xs">
+                      <span className="text-slate-400 font-semibold">Unit:</span>
+                      <span className="font-bold text-slate-900 bg-white px-2 py-0.5 rounded-lg border border-slate-200/60 uppercase">
+                        {activeProductDetail.unit}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Actions (ADD TO BAG & BUY NOW Horizontally) */}
               <div className="pt-1 grid grid-cols-2 gap-2.5 sm:gap-3">
                 <button 
-                  onClick={() => handleAddToCart(activeProductDetail)}
+                  onClick={() => handleAddToCart(activeProductDetail, 1, activeVariant)}
                   className="bg-slate-900 hover:bg-slate-800 text-white font-bold py-3.5 px-4 text-xs sm:text-sm uppercase tracking-wider transition-all shadow-md active:scale-95 cursor-pointer rounded-xl flex items-center justify-center gap-2"
                 >
                   <ShoppingBag className="w-4 h-4 shrink-0" />
@@ -2010,7 +2084,7 @@ export default function StorefrontPage({ onGoToLogin, onGoToLanding }: Storefron
                 </button>
                 <button 
                   onClick={() => {
-                    handleAddToCart(activeProductDetail);
+                    handleAddToCart(activeProductDetail, 1, activeVariant);
                     setIsCartOpen(false);
                     navigateTo('checkout');
                   }}
@@ -2761,6 +2835,20 @@ export default function StorefrontPage({ onGoToLogin, onGoToLanding }: Storefron
                               {product.title}
                             </h4>
 
+                            {/* Attribute Badge (e.g. 600g, Weight) */}
+                            {Array.isArray(product.selectedAttributes) && product.selectedAttributes.length > 0 && (
+                              <div className="flex flex-wrap items-center justify-center gap-1 my-0.5">
+                                {product.selectedAttributes.map((attr, aIdx) => (
+                                  <span 
+                                    key={aIdx} 
+                                    className="inline-flex items-center text-[10px] font-bold text-sky-700 bg-sky-50 px-2 py-0.5 rounded-md border border-sky-200/80"
+                                  >
+                                    {Array.isArray(attr.values) ? attr.values.join(', ') : attr.values}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+
                             <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 font-sans text-xs">
                               <span className="text-slate-900 font-extrabold text-xs sm:text-sm">{formatPrice(product.price)}</span>
                               {isDiscounted && (
@@ -3314,6 +3402,20 @@ export default function StorefrontPage({ onGoToLogin, onGoToLanding }: Storefron
                               <h3 className="font-sans text-xs sm:text-sm font-semibold text-slate-800 group-hover:text-[#0093d0] transition-colors line-clamp-1">
                                 {product.title}
                               </h3>
+
+                              {/* Attribute Badge (e.g. 600g, Weight) */}
+                              {Array.isArray(product.selectedAttributes) && product.selectedAttributes.length > 0 && (
+                                <div className="flex flex-wrap items-center justify-center gap-1 my-0.5">
+                                  {product.selectedAttributes.map((attr, aIdx) => (
+                                    <span 
+                                      key={aIdx} 
+                                      className="inline-flex items-center text-[10px] font-bold text-sky-700 bg-sky-50 px-2 py-0.5 rounded-md border border-sky-200/80"
+                                    >
+                                      {Array.isArray(attr.values) ? attr.values.join(', ') : attr.values}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
                               
                               <div className="flex items-center justify-center gap-1.5 font-sans">
                                 <span className="text-xs sm:text-sm font-extrabold text-slate-900">
@@ -4359,88 +4461,6 @@ export default function StorefrontPage({ onGoToLogin, onGoToLanding }: Storefron
                         </div>
                       </div>
                     )}
-
-                    {/* Embedded Customer Reviews Box in Cart Drawer (Randomized Authentic Bangladeshi Female Reviews) */}
-                    {(() => {
-                      const currentCartReview = (() => {
-                        const cr = ecomSettings?.cartReview;
-                        if (
-                          cr &&
-                          cr.reviewerName &&
-                          cr.reviewerName.toLowerCase() !== 'cleo' &&
-                          !cr.reviewerName.toLowerCase().includes('cleo') &&
-                          cr.comment &&
-                          !cr.comment.includes('signature WDF')
-                        ) {
-                          return cr;
-                        }
-                        return BANGLADESHI_FEMALE_CART_REVIEWS[cartReviewIndex % BANGLADESHI_FEMALE_CART_REVIEWS.length] || BANGLADESHI_FEMALE_CART_REVIEWS[0];
-                      })();
-
-                      if (ecomSettings?.cartReview?.enabled === false) return null;
-
-                      return (
-                        <div className="mt-4 p-4 rounded-2xl border border-purple-100 bg-gradient-to-br from-[#fcfaff] to-white shadow-2xs space-y-2.5 transition-all">
-                          <div className="flex items-center justify-between">
-                            <h4 className="font-sans text-xs sm:text-sm font-bold text-slate-900 flex items-center gap-1.5">
-                              Customer Reviews
-                            </h4>
-                            {/* Subtle shuffle button to preview other real reviews */}
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setCartReviewIndex((prev) => (prev + 1) % BANGLADESHI_FEMALE_CART_REVIEWS.length);
-                              }}
-                              className="text-slate-400 hover:text-purple-600 transition-colors p-1 -mr-1 rounded-full hover:bg-purple-50"
-                              title="অন্যান্য কাস্টমার রিভিউ দেখুন"
-                            >
-                              <RefreshCw className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-
-                          {/* 5 Purple Stars */}
-                          <div className="flex items-center gap-0.5">
-                            {[1, 2, 3, 4, 5].map((s) => (
-                              <Star 
-                                key={s} 
-                                className={`w-4 h-4 ${
-                                  s <= (currentCartReview.rating || 5)
-                                    ? 'fill-[#7c3aed] text-[#7c3aed]'
-                                    : 'fill-slate-200 text-slate-200'
-                                }`} 
-                              />
-                            ))}
-                          </div>
-
-                          {/* Reviewer line: Name [Verified] [Location] Date */}
-                          <div className="flex flex-wrap items-center gap-2 text-xs">
-                            <span className="font-bold text-slate-900">
-                              {currentCartReview.reviewerName}
-                            </span>
-                            {currentCartReview.isVerified !== false && (
-                              <span className="px-1.5 py-0.5 rounded border border-emerald-300 text-emerald-700 bg-emerald-50 text-[10px] font-semibold inline-flex items-center gap-0.5">
-                                <Check className="w-2.5 h-2.5 stroke-[2.5]" />
-                                Verified
-                              </span>
-                            )}
-                            {currentCartReview.location && (
-                              <span className="text-[11px] text-slate-500 font-medium">
-                                • {currentCartReview.location}
-                              </span>
-                            )}
-                            <span className="text-[11px] text-slate-400 ml-auto">
-                              {currentCartReview.reviewDate}
-                            </span>
-                          </div>
-
-                          {/* Review Quote */}
-                          <p className="text-xs text-slate-700 leading-relaxed font-normal">
-                            "{currentCartReview.comment}"
-                          </p>
-                        </div>
-                      );
-                    })()}
                   </>
                 )}
               </div>

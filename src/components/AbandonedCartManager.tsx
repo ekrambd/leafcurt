@@ -47,8 +47,8 @@ export default function AbandonedCartManager() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [ecomSettings, setEcomSettings] = useState<EcomSettings | null>(null);
 
-  // Filters & Search
-  const [activeTab, setActiveTab] = useState<'all' | 'abandoned' | 'admin_recovered' | 'self_recovered' | 'cancelled'>('all');
+  // Filters & Search (Default to 'abandoned' so placed orders don't clutter the pending recovery view)
+  const [activeTab, setActiveTab] = useState<'all' | 'abandoned' | 'admin_recovered' | 'self_recovered' | 'cancelled'>('abandoned');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedChannelFilter, setSelectedChannelFilter] = useState<string>('all');
   const [sourceFilter, setSourceFilter] = useState<string>('all');

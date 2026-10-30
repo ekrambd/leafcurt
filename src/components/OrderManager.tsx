@@ -33,34 +33,33 @@ interface OrderManagerProps {
   onDeleteOrder: (id: string) => Promise<void>;
 }
 
-// Crisp Barcode SVG Generator for print outputs
+import { encodeCode128B } from '../lib/barcodeGenerator';
+
+// Real Scannable Code 128 (Subset B) Barcode Component for print outputs
 function BarcodeSVG({ value, height = 38 }: { value: string; height?: number }) {
-  const bars: { width: number; space: number }[] = [];
-  const clean = (value || 'ORD-1001').toUpperCase().replace(/[^A-Z0-9]/g, '');
-  for (let i = 0; i < clean.length; i++) {
-    const code = clean.charCodeAt(i);
-    bars.push({
-      width: (code % 3) + 1.5,
-      space: ((code * 2) % 3) + 1.5
-    });
-  }
+  const cleanVal = (value || 'ORD-1001').trim();
+  const modules = encodeCode128B(cleanVal);
+  const totalWidth = modules.reduce((sum, m) => sum + m.width, 0);
 
-  let currentX = 10;
-  bars.forEach(b => { currentX += b.width + b.space; });
-  const totalWidth = currentX + 10;
-
-  let renderX = 10;
+  let currentX = 0;
   return (
-    <svg viewBox={`0 0 ${totalWidth} ${height}`} className="w-full h-10" preserveAspectRatio="none">
-      {bars.map((b, idx) => {
-        const x = renderX;
-        renderX += b.width + b.space;
+    <svg 
+      viewBox={`0 0 ${totalWidth} ${height}`} 
+      className="w-full h-10" 
+      preserveAspectRatio="none"
+      style={{ imageRendering: 'pixelated' }}
+    >
+      <rect x="0" y="0" width={totalWidth} height={height} fill="#ffffff" />
+      {modules.map((m, idx) => {
+        const x = currentX;
+        currentX += m.width;
+        if (!m.isBar) return null;
         return (
           <rect
             key={idx}
             x={x}
             y={0}
-            width={b.width}
+            width={m.width}
             height={height}
             fill="#000000"
           />
@@ -269,13 +268,13 @@ export default function OrderManager({
   // Customer Courier Delivery Ratio & Fraud Check Modal
   const [bulkCourierConfirm, setBulkCourierConfirm] = useState<{
     isOpen: boolean;
-    provider: 'steadfast' | 'pathao';
+    provider: 'pathao';
     providerName: string;
     count: number;
   }>({
     isOpen: false,
-    provider: 'steadfast',
-    providerName: 'Steadfast',
+    provider: 'pathao',
+    providerName: 'Pathao',
     count: 0
   });
 
@@ -552,38 +551,6 @@ export default function OrderManager({
   };
 
 
-  // Dispatch to Steadfast Courier
-  const handleSteadfastDispatch = async (order: BookOrder) => {
-    setDispatchingId(order.id);
-    setOpenActionMenuOrderId(null);
-    try {
-      const result = await dbService.sendToSteadfastCourier(order);
-      if (result.success && result.trackingCode) {
-        onUpdateOrder({
-          ...order,
-          status: 'Shipped',
-          courierProvider: 'steadfast',
-          steadfastTrackingCode: result.trackingCode,
-          steadfastStatus: 'In Transit'
-        });
-      }
-      setDispatchDialog({
-        orderId: order.id,
-        message: result.message || 'Parcel entry has been successfully made to Steadfast Courier!',
-        success: result.success
-      });
-    } catch (err: any) {
-      console.error('Steadfast dispatch error:', err);
-      setDispatchDialog({
-        orderId: order.id,
-        message: err?.message || 'There is a problem with courier booking',
-        success: false
-      });
-    } finally {
-      setDispatchingId(null);
-    }
-  };
-
   // Dispatch to Pathao Courier
   const handlePathaoDispatch = async (order: BookOrder) => {
     setDispatchingId(order.id);
@@ -603,14 +570,14 @@ export default function OrderManager({
       }
       setDispatchDialog({
         orderId: order.id,
-        message: result.message || `send courierE successfulBooking done! (Consignment: ${result.consignmentId})`,
+        message: result.message || `Pathao Courier পার্সেল সফলভাবে বুকিং হয়েছে! (Consignment: ${result.consignmentId})`,
         success: result.success
       });
     } catch (err: any) {
       console.error('Pathao dispatch error:', err);
       setDispatchDialog({
         orderId: order.id,
-        message: err?.message || 'There is a problem with the booking of Pathao Courier',
+        message: err?.message || 'Pathao Courier বুকিং ব্যর্থ হয়েছে',
         success: false
       });
     } finally {
@@ -618,22 +585,20 @@ export default function OrderManager({
     }
   };
 
-  const handleBulkTransferToCourier = (provider: 'steadfast' | 'pathao' = 'steadfast') => {
+  const handleBulkTransferToCourier = () => {
     if (selectedOrderIds.length === 0) {
       return;
     }
 
-    const providerName = provider === 'pathao'? 'Send it' : 'Steadfast';
     setBulkCourierConfirm({
       isOpen: true,
-      provider,
-      providerName,
+      provider: 'pathao',
+      providerName: 'Pathao',
       count: selectedOrderIds.length
     });
   };
 
   const handleExecuteBulkTransfer = async () => {
-    const { provider, providerName } = bulkCourierConfirm;
     setBulkCourierConfirm(prev => ({ ...prev, isOpen: false }));
 
     let successCount = 0;
@@ -641,32 +606,18 @@ export default function OrderManager({
       const target = orders.find(o => o.id === id);
       if (target) {
         try {
-          if (provider === 'pathao') {
-            const res = await dbService.sendToPathaoCourier(target);
-            if (res.success && res.consignmentId) {
-              await onUpdateOrder({
-                ...target,
-                status: 'Shipped',
-                courierProvider: 'pathao',
-                pathaoConsignmentId: res.consignmentId,
-                pathaoTrackingCode: res.trackingCode || res.consignmentId,
-                pathaoStatus: res.orderStatus || 'Pending',
-                pathaoDeliveryFee: res.deliveryFee
-              });
-              successCount++;
-            }
-          } else {
-            const res = await dbService.sendToSteadfastCourier(target);
-            if (res.success && res.trackingCode) {
-              await onUpdateOrder({ 
-                ...target, 
-                status: 'Shipped', 
-                courierProvider: 'steadfast',
-                steadfastTrackingCode: res.trackingCode,
-                steadfastStatus: 'In Transit'
-              });
-              successCount++;
-            }
+          const res = await dbService.sendToPathaoCourier(target);
+          if (res.success && res.consignmentId) {
+            await onUpdateOrder({
+              ...target,
+              status: 'Shipped',
+              courierProvider: 'pathao',
+              pathaoConsignmentId: res.consignmentId,
+              pathaoTrackingCode: res.trackingCode || res.consignmentId,
+              pathaoStatus: res.orderStatus || 'Pending',
+              pathaoDeliveryFee: res.deliveryFee
+            });
+            successCount++;
           }
         } catch (e) {
           console.error(e);
@@ -691,11 +642,11 @@ export default function OrderManager({
 
   const handleSyncCourier = async () => {
     const candidates = orders.filter(order =>
-      (order.steadfastTrackingCode || order.pathaoConsignmentId) && 
+      order.pathaoConsignmentId && 
       (selectedOrderIds.length === 0 || selectedOrderIds.includes(order.id))
     );
     if (candidates.length === 0) {
-      alert('Could not find Steadfast or Pathao tracking code to sync.');
+      alert('Could not find Pathao tracking consignment ID to sync.');
       return;
     }
 
@@ -705,22 +656,12 @@ export default function OrderManager({
         if (order.pathaoConsignmentId) {
           const result = await ApiClient.getPathaoStatus(order.pathaoConsignmentId);
           const normalized = (result.status || '').toLowerCase();
-          const status = normalized.includes('delivered')
+          const status = normalized.includes('delivered') || normalized === 'successful'
             ? 'Delivered'
-            : (normalized.includes('cancelled') || normalized.includes('returned'))
+            : (normalized.includes('cancelled') || normalized.includes('returned') || normalized.includes('return') || normalized.includes('failed'))
               ? 'Return'
               : order.status;
           await onUpdateOrder({ ...order, status, pathaoStatus: result.status });
-          successCount++;
-        } else if (order.steadfastTrackingCode) {
-          const result = await ApiClient.getSteadfastStatus(order.steadfastTrackingCode);
-          const normalized = result.status.toLowerCase();
-          const status = normalized === 'delivered'
-            ? 'Delivered'
-            : normalized.includes('cancelled')
-              ? 'Cancelled'
-              : order.status;
-          await onUpdateOrder({ ...order, status, steadfastStatus: result.status });
           successCount++;
         }
       } catch (error) {
@@ -728,37 +669,7 @@ export default function OrderManager({
       }
     }
     setIsActionsMenuOpen(false);
-    alert(`${successCount} / ${candidates.length} T the courier Status successfulway synced।`);
-  };
-
-  // Export as Steadfast Bulk CSV Format
-  const exportSteadfastCSV = () => {
-    const list = selectedOrders.length > 0 ? selectedOrders : filteredOrders;
-    if (list.length === 0) {
-      alert('There are no orders to export.');
-      return;
-    }
-
-    const headers = ['Invoice', 'Name', 'Contact', 'Address', 'Amount', 'Note'];
-    const rows = list.map(o => [
-      `"${o.id}"`,
-      `"${o.customerName.replace(/"/g, '""')}"`,
-      `"${o.phone}"`,
-      `"${o.address.replace(/"/g, '""')}"`,
-      `"${o.totalPrice || (o.price * o.quantity + o.deliveryCharge)}"`,
-      `"${(o.productTitle + ' x' + o.quantity).replace(/"/g, '""')}"`
-    ]);
-
-    const csvContent = '\uFEFF' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', `Steadfast_Bulk_Upload_${new Date().toISOString().slice(0,10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    setIsExportMenuOpen(false);
+    alert(`${successCount} / ${candidates.length} orders successfully synced with Pathao courier.`);
   };
 
   // Export as Pathao Bulk CSV Format
@@ -827,7 +738,7 @@ export default function OrderManager({
           case 'attributionId': val = '-'; break;
           case 'affiliateCode': val = o.couponCode || '-'; break;
           case 'net': val = String(o.price * o.quantity); break;
-          case 'logistics': val = o.steadfastTrackingCode ? 'Steadfast' : 'Courier'; break;
+          case 'logistics': val = o.pathaoConsignmentId ? 'Pathao' : 'Courier'; break;
           case 'logisticsCharge': val = String(o.deliveryCharge); break;
           case 'total': val = String(o.totalPrice); break;
           case 'rEarn': val = '0'; break;
@@ -951,9 +862,9 @@ export default function OrderManager({
           if (match) {
             await onUpdateOrder({
               ...match,
-              steadfastTrackingCode: trackingOrStatus.startsWith('CID') || trackingOrStatus.startsWith('ST') 
+              pathaoConsignmentId: trackingOrStatus.startsWith('CID') || trackingOrStatus.startsWith('ST') || trackingOrStatus.length > 5
                 ? trackingOrStatus 
-                : match.steadfastTrackingCode,
+                : match.pathaoConsignmentId,
               status: trackingOrStatus.toLowerCase().includes('deliver') ? 'Delivered' : match.status
             });
             updatedCount++;
@@ -1124,7 +1035,7 @@ export default function OrderManager({
                           </div>
                           <div className="flex justify-between">
                             <span className="text-slate-500">Tracking:</span>
-                            <span className="font-mono font-medium text-slate-800">{ord.steadfastTrackingCode || 'Pending'}</span>
+                            <span className="font-mono font-medium text-slate-800">{ord.pathaoConsignmentId || 'Pending'}</span>
                           </div>
                         </div>
                       </div>
@@ -1260,7 +1171,7 @@ export default function OrderManager({
                     <div className="grid grid-cols-2 gap-2 border-b border-slate-200 pb-3 text-xs">
                       <div>
                         <span className="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider block">COURIER / TRACKING</span>
-                        <span className="font-bold text-slate-900">{ord.steadfastTrackingCode || 'Courier'}</span>
+                        <span className="font-bold text-slate-900">{ord.pathaoConsignmentId || 'Courier'}</span>
                       </div>
                       <div className="text-right">
                         <span className="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider block">COD PAYABLE</span>
@@ -1501,35 +1412,19 @@ export default function OrderManager({
               <ChevronDown className="h-4 w-4" />
             </button>
 
-            {/* Actions Menu Popup List (Exact match for Screenshot options) */}
+            {/* Actions Menu Popup List */}
             {isActionsMenuOpen && (
-              <div className="absolute right-0 mt-2 w-64 bg-white rounded-2xl shadow-2xl border border-slate-200 p-2 z-50 text-xs font-semibold text-slate-800 space-y-1 max-h-96 overflow-y-auto animate-in zoom-in-95 duration-150">
+              <div className="absolute right-0 mt-2 w-60 bg-white rounded-2xl shadow-2xl border border-slate-200 p-2 z-50 text-xs font-semibold text-slate-800 space-y-1 max-h-96 overflow-y-auto animate-in zoom-in-95 duration-150">
                 <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-3 py-1">
-                  Bulk Print & Docs
+                  Print & Documents
                 </div>
 
                 <button
                   onClick={() => handleOpenPrintView('invoice')}
-                  className="w-full text-left px-3 py-2 hover:bg-slate-50 rounded-xl flex items-center space-x-2 cursor-pointer"
+                  className="w-full text-left px-3 py-2 hover:bg-slate-50 rounded-xl flex items-center space-x-2 cursor-pointer font-bold text-slate-900"
                 >
-                  <Printer className="h-4 w-4 text-slate-600" />
-                  <span>Print invoices</span>
-                </button>
-
-                <button
-                  onClick={() => handleOpenPrintView('packing-slips')}
-                  className="w-full text-left px-3 py-2 hover:bg-slate-50 rounded-xl flex items-center space-x-2 cursor-pointer"
-                >
-                  <FileText className="h-4 w-4 text-slate-600" />
-                  <span>Print packing slips</span>
-                </button>
-
-                <button
-                  onClick={() => handleOpenPrintView('pos-receipt')}
-                  className="w-full text-left px-3 py-2 hover:bg-slate-50 rounded-xl flex items-center space-x-2 cursor-pointer"
-                >
-                  <DollarSign className="h-4 w-4 text-slate-600" />
-                  <span>Print POS Receipts</span>
+                  <Printer className="h-4 w-4 text-[#0279c7]" />
+                  <span>Print Invoices</span>
                 </button>
 
                 <button
@@ -1540,56 +1435,16 @@ export default function OrderManager({
                   <span>Print Parcel Stickers</span>
                 </button>
 
-                <button
-                  onClick={() => handleOpenPrintView('mini-stickers')}
-                  className="w-full text-left px-3 py-2 hover:bg-slate-50 rounded-xl flex items-center space-x-2 cursor-pointer"
-                >
-                  <Tag className="h-4 w-4 text-slate-600" />
-                  <span>Print Mini Stickers</span>
-                </button>
-
-                <button
-                  onClick={() => handleOpenPrintView('pick-list')}
-                  className="w-full text-left px-3 py-2 hover:bg-slate-50 rounded-xl flex items-center space-x-2 cursor-pointer"
-                >
-                  <CheckSquare className="h-4 w-4 text-slate-600" />
-                  <span>Pick List</span>
-                </button>
-
-                <button
-                  onClick={() => handleOpenPrintView('check-list')}
-                  className="w-full text-left px-3 py-2 hover:bg-slate-50 rounded-xl flex items-center space-x-2 cursor-pointer"
-                >
-                  <CheckCircle className="h-4 w-4 text-slate-600" />
-                  <span>Check List</span>
-                </button>
-
-                <button
-                  onClick={() => handleOpenPrintView('commercial')}
-                  className="w-full text-left px-3 py-2 hover:bg-slate-50 rounded-xl flex items-center space-x-2 cursor-pointer"
-                >
-                  <FileText className="h-4 w-4 text-slate-600" />
-                  <span>Commercial / PO Docs</span>
-                </button>
-
                 <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-3 py-1 pt-2 border-t border-slate-100">
-                  Courier Integration (send it Steadfast)
+                  Courier Integration (Pathao)
                 </div>
 
                 <button
-                  onClick={() => handleBulkTransferToCourier('pathao')}
-                  className="w-full text-left px-3 py-2 hover:bg-red-50 text-red-800 rounded-xl flex items-center space-x-2 cursor-pointer font-bold"
+                  onClick={handleBulkTransferToCourier}
+                  className="w-full text-left px-3 py-2 hover:bg-red-50 text-red-700 rounded-xl flex items-center space-x-2 cursor-pointer font-bold"
                 >
                   <Send className="h-4 w-4 text-red-600" />
-                  <span>Send to Pathaosend</span>
-                </button>
-
-                <button
-                  onClick={() => handleBulkTransferToCourier('steadfast')}
-                  className="w-full text-left px-3 py-2 hover:bg-amber-50 text-amber-800 rounded-xl flex items-center space-x-2 cursor-pointer font-bold"
-                >
-                  <Truck className="h-4 w-4 text-amber-600" />
-                  <span>Send to SteadfastSteadfast</span>
+                  <span>Send to Pathao</span>
                 </button>
 
                 <button
@@ -1598,28 +1453,6 @@ export default function OrderManager({
                 >
                   <RefreshCw className="h-4 w-4 text-teal-600" />
                   <span>Sync courier status</span>
-                </button>
-
-                <button
-                  onClick={() => {
-                    setIsActionsMenuOpen(false);
-                    setIsImportCourierModalOpen(true);
-                  }}
-                  className="w-full text-left px-3 py-2 hover:bg-slate-50 rounded-xl flex items-center space-x-2 cursor-pointer"
-                >
-                  <Upload className="h-4 w-4 text-slate-600" />
-                  <span>Import courier file</span>
-                </button>
-
-                <button
-                  onClick={() => {
-                    setIsActionsMenuOpen(false);
-                    setIsBulkSmsModalOpen(true);
-                  }}
-                  className="w-full text-left px-3 py-2 hover:bg-slate-50 rounded-xl flex items-center space-x-2 cursor-pointer"
-                >
-                  <MessageSquare className="h-4 w-4 text-slate-600" />
-                  <span>Send Bulk SMS</span>
                 </button>
 
                 <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-3 py-1 pt-2 border-t border-slate-100">
@@ -1636,34 +1469,14 @@ export default function OrderManager({
                   <span>Mark Packaging</span>
                 </button>
 
-                <button onClick={() => handleBulkStatusChange('Ready for Shipment')} className="w-full text-left px-3 py-1.5 hover:bg-indigo-50 text-indigo-800 rounded-lg flex items-center space-x-2 cursor-pointer">
-                  <Truck className="h-3.5 w-3.5 text-indigo-600" />
-                  <span>Mark Ready for Shipment</span>
-                </button>
-
                 <button onClick={() => handleBulkStatusChange('Shipped')} className="w-full text-left px-3 py-1.5 hover:bg-purple-50 text-purple-800 rounded-lg flex items-center space-x-2 cursor-pointer">
                   <Truck className="h-3.5 w-3.5 text-purple-600" />
-                  <span>Mark Shipping</span>
+                  <span>Mark Shipped</span>
                 </button>
 
                 <button onClick={() => handleBulkStatusChange('Delivered')} className="w-full text-left px-3 py-1.5 hover:bg-emerald-50 text-emerald-800 rounded-lg flex items-center space-x-2 cursor-pointer">
                   <CheckCircle className="h-3.5 w-3.5 text-emerald-600" />
                   <span>Mark Delivered</span>
-                </button>
-
-                <button onClick={() => handleBulkStatusChange('Hold')} className="w-full text-left px-3 py-1.5 hover:bg-amber-50 text-amber-800 rounded-lg flex items-center space-x-2 cursor-pointer">
-                  <Clock className="h-3.5 w-3.5 text-amber-600" />
-                  <span>Mark Hold</span>
-                </button>
-
-                <button onClick={() => handleBulkStatusChange('Under Review')} className="w-full text-left px-3 py-1.5 hover:bg-slate-50 text-slate-800 rounded-lg flex items-center space-x-2 cursor-pointer">
-                  <Search className="h-3.5 w-3.5 text-slate-600" />
-                  <span>Mark Under Review</span>
-                </button>
-
-                <button onClick={() => handleBulkStatusChange('Not Responding')} className="w-full text-left px-3 py-1.5 hover:bg-rose-50 text-rose-800 rounded-lg flex items-center space-x-2 cursor-pointer font-semibold">
-                  <Phone className="h-3.5 w-3.5 text-rose-600" />
-                  <span>Mark Not Responding</span>
                 </button>
 
                 <button onClick={() => handleBulkStatusChange('Return')} className="w-full text-left px-3 py-1.5 hover:bg-rose-50 text-rose-800 rounded-lg flex items-center space-x-2 cursor-pointer">
@@ -1674,11 +1487,6 @@ export default function OrderManager({
                 <button onClick={() => handleBulkStatusChange('Cancelled')} className="w-full text-left px-3 py-1.5 hover:bg-rose-50 text-rose-800 rounded-lg flex items-center space-x-2 cursor-pointer font-bold">
                   <XCircle className="h-3.5 w-3.5 text-rose-600" />
                   <span>Mark Canceled</span>
-                </button>
-
-                <button onClick={() => handleBulkStatusChange('Pending')} className="w-full text-left px-3 py-1.5 hover:bg-slate-50 text-slate-800 rounded-lg flex items-center space-x-2 cursor-pointer">
-                  <RefreshCw className="h-3.5 w-3.5 text-slate-600" />
-                  <span>Reset to Placed</span>
                 </button>
               </div>
             )}
@@ -1701,18 +1509,10 @@ export default function OrderManager({
             {isExportMenuOpen && (
               <div className="absolute right-0 mt-2 w-56 bg-white rounded-2xl shadow-2xl border border-slate-200 p-2 z-50 text-xs font-semibold text-slate-800 space-y-1 animate-in zoom-in-95 duration-150">
                 <button
-                  onClick={exportSteadfastCSV}
-                  className="w-full text-left px-3 py-2 hover:bg-emerald-50 text-emerald-900 rounded-xl flex items-center space-x-2 cursor-pointer font-bold"
-                >
-                  <Download className="h-4 w-4 text-emerald-600" />
-                  <span>Steadfast Bulk Upload CSV</span>
-                </button>
-
-                <button
                   onClick={exportPathaoCSV}
-                  className="w-full text-left px-3 py-2 hover:bg-teal-50 text-teal-900 rounded-xl flex items-center space-x-2 cursor-pointer font-bold"
+                  className="w-full text-left px-3 py-2 hover:bg-red-50 text-red-900 rounded-xl flex items-center space-x-2 cursor-pointer font-bold"
                 >
-                  <Download className="h-4 w-4 text-teal-600" />
+                  <Download className="h-4 w-4 text-red-600" />
                   <span>Pathao Courier Bulk CSV</span>
                 </button>
 
@@ -1835,21 +1635,47 @@ export default function OrderManager({
                                 const title = it.product?.title || it.title || order.productTitle;
                                 const qty = it.quantity || 1;
                                 return (
-                                  <p key={i} className="font-bold text-slate-800 text-xs leading-snug line-clamp-1">
-                                    {qty}× {title}
-                                  </p>
+                                  <button
+                                    key={i}
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setInvoiceModalOrder(order);
+                                    }}
+                                    title="Click to preview order invoice"
+                                    className="text-left font-bold text-slate-800 hover:text-teal-700 transition-colors text-xs leading-snug line-clamp-1 cursor-pointer block group"
+                                  >
+                                    <span className="text-teal-600 font-extrabold group-hover:underline">{qty}×</span>{' '}
+                                    <span className="group-hover:underline">{title}</span>
+                                  </button>
                                 );
                               })}
                               {order.items.length > 2 && (
-                                <span className="text-[10px] text-slate-400 font-semibold block">
-                                  +{order.items.length - 2} more items
-                                </span>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setInvoiceModalOrder(order);
+                                  }}
+                                  className="text-[10px] text-teal-600 hover:text-teal-800 font-bold block cursor-pointer"
+                                >
+                                  +{order.items.length - 2} more items (view invoice)
+                                </button>
                               )}
                             </div>
                           ) : (
-                            <p className="font-bold text-slate-800 text-xs leading-snug line-clamp-1">
-                              {order.quantity || 1}× {order.productTitle || 'Product'}
-                            </p>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setInvoiceModalOrder(order);
+                              }}
+                              title="Click to preview order invoice"
+                              className="text-left font-bold text-slate-800 hover:text-teal-700 transition-colors text-xs leading-snug line-clamp-1 cursor-pointer block group"
+                            >
+                              <span className="text-teal-600 font-extrabold group-hover:underline">{order.quantity || 1}×</span>{' '}
+                              <span className="group-hover:underline">{order.productTitle || 'Product'}</span>
+                            </button>
                           )}
                         </div>
 
@@ -2017,14 +1843,6 @@ export default function OrderManager({
                             </span>
                           </div>
                         )}
-                        {order.steadfastTrackingCode && (
-                          <div className="mt-1">
-                            <span className="text-[10px] font-mono font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200/60 inline-flex items-center gap-1 max-w-full">
-                              <Truck className="h-3 w-3 text-amber-600 shrink-0" />
-                              <span className="truncate">Steadfast: #{order.steadfastTrackingCode}</span>
-                            </span>
-                          </div>
-                        )}
                       </td>
 
                       {/* 6. Actions */}
@@ -2095,16 +1913,6 @@ export default function OrderManager({
                                 >
                                   <Send className="h-4 w-4 text-red-600" />
                                   <span>{dispatchingId === order.id ? 'Booking...' : 'Send to Pathao'}</span>
-                                </button>
-
-                                <button
-                                  type="button"
-                                  onClick={() => handleSteadfastDispatch(order)}
-                                  disabled={dispatchingId === order.id || Boolean(order.steadfastTrackingCode)}
-                                  className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-slate-700 hover:bg-amber-50 hover:text-amber-700 disabled:cursor-not-allowed disabled:opacity-50"
-                                >
-                                  <Truck className="h-4 w-4 text-amber-600" />
-                                  <span>{dispatchingId === order.id ? 'Booking...' : 'Send to Steadfast'}</span>
                                 </button>
 
                                 <button
@@ -2221,7 +2029,7 @@ export default function OrderManager({
                   {dispatchDialog.success ? <CheckCircle className="h-5 w-5" /> : <AlertCircle className="h-5 w-5" />}
                 </div>
                 <div className="flex-1">
-                  <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate-500">Steadfast</p>
+                  <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate-500">Pathao Courier</p>
                   <h3 className="mt-1 text-base font-bold text-slate-900">
                     {dispatchDialog.success ? 'Parcel entry completed' : 'Parcel entry failed'}
                   </h3>

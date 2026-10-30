@@ -10,19 +10,49 @@ export interface ProductFeatureCard {
   description: string;
 }
 
+export interface ProductUnit {
+  id: string;
+  name: string;        // e.g. "Kilogram", "Piece", "Liter", "Meter", "Gram"
+  code: string;        // e.g. "kg", "pcs", "L", "m", "g"
+  description?: string;
+  isDefault?: boolean;
+}
+
+export interface ProductAttributeValue {
+  id: string;
+  name: string;        // e.g. "Red", "XL", "0.5 kg", "Cotton"
+  code?: string;       // e.g. hex color or shortcode
+}
+
+export interface ProductAttribute {
+  id: string;
+  name: string;        // e.g. "Size", "Color", "Weight", "Pattern", "Material"
+  type?: 'text' | 'color' | 'select';
+  values: ProductAttributeValue[];
+  description?: string;
+}
+
 export interface ProductVariant {
   id: string;
   name: string;
   price: number;
   regularPrice?: number;
+  costPrice?: number;
+  stock?: number;
+  sku?: string;
   image?: string;
   color?: string;
+  weightKg?: number;
+  attributes?: Record<string, string>; // e.g. { "Size": "XL", "Color": "Red", "Weight": "0.5 kg" }
 }
 
 export interface CartItem {
   product: Product;
   quantity: number;
   variant?: ProductVariant;
+  selectedColor?: string;
+  selectedSize?: string;
+  selectedVariant?: string;
 }
 
 export interface Product {
@@ -41,6 +71,12 @@ export interface Product {
   subCategory?: string;
   brand?: string;
   brandId?: string;
+  unit?: string;               // e.g. "pcs", "kg", "g", "L", "pack"
+  selectedAttributes?: {
+    attributeId: string;
+    attributeName: string;
+    values: string[];
+  }[];
   stock?: number;
   openingStock?: number;
   receivedStock?: number;
@@ -524,8 +560,6 @@ export interface EcomSettings {
   pixelId?: string;
   gtmId?: string;
   metaApiToken?: string;
-  steadfastApiKey?: string;
-  steadfastSecretKey?: string;
   deliveryChargeInsideDhaka: number;
   deliveryChargeOutsideDhaka: number;
   deliveryChargeInsideExpress?: number;
@@ -572,7 +606,7 @@ export interface EcomSettings {
   pathaoMinCharge?: number;
   pathaoMaxCharge?: number;
   pathaoWebhookSecret?: string;
-  defaultCourierProvider?: 'steadfast' | 'pathao';
+  defaultCourierProvider?: 'pathao';
   aboutSettings?: AboutPageSettings;
 
   // VIP Membership & Digital Loyalty Club
@@ -903,13 +937,17 @@ export interface BookOrder {
   orderDate?: string;
   pointsSpent?: number;
   notes?: string;
-  steadfastTrackingCode?: string;
-  steadfastStatus?: string;
   pathaoConsignmentId?: string;
   pathaoTrackingCode?: string;
   pathaoStatus?: string;
   pathaoDeliveryFee?: number;
-  courierProvider?: 'steadfast' | 'pathao' | string;
+  recipientCity?: number;
+  recipientCityName?: string;
+  recipientZone?: number;
+  recipientZoneName?: string;
+  recipientArea?: number;
+  recipientAreaName?: string;
+  courierProvider?: 'pathao' | string;
   couponCode?: string;
   luckyCouponCode?: string;
   discountAmount?: number;
@@ -966,7 +1004,7 @@ export interface Brand {
   updatedAt?: string;
 }
 
-export type ActiveTab = 'dashboard' | 'products' | 'orders' | 'abandoned_carts' | 'customers' | 'coupons' | 'inventory' | 'category_management' | 'brand_management' | 'slider_management' | 'header_settings' | 'flash_sale' | 'highlight_spotlight' | 'about_settings' | 'landing_setup' | 'payment_settings' | 'delivery_settings' | 'pixel_settings' | 'courier_settings' | 'profile' | 'points' | 'contact_messages' | 'blog_manager' | 'video_reviews';
+export type ActiveTab = 'dashboard' | 'products' | 'orders' | 'abandoned_carts' | 'customers' | 'coupons' | 'inventory' | 'category_management' | 'brand_management' | 'unit_management' | 'attribute_management' | 'slider_management' | 'header_settings' | 'flash_sale' | 'highlight_spotlight' | 'about_settings' | 'landing_setup' | 'payment_settings' | 'delivery_settings' | 'pixel_settings' | 'courier_settings' | 'profile' | 'points' | 'contact_messages' | 'blog_manager' | 'video_reviews';
 
 export interface ContactMessage {
   id: string;

@@ -1,14 +1,15 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { FacebookCapiService } from '../src/server/services/facebookCapiService';
-import { SteadfastCourierService } from '../src/server/services/steadfastService';
+import { PathaoCourierService } from '../src/server/services/pathaoService';
 
 process.env.META_PIXEL_ID = '123456789';
 process.env.META_CAPI_TOKEN = 'meta-test-token';
 process.env.META_TEST_EVENT_CODE = 'TEST00000';
-process.env.STEADFAST_API_KEY = 'steadfast-test-key';
-process.env.STEADFAST_SECRET_KEY = 'steadfast-test-secret';
-process.env.STEADFAST_BASE_URL = 'https://steadfast.test/api/v1';
+process.env.PATHAO_CLIENT_ID = 'pathao-test-client';
+process.env.PATHAO_CLIENT_SECRET = 'pathao-test-secret';
+process.env.PATHAO_CLIENT_EMAIL = 'test@example.com';
+process.env.PATHAO_CLIENT_PASSWORD = 'password';
 
 const requests: Array<{ url: string; init?: RequestInit }> = [];
 
@@ -16,14 +17,17 @@ globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) =>
   const url = String(input);
   requests.push({ url, init });
 
-  if (url.endsWith('/get_balance')) {
-    return Response.json({ status: 200, current_balance: 4250 });
+  if (url.endsWith('/issue-token')) {
+    return Response.json({ access_token: 'test-token', expires_in: 3600 });
   }
-  if (url.endsWith('/create_order')) {
-    return Response.json({ status: 200, consignment: { tracking_code: 'SF-REAL-123', status: 'in_review' } });
+  if (url.endsWith('/city-list')) {
+    return Response.json({ message: 'Success', type: 'success', code: 200, data: { data: [{ city_id: 1, city_name: 'Dhaka' }] } });
   }
-  if (url.endsWith('/status_by_trackingcode/SF-REAL-123')) {
-    return Response.json({ status: 200, delivery_status: 'delivered' });
+  if (url.includes('/price-plan')) {
+    return Response.json({ message: 'price', type: 'success', code: 200, data: { price: 80, final_price: 80 } });
+  }
+  if (url.endsWith('/orders')) {
+    return Response.json({ message: 'Order created', type: 'success', data: { consignment_id: 'PTH-123', order_status: 'Pending' } });
   }
   if (url.includes('graph.facebook.com')) {
     return Response.json({ events_received: 1 });
@@ -31,10 +35,17 @@ globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) =>
   return Response.json({ message: 'Unexpected URL' }, { status: 404 });
 }) as typeof fetch;
 
-const balance = await SteadfastCourierService.testConnection();
-assert.equal(balance.balance, 4250);
+const cities = await PathaoCourierService.getCities();
+assert.ok(cities.length > 0);
 
-const dispatch = await SteadfastCourierService.dispatchOrder({
+const price = await PathaoCourierService.calculatePrice({
+  recipientCity: 1,
+  recipientZone: 1,
+  itemWeight: 0.5
+});
+assert.equal(price.final_price, 80);
+
+const dispatch = await PathaoCourierService.dispatchOrder({
   order: {
     id: 'ORD-TEST-1',
     customerName: 'Test Customer',
@@ -47,31 +58,7 @@ const dispatch = await SteadfastCourierService.dispatchOrder({
     productTitle: 'Test Product'
   }
 });
-assert.equal(dispatch.trackingCode, 'SF-REAL-123');
-
-const createRequest = requests.find(request => request.url.endsWith('/create_order'))!;
-assert.equal(new Headers(createRequest.init?.headers).get('Api-Key'), 'steadfast-test-key');
-assert.equal(new Headers(createRequest.init?.headers).get('Secret-Key'), 'steadfast-test-secret');
-assert.equal(JSON.parse(String(createRequest.init?.body)).cod_amount, 580);
-
-const courierStatus = await SteadfastCourierService.getStatus('SF-REAL-123');
-assert.equal(courierStatus.status, 'delivered');
-
-await assert.rejects(() => SteadfastCourierService.dispatchOrder({
-  order: {
-    id: 'ORD-TEST-2',
-    customerName: 'Test Customer',
-    phone: '01700000000',
-    address: 'Dhaka',
-    totalPrice: 580,
-    status: 'Shipped',
-    steadfastTrackingCode: 'SF-EXISTING'
-  }
-}), /already has a Steadfast tracking code/);
-
-delete process.env.STEADFAST_API_KEY;
-await assert.rejects(() => SteadfastCourierService.testConnection(), /not configured/);
-process.env.STEADFAST_API_KEY = 'steadfast-test-key';
+assert.equal(dispatch.consignmentId, 'PTH-123');
 
 const capiResult = await FacebookCapiService.sendEvent('Purchase', {
   eventId: 'purchase-test-1',

@@ -1,10 +1,96 @@
 import { 
-  Product, Coupon, Brand, 
+  Product, Coupon, Brand, ProductUnit, ProductAttribute,
   PaymentGatewayItem, DeliveryMethodItem, HeroBannerItem, PromoCardItem, 
   EcomSettings, InstituteInfo, FlashSaleSettings, HighlightSpotlightSettings,
   HeaderSettings, HeaderMenuItem, VipTier, DigitalLoyaltyCard, ClubMember,
   TestimonialSectionSettings, TestimonialItem, BlogPost
 } from '../types';
+
+export const DEFAULT_UNITS: ProductUnit[] = [
+  { id: 'unit-pcs', name: 'Pieces', code: 'pcs', isDefault: true, description: 'Single unit or piece' },
+  { id: 'unit-kg', name: 'Kilogram', code: 'kg', description: 'Weight in kilograms' },
+  { id: 'unit-g', name: 'Gram', code: 'g', description: 'Weight in grams' },
+  { id: 'unit-l', name: 'Liter', code: 'L', description: 'Liquid volume in liters' },
+  { id: 'unit-ml', name: 'Milliliter', code: 'ml', description: 'Liquid volume in milliliters' },
+  { id: 'unit-box', name: 'Box / Pack', code: 'box', description: 'Pack or packaged box' },
+  { id: 'unit-pair', name: 'Pair', code: 'pair', description: 'Pair of items (shoes, socks)' },
+  { id: 'unit-m', name: 'Meter', code: 'm', description: 'Length in meters' },
+  { id: 'unit-set', name: 'Set', code: 'set', description: 'Complete set of items' }
+];
+
+export const DEFAULT_ATTRIBUTES: ProductAttribute[] = [
+  {
+    id: 'attr-size',
+    name: 'Size',
+    type: 'select',
+    description: 'Clothing & Footwear sizes',
+    values: [
+      { id: 'val-s', name: 'S' },
+      { id: 'val-m', name: 'M' },
+      { id: 'val-l', name: 'L' },
+      { id: 'val-xl', name: 'XL' },
+      { id: 'val-xxl', name: 'XXL' },
+      { id: 'val-free', name: 'Free Size' }
+    ]
+  },
+  {
+    id: 'attr-color',
+    name: 'Color',
+    type: 'color',
+    description: 'Color variants',
+    values: [
+      { id: 'val-black', name: 'Black', code: '#000000' },
+      { id: 'val-white', name: 'White', code: '#FFFFFF' },
+      { id: 'val-red', name: 'Red', code: '#EF4444' },
+      { id: 'val-blue', name: 'Blue', code: '#3B82F6' },
+      { id: 'val-green', name: 'Green', code: '#10B981' },
+      { id: 'val-navy', name: 'Navy Blue', code: '#1E3A8A' },
+      { id: 'val-maroon', name: 'Maroon', code: '#831843' },
+      { id: 'val-gray', name: 'Gray', code: '#6B7280' }
+    ]
+  },
+  {
+    id: 'attr-weight',
+    name: 'Weight',
+    type: 'select',
+    description: 'Grocery & Spices weight increments',
+    values: [
+      { id: 'val-250g', name: '250 g' },
+      { id: 'val-500g', name: '0.5 kg (500g)' },
+      { id: 'val-1kg', name: '1 kg' },
+      { id: 'val-2kg', name: '2 kg' },
+      { id: 'val-5kg', name: '5 kg' }
+    ]
+  },
+  {
+    id: 'attr-pattern',
+    name: 'Pattern',
+    type: 'select',
+    description: 'Fabric & Design patterns',
+    values: [
+      { id: 'val-plain', name: 'Plain / Solid' },
+      { id: 'val-striped', name: 'Striped' },
+      { id: 'val-printed', name: 'Printed' },
+      { id: 'val-check', name: 'Checkered' },
+      { id: 'val-floral', name: 'Floral' },
+      { id: 'val-embroidered', name: 'Embroidered' }
+    ]
+  },
+  {
+    id: 'attr-material',
+    name: 'Material',
+    type: 'select',
+    description: 'Fabric & Build composition',
+    values: [
+      { id: 'val-cotton', name: '100% Cotton' },
+      { id: 'val-silk', name: 'Silk' },
+      { id: 'val-linen', name: 'Linen' },
+      { id: 'val-denim', name: 'Denim' },
+      { id: 'val-leather', name: 'Genuine Leather' },
+      { id: 'val-georgette', name: 'Georgette' }
+    ]
+  }
+];
 
 export const DEFAULT_PRODUCTS: Product[] = [];
 
