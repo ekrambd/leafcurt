@@ -1,1 +1,28 @@
-[]
+[
+  {
+    "id": "ac-1793432480433-mp5eh",
+    "customerPhone": "01754860423",
+    "customerName": "Sabrina",
+    "customerAddress": "East Mojompur jhautola Kushtia. Thana Kushtia Sadar",
+    "customerDistrict": "Kushtia",
+    "customerEmail": "",
+    "items": [
+      {
+        "productId": "prod-1792732704580",
+        "productTitle": "Sweet Peach",
+        "productImage": "/uploads/file-1792732686278-136471442.jpg",
+        "quantity": 1,
+        "unitPrice": 850,
+        "totalPrice": 850
+      }
+    ],
+    "subtotal": 850,
+    "deliveryCharge": 130,
+    "totalAmount": 980,
+    "status": "abandoned",
+    "source": "storefront_checkout",
+    "lastActivityAt": "2026-10-31T07:41:48.788Z",
+    "createdAt": "2026-10-31T07:41:20.433Z",
+    "updatedAt": "2026-10-31T07:41:48.788Z"
+  }
+]

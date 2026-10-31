@@ -28,7 +28,6 @@ import { dbService } from '../lib/dbService';
 import { DEFAULT_DELIVERY_METHODS, DEFAULT_PAYMENT_GATEWAYS } from '../lib/constants';
 import { getCustomerSession, setCustomerSession } from '../lib/customerAuth';
 import { BD_ALL_DISTRICTS, DHAKA_SUBURBS, calculateCartTotalWeight, calculateDeliveryCharge, filterDeliveryMethodsForDistrict } from '../lib/deliveryCalculator';
-import { loyaltyClubService } from '../lib/loyaltyClubService';
 import { validateCustomerName, validateBdPhone, validateRealAddress, validateOrderCustomerDetails } from '../lib/orderValidation';
 import { ApiClient } from '../services/apiClient';
 
@@ -515,59 +514,11 @@ export default function CheckoutPage({
   const gatewayDiscount = selectedPaymentGateway?.discountAmount ? Number(selectedPaymentGateway.discountAmount) : 0;
   const gatewayFee = selectedPaymentGateway?.transactionFee ? Number(selectedPaymentGateway.transactionFee) : 0;
 
-  // Loyalty & VIP Club Member State (Meena Bazar / Shwapno style)
-  const [vipTiers, setVipTiers] = useState<VipTier[]>([]);
-  const [digitalCard, setDigitalCard] = useState<DigitalLoyaltyCard | null>(null);
-  const [recognizedMember, setRecognizedMember] = useState<ClubMember | null>(null);
-  const [redeemPoints, setRedeemPoints] = useState<boolean>(false);
-  const [autoEnrollInClub, setAutoEnrollInClub] = useState<boolean>(true);
+  // VIP / Loyalty club discounts completely removed for now
+  const memberDiscountAmount = 0;
+  const pointsRedeemedTaka = 0;
 
-  // Load VIP tiers & active digital loyalty card
-  useEffect(() => {
-    loyaltyClubService.getVipTiers().then(setVipTiers);
-    loyaltyClubService.getDigitalLoyaltyCards().then(cards => {
-      if (cards && cards.length > 0) setDigitalCard(cards[0]);
-    });
-  }, [ecomSettings]);
-
-  // Real-time Member Lookup when 11-digit phone is entered or changed
-  useEffect(() => {
-    const cleanPhone = loyaltyClubService.normalizePhone(phone);
-    if (cleanPhone.length === 11 && cleanPhone.startsWith('01')) {
-      loyaltyClubService.getMemberByPhone(cleanPhone).then(member => {
-        setRecognizedMember(member);
-      });
-    } else {
-      setRecognizedMember(null);
-      setRedeemPoints(false);
-    }
-  }, [phone]);
-
-  // Compute VIP discounts, point multipliers, and cashback
-  const memberBenefits = useMemo(() => {
-    if (!digitalCard || vipTiers.length === 0) {
-      return { isMember: false, discountAmount: 0, pointsToEarn: 0, discountPercent: 0, effectiveCashbackPercent: 0 };
-    }
-    return loyaltyClubService.calculateMemberBenefits(cartSubtotal, recognizedMember, vipTiers, digitalCard);
-  }, [cartSubtotal, recognizedMember, vipTiers, digitalCard]);
-
-  const memberDiscountAmount = memberBenefits.discountAmount || 0;
-
-  // Maximum value in Taka from customer's points balance (1 pt = ৳1 default)
-  const availablePointsValueTaka = useMemo(() => {
-    if (!recognizedMember || !digitalCard) return 0;
-    const ptVal = digitalCard.pointValueTaka || 1;
-    return Math.floor((recognizedMember.pointsBalance || 0) * ptVal);
-  }, [recognizedMember, digitalCard]);
-
-  // Actual points redeemed in Taka (cannot exceed net payable before points)
-  const pointsRedeemedTaka = useMemo(() => {
-    if (!redeemPoints || !recognizedMember || availablePointsValueTaka <= 0) return 0;
-    const remainingBeforePoints = Math.max(0, cartSubtotal + deliveryCost + gatewayFee - gatewayDiscount - couponDiscountAmount - memberDiscountAmount);
-    return Math.min(availablePointsValueTaka, remainingBeforePoints);
-  }, [redeemPoints, recognizedMember, availablePointsValueTaka, cartSubtotal, deliveryCost, gatewayFee, gatewayDiscount, couponDiscountAmount, memberDiscountAmount]);
-
-  const grandTotal = Math.max(0, cartSubtotal + deliveryCost + gatewayFee - gatewayDiscount - couponDiscountAmount - memberDiscountAmount - pointsRedeemedTaka);
+  const grandTotal = Math.max(0, cartSubtotal + deliveryCost + gatewayFee - gatewayDiscount - couponDiscountAmount);
 
   // Track InitiateCheckout on checkout page entry
   useEffect(() => {
@@ -760,10 +711,6 @@ export default function CheckoutPage({
         trxId: isOnlinePayment ? trxId.trim() : undefined,
         couponCode: appliedCoupon?.code,
         couponDiscount: couponDiscountAmount > 0 ? couponDiscountAmount : undefined,
-        memberTier: recognizedMember?.tierName,
-        memberDiscount: memberDiscountAmount > 0 ? memberDiscountAmount : undefined,
-        pointsRedeemed: pointsRedeemedTaka > 0 ? Math.round(pointsRedeemedTaka / (digitalCard?.pointValueTaka || 1)) : undefined,
-        pointsEarned: memberBenefits.pointsToEarn > 0 ? memberBenefits.pointsToEarn : undefined,
         quantity: totalItemCount + (bogoEligible ? 1 : 0),
         createdAt: new Date().toISOString(),
         orderDate: new Date().toISOString(),
@@ -893,48 +840,6 @@ export default function CheckoutPage({
           name: confirmedOrder.customerName,
           email: confirmedOrder.customerEmail
         });
-      }
-
-      // Sync Loyalty Club Member Points & Lifetime Spend
-      try {
-        const cleanPhone = loyaltyClubService.normalizePhone(phone);
-        if (cleanPhone.length === 11 && cleanPhone.startsWith('01')) {
-          if (recognizedMember) {
-            // Deduct redeemed points, add earned points, increment lifetime spend
-            const pointsSpent = pointsRedeemedTaka > 0 ? Math.round(pointsRedeemedTaka / (digitalCard?.pointValueTaka || 1)) : 0;
-            const newBalance = Math.max(0, (recognizedMember.pointsBalance || 0) - pointsSpent + (memberBenefits.pointsToEarn || 0));
-            
-            const allMembers = await loyaltyClubService.getClubMembers();
-            const idx = allMembers.findIndex(m => loyaltyClubService.normalizePhone(m.phone) === cleanPhone);
-            if (idx >= 0) {
-              const newSpent = (allMembers[idx].totalSpent || 0) + grandTotal;
-              const newTier = loyaltyClubService.determineTierBySpend(newSpent, vipTiers);
-              allMembers[idx] = {
-                ...allMembers[idx],
-                totalSpent: newSpent,
-                pointsBalance: newBalance,
-                tierId: newTier.id,
-                tierName: newTier.name
-              };
-              await loyaltyClubService.saveClubMembers(allMembers);
-              loyaltyClubService.setActiveMemberSession(allMembers[idx]);
-            }
-          } else if (autoEnrollInClub) {
-            // Auto-enroll new member with welcome gift points + earned points
-            const { member: newMem } = await loyaltyClubService.registerOrEnrollMember(cleanPhone, name.trim(), grandTotal);
-            if (memberBenefits.pointsToEarn > 0) {
-              const allMembers = await loyaltyClubService.getClubMembers();
-              const idx = allMembers.findIndex(m => m.id === newMem.id);
-              if (idx >= 0) {
-                allMembers[idx].pointsBalance = (allMembers[idx].pointsBalance || 0) + memberBenefits.pointsToEarn;
-                await loyaltyClubService.saveClubMembers(allMembers);
-                loyaltyClubService.setActiveMemberSession(allMembers[idx]);
-              }
-            }
-          }
-        }
-      } catch (clubErr) {
-        console.warn('Loyalty club update error:', clubErr);
       }
 
       isOrderCompletedRef.current = true;
