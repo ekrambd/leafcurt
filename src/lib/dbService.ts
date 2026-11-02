@@ -17,6 +17,7 @@ const deleteField: any = () => null;
 const onSnapshot: any = () => () => {};
 import { BookOrder, Product, EcomSettings, Customer, PaymentGatewayItem, DeliveryMethodItem, Coupon, LandingPageData, InstituteInfo, Review, Brand, ContactMessage, AbandonedCart, AbandonedCartItem, AbandonedCartMetrics, VideoReviewsSettings, VideoReviewItem, HeroBannerItem, ProductUnit, ProductAttribute } from '../types';
 import { ApiClient } from '../services/apiClient';
+import { getApiBaseUrl } from './apiConfig';
 
 function stripIntegrationSecrets(settings: EcomSettings): EcomSettings {
   const { pixelId: _pixelId, metaApiToken: _metaApiToken, pathaoClientSecret: _pathaoClientSecret, pathaoClientPassword: _pathaoClientPassword, ...safe } = settings;
@@ -729,7 +730,8 @@ export const dbService = {
     }
 
     try {
-      const res = await fetch('/api/orders', {
+      const baseUrl = getApiBaseUrl();
+      const res = await fetch(`${baseUrl}/orders`, {
         headers: getAdminAuthHeaders(),
         cache: 'no-cache'
       });
@@ -767,7 +769,8 @@ export const dbService = {
     const alreadyExists = orders.some(o => o.id === order.id);
     if (!alreadyExists) {
       try {
-        await fetch('/api/orders', {
+        const baseUrl = getApiBaseUrl();
+        await fetch(`${baseUrl}/orders`, {
           method: 'POST',
           headers: getAdminAuthHeaders(),
           body: JSON.stringify(order)
@@ -890,7 +893,8 @@ export const dbService = {
 
   async updateBookOrder(order: BookOrder): Promise<BookOrder> {
     try {
-      await fetch(`/api/orders/${encodeURIComponent(order.id)}`, {
+      const baseUrl = getApiBaseUrl();
+      await fetch(`${baseUrl}/orders/${encodeURIComponent(order.id)}`, {
         method: 'PUT',
         headers: getAdminAuthHeaders(),
         body: JSON.stringify(order)
@@ -925,7 +929,8 @@ export const dbService = {
 
   async deleteBookOrder(id: string): Promise<void> {
     try {
-      await fetch(`/api/orders/${encodeURIComponent(id)}`, {
+      const baseUrl = getApiBaseUrl();
+      await fetch(`${baseUrl}/orders/${encodeURIComponent(id)}`, {
         method: 'DELETE',
         headers: getAdminAuthHeaders()
       });

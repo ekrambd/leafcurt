@@ -1,4 +1,5 @@
 import { Product, BookOrder, EcomSettings, VideoReviewItem, VideoReviewsSettings, HeroBannerItem } from '../types';
+import { getApiBaseUrl } from '../lib/apiConfig';
 //mycomment
 export class ApiClient {
   private static async request<T>(endpoint: string, options?: RequestInit): Promise<T> {
@@ -15,7 +16,9 @@ export class ApiClient {
         }
       }
     }
-    const res = await fetch(`/api${endpoint}`, {
+    const baseUrl = getApiBaseUrl();
+    const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+    const res = await fetch(`${baseUrl}${cleanEndpoint}`, {
       headers: {
         'Content-Type': 'application/json',
         ...(idToken ? { Authorization: `Bearer ${idToken}` } : {}),

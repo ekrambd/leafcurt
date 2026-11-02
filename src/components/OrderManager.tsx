@@ -7,7 +7,7 @@ import {
   Copy, RefreshCw, FileText, CheckSquare, AlertCircle, Sparkles, Tag,
   ArrowLeft, MoreVertical
 } from 'lucide-react';
-import { BookOrder } from '../types';
+import { BookOrder, Product } from '../types';
 import { OrderDetailsView } from './OrderDetailsView';
 import { InvoicePreview } from './InvoicePreview';
 import { useAppStore } from '../store/useAppStore';
@@ -296,6 +296,9 @@ export default function OrderManager({
   });
   const { ecomSettings, instituteInfo, setEcomSettings, setInstituteInfo } = useAppStore();
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [availableProducts, setAvailableProducts] = useState<Product[]>([]);
+  const [editingItems, setEditingItems] = useState<any[]>([]);
+  const [selectedProductToAdd, setSelectedProductToAdd] = useState<string>('');
   const [viewingOrder, setViewingOrder] = useState<BookOrder | null>(null);
   const [invoiceModalOrder, setInvoiceModalOrder] = useState<BookOrder | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -392,33 +395,61 @@ export default function OrderManager({
   };
 
   const openEditOrder = (order: BookOrder) => {
+    // Load products from dbService so admin can add any product to the order
+    dbService.getProducts().then(prods => {
+      if (Array.isArray(prods)) setAvailableProducts(prods);
+    }).catch(() => {});
+
+    // Prepare items list
+    let initialItems: any[] = [];
+    if (order.items && order.items.length > 0) {
+      initialItems = order.items.map((it: any) => ({
+        product: {
+          id: it.product?.id || it.productId || `prod-${Date.now()}`,
+          title: it.product?.title || it.title || order.productTitle || 'Product',
+          price: Number(it.variant?.price || it.product?.price || it.price || 0),
+          image: it.variant?.image || it.product?.image || it.image || it.productImage || ''
+        },
+        quantity: Math.max(1, Number(it.quantity) || 1),
+        variant: it.variant,
+        selectedVariant: it.selectedVariant || it.variant?.name,
+        selectedColor: it.selectedColor,
+        selectedSize: it.selectedSize
+      }));
+    } else {
+      // Fallback single item from order fields
+      const fallbackPrice = order.price ?? (order.totalPrice ? Math.max(0, (order.totalPrice - (order.deliveryCharge || 0)) / (order.quantity || 1)) : 0);
+      initialItems = [{
+        product: {
+          id: order.productId || `prod-legacy`,
+          title: order.productTitle || 'Product',
+          price: Number(fallbackPrice),
+          image: ''
+        },
+        quantity: Math.max(1, Number(order.quantity) || 1)
+      }];
+    }
+    setEditingItems(initialItems);
+
     // Calculate actual product unit price (avoiding total price or double delivery charge)
     const effectiveUnitPrice = (() => {
-      if (order.items && order.items.length > 0) {
-        const firstItem = order.items[0];
-        const itemPrice = Number(firstItem.variant?.price || firstItem.product?.price || firstItem.price);
-        if (itemPrice > 0) return itemPrice;
-      }
-      if (order.subtotal && order.quantity) {
-        return Math.round(order.subtotal / order.quantity);
-      }
-      if (order.totalPrice && order.totalPrice > (order.deliveryCharge || 0)) {
-        // If order.price matches order.totalPrice, it was incorrectly set to total
-        if (order.price === order.totalPrice) {
-          return Math.round((order.totalPrice - (order.deliveryCharge || 0)) / (order.quantity || 1));
-        }
+      if (initialItems.length > 0) {
+        return initialItems[0].product.price || 0;
       }
       return order.price || 0;
     })();
 
+    const initialTotalQty = initialItems.reduce((sum, item) => sum + (Number(item.quantity) || 1), 0);
+
     setEditingOrder(order);
+    setSelectedProductToAdd('');
     setEditFormData({
       customerName: order.customerName || '',
       phone: order.phone || '',
       address: order.address || '',
       productTitle: order.productTitle || '',
       price: effectiveUnitPrice,
-      quantity: order.quantity || 1,
+      quantity: initialTotalQty || order.quantity || 1,
       deliveryCharge: order.deliveryCharge || 0,
       couponCode: order.couponCode || '',
       luckyCouponCode: order.luckyCouponCode || '',
@@ -434,37 +465,100 @@ export default function OrderManager({
   const closeEditOrder = () => {
     setIsEditModalOpen(false);
     setEditingOrder(null);
+    setEditingItems([]);
+    setSelectedProductToAdd('');
+  };
+
+  const handleUpdateItemQuantity = (index: number, newQty: number) => {
+    const validQty = Math.max(1, newQty);
+    setEditingItems(prev => {
+      const next = [...prev];
+      if (next[index]) {
+        next[index] = { ...next[index], quantity: validQty };
+      }
+      return next;
+    });
+  };
+
+  const handleRemoveItem = (index: number) => {
+    if (editingItems.length <= 1) {
+      alert('An order must have at least 1 item.');
+      return;
+    }
+    setEditingItems(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleAddProductToOrder = (productId: string) => {
+    if (!productId) return;
+    const foundProduct = availableProducts.find(p => p.id === productId);
+    if (!foundProduct) return;
+
+    // If item already exists, increment its quantity
+    const existingIndex = editingItems.findIndex(it => it.product?.id === productId);
+    if (existingIndex >= 0) {
+      handleUpdateItemQuantity(existingIndex, (editingItems[existingIndex].quantity || 1) + 1);
+    } else {
+      const newItem = {
+        product: {
+          id: foundProduct.id,
+          title: foundProduct.title,
+          price: Number(foundProduct.price || foundProduct.regularPrice || 0),
+          image: foundProduct.image || foundProduct.coverImage || ''
+        },
+        quantity: 1
+      };
+      setEditingItems(prev => [...prev, newItem]);
+    }
+    setSelectedProductToAdd('');
   };
 
   const handleSaveOrderEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingOrder) return;
 
+    if (editingItems.length === 0) {
+      alert('Please add at least one product to this order.');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const discountAmount = Math.max(0, Number(editFormData.discountAmount) || 0);
-      const totalPrice = calculateOrderTotal(
-        Number(editFormData.price) || 0,
-        Number(editFormData.quantity) || 1,
-        Number(editFormData.deliveryCharge) || 0,
-        discountAmount
-      );
+      const deliveryCharge = Number(editFormData.deliveryCharge) || 0;
+
+      // Compute subtotal from the items
+      const calculatedSubtotal = editingItems.reduce((sum, it) => {
+        const itemPrice = Number(it.variant?.price || it.product?.price || it.price || 0);
+        return sum + (itemPrice * Math.max(1, Number(it.quantity) || 1));
+      }, 0);
+
+      const totalQuantity = editingItems.reduce((sum, it) => sum + Math.max(1, Number(it.quantity) || 1), 0);
+      const totalPrice = Math.max(0, calculatedSubtotal + deliveryCharge - discountAmount);
+      
+      const itemNames = editingItems.map(i => `${i.product?.title || 'Product'}${i.variant ? ` (${i.variant.name || i.variant})` : ''} x${i.quantity || 1}`).join(', ');
 
       const updatedOrder: BookOrder = {
         ...editingOrder,
         customerName: (editFormData.customerName || '').trim(),
+        name: (editFormData.customerName || '').trim(),
         phone: (editFormData.phone || '').trim(),
         address: (editFormData.address || '').trim(),
-        productTitle: (editFormData.productTitle || '').trim() || editingOrder.productTitle,
-        price: Number(editFormData.price) || 0,
-        subtotal: (Number(editFormData.price) || 0) * Math.max(1, Number(editFormData.quantity) || 1),
-        quantity: Math.max(1, Number(editFormData.quantity) || 1),
-        deliveryCharge: Number(editFormData.deliveryCharge) || 0,
+        productTitle: itemNames || editFormData.productTitle || editingOrder.productTitle,
+        bookTitle: itemNames || editFormData.productTitle || editingOrder.productTitle,
+        items: editingItems,
+        itemCount: totalQuantity,
+        quantity: totalQuantity,
+        price: editingItems[0]?.product?.price || (totalQuantity ? Math.round(calculatedSubtotal / totalQuantity) : calculatedSubtotal),
+        unitPrice: editingItems[0]?.product?.price || (totalQuantity ? Math.round(calculatedSubtotal / totalQuantity) : calculatedSubtotal),
+        subtotal: calculatedSubtotal,
+        deliveryCharge,
         couponCode: (editFormData.couponCode || '').trim() || undefined,
         luckyCouponCode: (editFormData.luckyCouponCode || '').trim() || undefined,
         discountAmount: discountAmount > 0 ? discountAmount : undefined,
+        couponDiscount: discountAmount > 0 ? discountAmount : undefined,
         totalPrice,
         total: totalPrice,
+        totalAmount: totalPrice,
         orderTotal: totalPrice,
         notes: (editFormData.notes || '').trim() || undefined
       };
@@ -492,16 +586,23 @@ export default function OrderManager({
 
   // Filtered orders list
   const filteredOrders = uniqueOrders.filter(order => {
+    const custName = (order.customerName || order.name || '').toLowerCase();
+    const phone = (order.phone || '').toLowerCase();
+    const id = (order.id || '').toLowerCase();
+    const luckyCoupon = (order.luckyCouponCode || '').toLowerCase();
+    const addr = (order.address || '').toLowerCase();
+    const search = searchTerm.toLowerCase();
+
     const matchesSearch = 
-      order.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.phone.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (order.luckyCouponCode && order.luckyCouponCode.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (order.address && order.address.toLowerCase().includes(searchTerm.toLowerCase()));
+      custName.includes(search) ||
+      phone.includes(search) ||
+      id.includes(search) ||
+      luckyCoupon.includes(search) ||
+      addr.includes(search);
     
     const isLanding = order.orderType === 'landing';
     const matchesType = typeFilter === 'all' || (typeFilter === 'landing' ? isLanding : !isLanding);
-    const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
+    const matchesStatus = statusFilter === 'all' || (order.status || '').toLowerCase() === statusFilter.toLowerCase();
 
     return matchesSearch && matchesType && matchesStatus;
   });
@@ -2551,39 +2652,134 @@ export default function OrderManager({
                   />
                 </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Product Name / Title</label>
-                  <input
-                    type="text"
-                    value={editFormData.productTitle}
-                    onChange={(e) => setEditFormData({ ...editFormData, productTitle: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs font-bold text-slate-800"
-                  />
+                {/* Order Items Management */}
+                <div className="border border-slate-200 rounded-2xl p-4 bg-slate-50/50 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="text-xs font-black uppercase tracking-wider text-slate-700">Order Items ({editingItems.length})</h4>
+                      <p className="text-[11px] text-slate-500">Edit quantities, remove items, or add other products</p>
+                    </div>
+                    <span className="text-xs font-black text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                      Subtotal: ৳{editingItems.reduce((sum, it) => {
+                        const itemPrice = Number(it.variant?.price || it.product?.price || it.price || 0);
+                        return sum + (itemPrice * Math.max(1, Number(it.quantity) || 1));
+                      }, 0).toLocaleString()}
+                    </span>
+                  </div>
+
+                  {/* Items List */}
+                  <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                    {editingItems.map((item, idx) => {
+                      const itemTitle = item.product?.title || item.title || 'Product';
+                      const itemPrice = Number(item.variant?.price || item.product?.price || item.price || 0);
+                      const itemImage = item.product?.image || item.product?.coverImage || item.image;
+                      const itemQty = Math.max(1, Number(item.quantity) || 1);
+                      const lineTotal = itemPrice * itemQty;
+
+                      return (
+                        <div key={idx} className="flex items-center justify-between p-2.5 bg-white border border-slate-200 rounded-xl gap-3 shadow-xs">
+                          <div className="flex items-center space-x-3 min-w-0 flex-1">
+                            {itemImage ? (
+                              <img src={itemImage} alt={itemTitle} className="w-10 h-10 rounded-lg object-cover border border-slate-100 flex-shrink-0" />
+                            ) : (
+                              <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center text-slate-400 font-bold text-xs flex-shrink-0">
+                                📦
+                              </div>
+                            )}
+                            <div className="min-w-0 flex-1">
+                              <p className="text-xs font-bold text-slate-800 truncate" title={itemTitle}>{itemTitle}</p>
+                              <p className="text-[11px] text-slate-500 font-medium">৳{itemPrice.toLocaleString()} each</p>
+                            </div>
+                          </div>
+
+                          {/* Quantity Controls */}
+                          <div className="flex items-center space-x-1.5 flex-shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => handleUpdateItemQuantity(idx, itemQty - 1)}
+                              disabled={itemQty <= 1}
+                              className="w-7 h-7 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer text-xs"
+                            >
+                              -
+                            </button>
+                            <input
+                              type="number"
+                              min={1}
+                              value={itemQty}
+                              onChange={(e) => handleUpdateItemQuantity(idx, Math.max(1, parseInt(e.target.value) || 1))}
+                              className="w-11 h-7 text-center border border-slate-200 rounded-lg text-xs font-black text-slate-800"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleUpdateItemQuantity(idx, itemQty + 1)}
+                              className="w-7 h-7 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold flex items-center justify-center cursor-pointer text-xs"
+                            >
+                              +
+                            </button>
+                          </div>
+
+                          {/* Line total & remove */}
+                          <div className="flex items-center space-x-2 flex-shrink-0">
+                            <span className="text-xs font-bold text-slate-700 w-16 text-right">৳{lineTotal.toLocaleString()}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveItem(idx)}
+                              title={editingItems.length <= 1 ? "Order must have at least 1 item" : "Remove item"}
+                              disabled={editingItems.length <= 1}
+                              className="p-1 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Add Product selector */}
+                  <div className="flex items-center space-x-2 pt-2 border-t border-slate-200/80">
+                    <select
+                      value={selectedProductToAdd}
+                      onChange={(e) => setSelectedProductToAdd(e.target.value)}
+                      className="flex-1 px-3 py-1.5 border border-slate-200 rounded-xl text-xs font-medium text-slate-700 bg-white"
+                    >
+                      <option value="">-- Add another product to this order --</option>
+                      {availableProducts.map(p => (
+                        <option key={p.id} value={p.id}>
+                          {p.title} - ৳{(p.price || p.regularPrice || 0).toLocaleString()}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => handleAddProductToOrder(selectedProductToAdd)}
+                      disabled={!selectedProductToAdd}
+                      className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold flex items-center space-x-1 cursor-pointer transition-colors flex-shrink-0"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Add Product</span>
+                    </button>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">Tk.</label>
-                    <input
-                      type="number"
-                      min={0}
-                      value={editFormData.price}
-                      onChange={(e) => setEditFormData({ ...editFormData, price: Number(e.target.value) })}
-                      className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs font-bold text-slate-800"
-                    />
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Items Subtotal</label>
+                    <div className="w-full px-3 py-2 border border-slate-200 bg-slate-100/70 rounded-xl text-xs font-bold text-slate-700">
+                      ৳{editingItems.reduce((sum, it) => {
+                        const itemPrice = Number(it.variant?.price || it.product?.price || it.price || 0);
+                        return sum + (itemPrice * Math.max(1, Number(it.quantity) || 1));
+                      }, 0).toLocaleString()}
+                    </div>
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">Amount</label>
-                    <input
-                      type="number"
-                      min={1}
-                      value={editFormData.quantity}
-                      onChange={(e) => setEditFormData({ ...editFormData, quantity: Math.max(1, Number(e.target.value)) })}
-                      className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs font-bold text-slate-800"
-                    />
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Total Quantity</label>
+                    <div className="w-full px-3 py-2 border border-slate-200 bg-slate-100/70 rounded-xl text-xs font-bold text-slate-700">
+                      {editingItems.reduce((sum, it) => sum + Math.max(1, Number(it.quantity) || 1), 0)} pcs
+                    </div>
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">Tk.</label>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Delivery Charge (৳)</label>
                     <input
                       type="number"
                       min={0}
@@ -2593,7 +2789,7 @@ export default function OrderManager({
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">Tk.</label>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Discount (৳)</label>
                     <input
                       type="number"
                       min={0}
@@ -2626,14 +2822,15 @@ export default function OrderManager({
                     />
                   </div>
                   <div className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5">
-                    <div className="text-[11px] text-slate-500 font-bold">New Total Rs</div>
+                    <div className="text-[11px] text-slate-500 font-bold">New Total</div>
                     <div className="text-lg font-black text-teal-700">
-                      Tk. {calculateOrderTotal(
-                        Number(editFormData.price) || 0,
-                        Number(editFormData.quantity) || 1,
-                        Number(editFormData.deliveryCharge) || 0,
-                        Number(editFormData.discountAmount) || 0
-                      ).toFixed(2)}
+                      ৳ {(() => {
+                        const sub = editingItems.reduce((sum, it) => {
+                          const itemPrice = Number(it.variant?.price || it.product?.price || it.price || 0);
+                          return sum + (itemPrice * Math.max(1, Number(it.quantity) || 1));
+                        }, 0);
+                        return Math.max(0, sub + (Number(editFormData.deliveryCharge) || 0) - (Number(editFormData.discountAmount) || 0)).toFixed(2);
+                      })()}
                     </div>
                   </div>
                 </div>
