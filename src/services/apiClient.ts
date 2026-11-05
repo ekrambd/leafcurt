@@ -1,4 +1,4 @@
-import { Product, BookOrder, EcomSettings, VideoReviewItem, VideoReviewsSettings, HeroBannerItem } from '../types';
+import { Product, BookOrder, EcomSettings, VideoReviewItem, VideoReviewsSettings, HeroBannerItem, BlacklistEntry } from '../types';
 import { getApiBaseUrl } from '../lib/apiConfig';
 //mycomment
 export class ApiClient {
@@ -276,6 +276,31 @@ export class ApiClient {
 
   static deleteSlider(id: string): Promise<{ success: boolean; heroBanners: HeroBannerItem[] }> {
     return this.request(`/sliders/${id}`, {
+      method: 'DELETE'
+    });
+  }
+
+  // Anti-Fraud / Blacklist Endpoints
+  static getBlacklist(): Promise<{ success: boolean; data: BlacklistEntry[]; metrics: { total: number; phones: number; ips: number } }> {
+    return this.request('/blacklist');
+  }
+
+  static checkBlacklist(phone?: string, ip?: string): Promise<{ blocked: boolean; type?: 'phone' | 'ip'; message?: string }> {
+    return this.request('/blacklist/check', {
+      method: 'POST',
+      body: JSON.stringify({ phone, ip })
+    });
+  }
+
+  static addBlacklist(type: 'phone' | 'ip', value: string, reason?: string): Promise<{ success: boolean; message: string; data: BlacklistEntry }> {
+    return this.request('/blacklist', {
+      method: 'POST',
+      body: JSON.stringify({ type, value, reason })
+    });
+  }
+
+  static removeBlacklist(id: string): Promise<{ success: boolean; message: string }> {
+    return this.request(`/blacklist/${encodeURIComponent(id)}`, {
       method: 'DELETE'
     });
   }

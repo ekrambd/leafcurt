@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { 
-  Users, LogOut, Menu, X, Check, ShoppingBag, ShoppingCart, ClipboardList, Package, LayoutDashboard, User, Code, Truck, CreditCard, Tag, Boxes, Store, Globe, Layout, Layers, Bell, Coins, Send, Sparkles, Eye, Bookmark, Camera, HeartHandshake, Zap, Mail, Award, BookOpen, Video, Scale, Sliders
+  Users, LogOut, Menu, X, Check, ShoppingBag, ShoppingCart, ClipboardList, Package, LayoutDashboard, User, Code, Truck, CreditCard, Tag, Boxes, Store, Globe, Layout, Layers, Bell, Coins, Send, Sparkles, Eye, Bookmark, Camera, HeartHandshake, Zap, Mail, Award, BookOpen, Video, Scale, Sliders, ShieldAlert
 } from 'lucide-react';
 import { dbService, subscribeToOrders } from '../lib/dbService';
 import { ApiClient } from '../services/apiClient';
@@ -30,6 +30,7 @@ const HighlightSpotlightManager = lazy(() => import('./HighlightSpotlightManager
 const BlogManager = lazy(() => import('./BlogManager'));
 const SliderManager = lazy(() => import('./SliderManager'));
 const VideoReviewsManager = lazy(() => import('./VideoReviewsManager'));
+const AntiFraudManager = lazy(() => import('./AntiFraudManager'));
 import { TabContentSkeleton } from './LoadingSkeleton';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -363,6 +364,7 @@ export default function AdminDashboard({ adminEmail, onLogout }: AdminDashboardP
 
     // --- Group 5: Settings & Setup ---
     { id: 'header_settings' as any, isHeader: true, label: 'Settings' },
+    { id: 'anti_fraud' as const, label: 'Anti-Fraud Shield', icon: ShieldAlert },
     { id: 'delivery_settings' as const, label: 'Delivery', icon: Truck },
     { id: 'courier_settings' as const, label: 'Courier', icon: Send },
     { id: 'payment_settings' as const, label: 'Payments', icon: CreditCard },
@@ -698,6 +700,9 @@ export default function AdminDashboard({ adminEmail, onLogout }: AdminDashboardP
                 )}
                 {activeTab === 'courier_settings' && (
                   <CourierSettingsManager />
+                )}
+                {activeTab === 'anti_fraud' && (
+                  <AntiFraudManager />
                 )}
                 {activeTab === 'profile' && (
                   <ProfileSettings 

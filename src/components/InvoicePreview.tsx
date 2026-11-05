@@ -62,6 +62,7 @@ export function InvoicePreview({ order }: Props) {
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>('');
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   
+  const [printLayout, setPrintLayout] = useState<'1-page' | '2-page'>('2-page');
   const printRef = useRef<HTMLDivElement>(null);
 
   // Auto-sync real settings from server if not loaded yet
@@ -137,8 +138,14 @@ export function InvoicePreview({ order }: Props) {
   const handlePrint = () => {
     const printContent = printRef.current;
     if (!printContent) return;
-    const windowPrint = window.open('', '', 'width=850,height=600');
+    const windowPrint = window.open('', '', 'width=900,height=650');
     if (!windowPrint) return;
+
+    const singleSlipHtml = printContent.outerHTML;
+    // If 2/page is selected, duplicate the exact slip so 2 slips print on one A4 sheet
+    const slipsHtml = printLayout === '2-page' 
+      ? `<div class="a4-double-page">${singleSlipHtml}<div class="cut-line">------------------- CUT HERE -------------------</div>${singleSlipHtml}</div>`
+      : `<div class="a4-single-page">${singleSlipHtml}</div>`;
     
     windowPrint.document.write(`
       <!DOCTYPE html>
@@ -149,29 +156,62 @@ export function InvoicePreview({ order }: Props) {
           <style>
             @page {
               size: A4 portrait;
-              margin: 8mm;
+              margin: 4mm 6mm;
             }
             @media print {
               html, body {
-                margin: 0;
-                padding: 0;
+                margin: 0 !important;
+                padding: 0 !important;
                 background: #ffffff !important;
                 -webkit-print-color-adjust: exact !important;
                 print-color-adjust: exact !important;
               }
               .no-print { display: none !important; }
+              .a4-double-page {
+                display: flex;
+                flex-direction: column;
+                justify-content: flex-start;
+                gap: 4mm;
+                height: 100vh;
+                page-break-after: avoid;
+              }
+              .cut-line {
+                text-align: center;
+                font-family: monospace;
+                font-size: 8px;
+                color: #94a3b8;
+                border-top: 1px dashed #cbd5e1;
+                padding-top: 2px;
+                margin: 2mm 0;
+              }
               .invoice-sheet {
                 box-shadow: none !important;
-                border: 1px solid #e2e8f0 !important;
+                border: 1px solid #94a3b8 !important;
+                border-radius: 6px !important;
                 page-break-inside: avoid !important;
                 break-inside: avoid !important;
-                margin-bottom: 12mm !important;
+                width: 100% !important;
+                max-width: 100% !important;
+                padding: 3mm 4mm !important;
+                margin: 0 !important;
               }
+            }
+            body {
+              font-family: system-ui, -apple-system, sans-serif;
+            }
+            .cut-line {
+              text-align: center;
+              font-family: monospace;
+              font-size: 9px;
+              color: #94a3b8;
+              border-top: 1px dashed #cbd5e1;
+              padding-top: 2px;
+              margin: 3mm 0;
             }
           </style>
         </head>
         <body class="bg-white p-2">
-          ${printContent.outerHTML}
+          ${slipsHtml}
         </body>
       </html>
     `);
@@ -180,7 +220,7 @@ export function InvoicePreview({ order }: Props) {
     setTimeout(() => {
       windowPrint.print();
       windowPrint.close();
-    }, 400);
+    }, 450);
   };
 
   const handleWhatsApp = () => {
@@ -269,34 +309,53 @@ export function InvoicePreview({ order }: Props) {
       )}
 
       {/* Action Toolbar */}
-      <div className="bg-slate-50 border-b border-slate-200 p-3 sm:p-4 flex flex-wrap items-center justify-between gap-3">
+      <div className="bg-slate-50 border-b border-slate-200 p-2.5 sm:p-3 flex flex-wrap items-center justify-between gap-2.5">
         <div className="flex items-center gap-2">
-          <span className="font-extrabold text-sm text-slate-900">Commercial Slip Preview</span>
-          <span className="font-mono text-xs font-bold px-2 py-0.5 bg-slate-200 text-slate-800 rounded-md">
+          <span className="font-extrabold text-xs text-slate-900">Invoice Slip</span>
+          <span className="font-mono text-xs font-bold px-1.5 py-0.5 bg-slate-200 text-slate-800 rounded">
             #{orderShortId}
           </span>
-          <span className="text-[11px] text-slate-500 hidden sm:inline">
-            (Compact A4-printable slip: up to 3–4 fit per A4 sheet)
-          </span>
+
+          {/* 1 / page vs 2 / page selector (Matching user UI) */}
+          <div className="flex items-center bg-slate-200/80 p-0.5 rounded-lg ml-1">
+            <button
+              type="button"
+              onClick={() => setPrintLayout('1-page')}
+              className={`px-2 py-1 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
+                printLayout === '1-page' ? 'bg-white text-slate-900 shadow-2xs' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              1 / page
+            </button>
+            <button
+              type="button"
+              onClick={() => setPrintLayout('2-page')}
+              className={`px-2 py-1 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
+                printLayout === '2-page' ? 'bg-white text-teal-700 shadow-2xs' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              2 / page (Cut to save)
+            </button>
+          </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           <button 
             type="button"
             onClick={handleCopyAsImage}
             disabled={isCapturing}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-teal-600 hover:bg-teal-700 active:scale-95 text-white rounded-lg text-xs font-bold shadow-2xs transition-all cursor-pointer disabled:opacity-50"
-            title="Copy as PNG Image to paste directly in WhatsApp / Messenger"
+            className="flex items-center gap-1 px-2.5 py-1 bg-teal-600 hover:bg-teal-700 active:scale-95 text-white rounded-lg text-xs font-bold shadow-2xs transition-all cursor-pointer disabled:opacity-50"
+            title="Copy as PNG Image"
           >
             <Camera className="w-3.5 h-3.5" />
-            <span>{isCapturing ? 'Capturing...' : 'Copy Image'}</span>
+            <span className="hidden sm:inline">{isCapturing ? 'Capturing...' : 'Copy Image'}</span>
           </button>
 
           <button 
             type="button"
             onClick={handleDownloadPng}
             disabled={isCapturing}
-            className="flex items-center gap-1 px-2.5 py-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded-lg text-xs font-bold shadow-2xs transition-colors cursor-pointer"
+            className="flex items-center gap-1 px-2 py-1 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded-lg text-xs font-bold shadow-2xs transition-colors cursor-pointer"
             title="Download PNG"
           >
             <Download className="w-3.5 h-3.5" />
@@ -306,7 +365,7 @@ export function InvoicePreview({ order }: Props) {
           <button 
             type="button"
             onClick={handleWhatsApp}
-            className="flex items-center gap-1 px-3 py-1.5 bg-[#25D366] hover:bg-[#20ba59] text-white rounded-lg text-xs font-bold shadow-2xs transition-colors cursor-pointer"
+            className="flex items-center gap-1 px-2.5 py-1 bg-[#25D366] hover:bg-[#20ba59] text-white rounded-lg text-xs font-bold shadow-2xs transition-colors cursor-pointer"
             title="Send WhatsApp Invoice"
           >
             <MessageCircle className="w-3.5 h-3.5" />
@@ -316,25 +375,25 @@ export function InvoicePreview({ order }: Props) {
           <button 
             type="button"
             onClick={handlePrint}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-bold shadow-2xs transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-1 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-bold shadow-2xs transition-colors cursor-pointer"
             title="Print small slips on A4"
           >
             <Printer className="w-3.5 h-3.5" />
-            <span>Print Slip</span>
+            <span>Print {printLayout === '2-page' ? '(2 on A4)' : ''}</span>
           </button>
         </div>
       </div>
 
       {/* Invoice Canvas Preview - Compact Professional Slip matching user design */}
-      <div className="p-3 sm:p-5 overflow-x-auto bg-slate-100/70 flex justify-center">
+      <div className="p-2 sm:p-4 overflow-x-auto bg-slate-100/70 flex justify-center">
         <div 
           ref={printRef}
-          className="invoice-sheet w-full max-w-[590px] bg-white p-4 sm:p-5 rounded-xl border border-slate-300 shadow-sm text-slate-900 font-sans text-xs"
+          className="invoice-sheet w-full max-w-[480px] bg-white p-3 sm:p-4 rounded-xl border border-slate-300 shadow-sm text-slate-900 font-sans text-[11px]"
         >
           {/* Header Row: Logo, Brand & Customer Copy Badge */}
-          <div className="flex items-center justify-between border-b border-slate-200 pb-2.5 mb-2.5">
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-md bg-slate-50 border border-slate-200 flex items-center justify-center overflow-hidden shrink-0">
+          <div className="flex items-center justify-between border-b border-slate-200 pb-2 mb-2">
+            <div className="flex items-center gap-1.5">
+              <div className="w-6 h-6 rounded bg-slate-50 border border-slate-200 flex items-center justify-center overflow-hidden shrink-0">
                 <img 
                   src={storeLogo} 
                   alt={storeName} 
@@ -343,34 +402,34 @@ export function InvoicePreview({ order }: Props) {
                 />
               </div>
               <div>
-                <div className="flex items-center gap-2">
-                  <h1 className="text-sm font-black text-slate-900 tracking-tight uppercase leading-none">
+                <div className="flex items-center gap-1.5">
+                  <h1 className="text-xs font-black text-slate-900 tracking-tight uppercase leading-none">
                     {storeName}
                   </h1>
-                  <span className="text-[9px] font-extrabold text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 uppercase tracking-wider">
+                  <span className="text-[8px] font-extrabold text-slate-600 bg-slate-100 px-1 py-0.2 rounded border border-slate-200 uppercase tracking-wider">
                     Customer Copy
                   </span>
                 </div>
-                <p className="text-[10px] text-slate-500 font-medium mt-0.5">
+                <p className="text-[9px] text-slate-500 font-medium mt-0.5">
                   Bangladesh · {storePhone}
                 </p>
               </div>
             </div>
             <div className="text-right">
-              <span className="text-[10px] text-slate-400 font-mono block">
+              <span className="text-[9px] text-slate-400 font-mono block">
                 {storeDomain}
               </span>
             </div>
           </div>
 
           {/* Barcodes Row: Left = Order Invoice Barcode | Right = Courier Tracking Barcode */}
-          <div className="grid grid-cols-2 gap-3 p-2 bg-slate-50/70 rounded-lg border border-slate-200 mb-3">
+          <div className="grid grid-cols-2 gap-2 p-1.5 bg-slate-50/70 rounded-lg border border-slate-200 mb-2">
             {/* Invoice ID Barcode */}
-            <div className="space-y-1">
-              <BarcodeSVG value={orderShortId} height={28} />
+            <div className="space-y-0.5">
+              <BarcodeSVG value={orderShortId} height={22} />
               <div className="flex items-center justify-between pt-0.5">
-                <span className="font-mono text-[11px] font-black text-slate-800">
-                  <span className="text-slate-400 font-bold text-[9px]">INV</span> #{orderShortId}
+                <span className="font-mono text-[10px] font-black text-slate-800">
+                  <span className="text-slate-400 font-bold text-[8px]">INV</span> #{orderShortId}
                 </span>
                 <button
                   type="button"
@@ -379,22 +438,22 @@ export function InvoicePreview({ order }: Props) {
                   title="Copy Invoice ID"
                 >
                   {copiedField === 'Invoice ID' ? (
-                    <Check className="w-3 h-3 text-emerald-600" />
+                    <Check className="w-2.5 h-2.5 text-emerald-600" />
                   ) : (
-                    <Copy className="w-3 h-3" />
+                    <Copy className="w-2.5 h-2.5" />
                   )}
                 </button>
               </div>
             </div>
 
             {/* Courier Tracking ID Barcode */}
-            <div className="space-y-1">
+            <div className="space-y-0.5">
               {trackingId ? (
                 <>
-                  <BarcodeSVG value={trackingId} height={28} />
+                  <BarcodeSVG value={trackingId} height={22} />
                   <div className="flex items-center justify-between pt-0.5">
-                    <span className="font-mono text-[11px] font-black text-slate-900 truncate">
-                      <span className="text-teal-600 font-bold text-[9px]">TRK</span> {trackingId}
+                    <span className="font-mono text-[10px] font-black text-slate-900 truncate">
+                      <span className="text-teal-600 font-bold text-[8px]">TRK</span> {trackingId}
                     </span>
                     <button
                       type="button"
@@ -403,28 +462,28 @@ export function InvoicePreview({ order }: Props) {
                       title="Copy Tracking Code"
                     >
                       {copiedField === 'Tracking ID' ? (
-                        <Check className="w-3 h-3 text-emerald-600" />
+                        <Check className="w-2.5 h-2.5 text-emerald-600" />
                       ) : (
-                        <Copy className="w-3 h-3" />
+                        <Copy className="w-2.5 h-2.5" />
                       )}
                     </button>
                   </div>
                 </>
               ) : (
                 <div className="h-full flex flex-col justify-center items-center p-1 bg-amber-50/60 rounded border border-dashed border-amber-200 text-center">
-                  <span className="text-[10px] font-bold text-amber-800">Tracking Pending</span>
-                  <span className="text-[9px] text-amber-600">Auto-generated upon courier dispatch</span>
+                  <span className="text-[9px] font-bold text-amber-800">Tracking Pending</span>
+                  <span className="text-[8px] text-amber-600">Auto-generated upon courier dispatch</span>
                 </div>
               )}
             </div>
           </div>
 
           {/* Customer Bill To & Meta Section */}
-          <div className="border-b border-slate-200 pb-2.5 mb-2.5 grid grid-cols-1 sm:grid-cols-12 gap-2 text-[11px]">
+          <div className="border-b border-slate-200 pb-2 mb-2 grid grid-cols-1 sm:grid-cols-12 gap-1.5 text-[10px]">
             {/* Customer Information (Left 7 cols) */}
-            <div className="sm:col-span-7 space-y-1">
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="text-[10px] font-black text-slate-400 uppercase">BILL TO:</span>
+            <div className="sm:col-span-7 space-y-0.5">
+              <div className="flex items-center gap-1 flex-wrap">
+                <span className="text-[9px] font-black text-slate-400 uppercase">BILL TO:</span>
                 <strong className="text-slate-900 font-bold">{order.customerName}</strong>
                 <button
                   type="button"
@@ -447,7 +506,7 @@ export function InvoicePreview({ order }: Props) {
               </div>
 
               <div className="flex items-start gap-1">
-                <p className="text-slate-600 leading-snug break-words flex-1">
+                <p className="text-slate-600 leading-snug break-words flex-1 text-[9.5px]">
                   {order.address}{order.thana ? `, ${order.thana}` : ''}{order.district ? `, ${order.district}` : ''}
                 </p>
                 <button
@@ -462,23 +521,23 @@ export function InvoicePreview({ order }: Props) {
             </div>
 
             {/* Order Date & Courier Status (Right 5 cols) */}
-            <div className="sm:col-span-5 grid grid-cols-2 gap-1.5 text-[10px] sm:border-l sm:border-slate-100 sm:pl-2.5">
+            <div className="sm:col-span-5 grid grid-cols-2 gap-1 text-[9px] sm:border-l sm:border-slate-100 sm:pl-2">
               <div>
-                <span className="text-slate-400 block font-bold uppercase text-[9px]">Date:</span>
-                <span className="font-bold text-slate-800">{dt.date}, {dt.time}</span>
+                <span className="text-slate-400 block font-bold uppercase text-[8px]">Date:</span>
+                <span className="font-bold text-slate-800">{dt.date}</span>
               </div>
               <div>
-                <span className="text-slate-400 block font-bold uppercase text-[9px]">Method:</span>
+                <span className="text-slate-400 block font-bold uppercase text-[8px]">Method:</span>
                 <span className="font-bold text-slate-800 truncate block">
                   {order.paymentMethod === 'COD' || !order.paymentMethod ? 'Cash on Delivery' : order.paymentMethod}
                 </span>
               </div>
               <div>
-                <span className="text-slate-400 block font-bold uppercase text-[9px]">Courier:</span>
+                <span className="text-slate-400 block font-bold uppercase text-[8px]">Courier:</span>
                 <span className="font-bold text-slate-800">{courierName}</span>
               </div>
               <div>
-                <span className="text-slate-400 block font-bold uppercase text-[9px]">Status:</span>
+                <span className="text-slate-400 block font-bold uppercase text-[8px]">Status:</span>
                 <span className="font-bold text-teal-700">
                   {order.status} {order.quantity ? `(${order.quantity} pcs)` : ''}
                 </span>
@@ -487,14 +546,14 @@ export function InvoicePreview({ order }: Props) {
           </div>
 
           {/* Items Table */}
-          <table className="w-full text-[11px] mb-2.5 border-collapse">
+          <table className="w-full text-[10px] mb-2 border-collapse">
             <thead>
-              <tr className="border-b border-slate-200 text-slate-400 font-black uppercase text-[9px] tracking-wider">
-                <th className="py-1 text-left w-6">#</th>
-                <th className="py-1 text-left">ITEM DESCRIPTION</th>
-                <th className="py-1 text-right w-16">RATE</th>
-                <th className="py-1 text-center w-10">QTY</th>
-                <th className="py-1 text-right w-20">AMOUNT</th>
+              <tr className="border-b border-slate-200 text-slate-400 font-black uppercase text-[8px] tracking-wider">
+                <th className="py-0.5 text-left w-5">#</th>
+                <th className="py-0.5 text-left">ITEM DESCRIPTION</th>
+                <th className="py-0.5 text-right w-14">RATE</th>
+                <th className="py-0.5 text-center w-8">QTY</th>
+                <th className="py-0.5 text-right w-16">AMOUNT</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -508,8 +567,8 @@ export function InvoicePreview({ order }: Props) {
 
                   return (
                     <tr key={idx}>
-                      <td className="py-1.5 text-slate-400 font-mono">{String(idx + 1).padStart(2, '0')}</td>
-                      <td className="py-1.5 pr-2">
+                      <td className="py-1 text-slate-400 font-mono text-[9px]">{String(idx + 1).padStart(2, '0')}</td>
+                      <td className="py-1 pr-1.5">
                         <div className="flex items-center gap-1.5">
                           {itemImage && (
                             <div 
@@ -520,10 +579,10 @@ export function InvoicePreview({ order }: Props) {
                               <img 
                                 src={itemImage} 
                                 alt="" 
-                                className="w-6 h-6 rounded object-cover border border-slate-200 hover:ring-1 hover:ring-teal-500 transition-all" 
+                                className="w-5 h-5 rounded object-cover border border-slate-200 hover:ring-1 hover:ring-teal-500 transition-all" 
                               />
                               <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity rounded flex items-center justify-center">
-                                <ZoomIn className="w-3 h-3 text-white" />
+                                <ZoomIn className="w-2.5 h-2.5 text-white" />
                               </div>
                             </div>
                           )}
@@ -532,34 +591,34 @@ export function InvoicePreview({ order }: Props) {
                               {itemTitle}
                             </span>
                             {item.variant?.name && (
-                              <span className="text-[10px] text-slate-500 font-medium ml-1">
+                              <span className="text-[9px] text-slate-500 font-medium ml-1">
                                 ({item.variant.name})
                               </span>
                             )}
-                            <span className="text-[9px] font-mono text-slate-400 ml-1.5">
+                            <span className="text-[8px] font-mono text-slate-400 ml-1">
                               (SKU: {sku})
                             </span>
                           </div>
                         </div>
                       </td>
-                      <td className="py-1.5 text-right font-mono text-slate-700">{rate.toFixed(2)}</td>
-                      <td className="py-1.5 text-center font-mono font-bold text-slate-900">{qty}</td>
-                      <td className="py-1.5 text-right font-mono font-bold text-slate-900">{(rate * qty).toFixed(2)}</td>
+                      <td className="py-1 text-right font-mono text-slate-700">{rate.toFixed(2)}</td>
+                      <td className="py-1 text-center font-mono font-bold text-slate-900">{qty}</td>
+                      <td className="py-1 text-right font-mono font-bold text-slate-900">{(rate * qty).toFixed(2)}</td>
                     </tr>
                   );
                 })
               ) : (
                 <tr>
-                  <td className="py-1.5 text-slate-400 font-mono">01</td>
-                  <td className="py-1.5 pr-2">
+                  <td className="py-1 text-slate-400 font-mono text-[9px]">01</td>
+                  <td className="py-1 pr-1.5">
                     <span className="font-bold text-slate-900">{order.productTitle || 'Product'}</span>
-                    <span className="text-[9px] font-mono text-slate-400 ml-1.5">
+                    <span className="text-[8px] font-mono text-slate-400 ml-1">
                       (SKU: {(order as any).sku || 'LC-ITEM'})
                     </span>
                   </td>
-                  <td className="py-1.5 text-right font-mono text-slate-700">{(order.price || 0).toFixed(2)}</td>
-                  <td className="py-1.5 text-center font-mono font-bold text-slate-900">{order.quantity || 1}</td>
-                  <td className="py-1.5 text-right font-mono font-bold text-slate-900">
+                  <td className="py-1 text-right font-mono text-slate-700">{(order.price || 0).toFixed(2)}</td>
+                  <td className="py-1 text-center font-mono font-bold text-slate-900">{order.quantity || 1}</td>
+                  <td className="py-1 text-right font-mono font-bold text-slate-900">
                     {((order.price || 0) * (order.quantity || 1)).toFixed(2)}
                   </td>
                 </tr>
@@ -568,35 +627,35 @@ export function InvoicePreview({ order }: Props) {
           </table>
 
           {/* Bottom Section: Left = Scan for Review & Experience QR | Right = Totals & COD Due */}
-          <div className="border-t border-slate-200 pt-2 grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
+          <div className="border-t border-slate-200 pt-1.5 grid grid-cols-1 sm:grid-cols-12 gap-2 items-end">
             {/* Scan Review Box (Left 7 cols) */}
-            <div className="sm:col-span-7 flex items-center gap-2.5 p-2 bg-slate-50/80 rounded-lg border border-slate-200">
+            <div className="sm:col-span-7 flex items-center gap-2 p-1.5 bg-slate-50/80 rounded-lg border border-slate-200">
               {qrCodeDataUrl ? (
                 <img 
                   src={qrCodeDataUrl} 
                   alt="Scan to Review" 
-                  className="w-14 h-14 bg-white p-0.5 rounded border border-slate-200 shrink-0" 
+                  className="w-10 h-10 bg-white p-0.5 rounded border border-slate-200 shrink-0" 
                 />
               ) : (
-                <div className="w-14 h-14 bg-white rounded border border-slate-200 flex items-center justify-center shrink-0">
-                  <QrIcon className="w-6 h-6 text-slate-400" />
+                <div className="w-10 h-10 bg-white rounded border border-slate-200 flex items-center justify-center shrink-0">
+                  <QrIcon className="w-5 h-5 text-slate-400" />
                 </div>
               )}
               <div className="space-y-0.5">
-                <p className="text-[11px] font-extrabold text-slate-900 leading-tight">
-                  আপনার অভিজ্ঞতা কেমন? · Share Feedback
+                <p className="text-[10px] font-extrabold text-slate-900 leading-tight">
+                  অভিজ্ঞতা কেমন? · Share Feedback
                 </p>
-                <p className="text-[10px] text-slate-500 leading-snug">
-                  QR স্ক্যান করে অর্ডার ও পণ্যের রিভিউ দিন এবং কুপন জিতুন!
+                <p className="text-[9px] text-slate-500 leading-snug">
+                  QR স্ক্যান করে রিভিউ দিন ও কুপন জিতুন!
                 </p>
-                <span className="text-[9px] font-mono text-[#0279c7] font-semibold block">
+                <span className="text-[8px] font-mono text-[#0279c7] font-semibold block">
                   Scan to review verified purchase
                 </span>
               </div>
             </div>
 
             {/* Totals Breakdown & COD Payable (Right 5 cols) */}
-            <div className="sm:col-span-5 space-y-1 text-[11px]">
+            <div className="sm:col-span-5 space-y-0.5 text-[10px]">
               <div className="flex justify-between text-slate-600">
                 <span>Subtotal</span>
                 <span className="font-mono font-bold text-slate-800">৳ {subtotal.toFixed(2)}</span>
@@ -605,20 +664,20 @@ export function InvoicePreview({ order }: Props) {
                 <span>Delivery</span>
                 <span className="font-mono font-bold text-slate-800">৳ {deliveryCharge.toFixed(2)}</span>
               </div>
-              <div className="flex justify-between items-center text-xs font-black text-slate-900 pt-1 border-t border-slate-200">
+              <div className="flex justify-between items-center text-[11px] font-black text-slate-900 pt-0.5 border-t border-slate-200">
                 <span>Total</span>
-                <span className="font-mono font-black text-sm">৳ {grandTotal.toFixed(2)}</span>
+                <span className="font-mono font-black text-xs">৳ {grandTotal.toFixed(2)}</span>
               </div>
-              <div className="flex justify-between items-center text-xs font-black text-slate-900 bg-slate-100 p-1 rounded border border-slate-200">
+              <div className="flex justify-between items-center text-[11px] font-black text-slate-900 bg-slate-100 p-0.5 px-1 rounded border border-slate-200">
                 <span>COD / Due</span>
-                <span className="font-mono font-black text-sm text-[#0279c7]">৳ {codDue.toFixed(2)}</span>
+                <span className="font-mono font-black text-xs text-[#0279c7]">৳ {codDue.toFixed(2)}</span>
               </div>
             </div>
           </div>
 
           {/* Bottom Signatures & Confirmation */}
-          <div className="flex items-center justify-between border-t border-slate-100 pt-2 mt-2 text-[9px] text-slate-400 font-bold uppercase tracking-wider">
-            <span>Order Confirmed · Thank you for shopping with Leaf Curt</span>
+          <div className="flex items-center justify-between border-t border-slate-100 pt-1.5 mt-1.5 text-[8px] text-slate-400 font-bold uppercase tracking-wider">
+            <span>Order Confirmed · Leaf Curt</span>
             <span>Authorized Signature</span>
           </div>
 

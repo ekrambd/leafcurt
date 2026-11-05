@@ -11,6 +11,7 @@ import { requireAdmin } from '../middleware/adminAuth';
 import { FacebookCapiService } from '../services/facebookCapiService';
 import { paginateInMemoryKeyset } from '../services/keysetPagination';
 import { validateOrderCustomerDetails } from '../../lib/orderValidation';
+import { isPhoneBlocked, isIpBlocked } from '../services/blacklistService';
 
 export const orderRouter = Router();
 
@@ -144,6 +145,26 @@ orderRouter.post('/checkout', checkoutRateLimiter, async (req, res) => {
 
     if (!items || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ error: 'Order must contain at least one item.' });
+    }
+
+    // 0. Instant Anti-Fraud Shield: Check if Customer Phone or Client IP is Blacklisted
+    const clientIp = req.header('cf-connecting-ip') || 
+                     req.header('x-forwarded-for')?.split(',')[0] || 
+                     req.ip || 
+                     req.socket.remoteAddress || 
+                     '';
+    const phoneCheck = isPhoneBlocked(phone || req.body.customerPhone || '');
+    if (phoneCheck.isBlocked) {
+      return res.status(403).json({
+        error: 'দুঃখিত, এই ফোন নম্বরটি স্থগিত তালিকায় রয়েছে। সহায়তার জন্য সরাসরি কাস্টমার সাপোর্টে কল করুন।'
+      });
+    }
+
+    const ipCheck = isIpBlocked(clientIp);
+    if (ipCheck.isBlocked) {
+      return res.status(403).json({
+        error: 'দুঃখিত, আপনার নেটওয়ার্ক থেকে সাময়িকভাবে অর্ডার গ্রহণ স্থগিত আছে।'
+      });
     }
 
     // Server-Side Strict Customer Details Validation (Anti-Spam & Courier Delivery Shield)
@@ -362,6 +383,20 @@ orderRouter.post('/checkout', checkoutRateLimiter, async (req, res) => {
 
 // POST Create Order - with sharded partitioning & distributed counter
 orderRouter.post('/', checkoutRateLimiter, (req, res) => {
+  // Anti-fraud check for blocked phone/ip
+  const clientIp = req.header('cf-connecting-ip') || 
+                   req.header('x-forwarded-for')?.split(',')[0] || 
+                   req.ip || 
+                   req.socket.remoteAddress || 
+                   '';
+  const phoneToCheck = req.body.phone || req.body.customerPhone || '';
+  if (phoneToCheck && isPhoneBlocked(phoneToCheck).isBlocked) {
+    return res.status(403).json({ error: 'এই ফোন নম্বরটি স্থগিত তালিকায় রয়েছে। সহায়তার জন্য কাস্টমার সাপোর্টে কল করুন।' });
+  }
+  if (clientIp && isIpBlocked(clientIp).isBlocked) {
+    return res.status(403).json({ error: 'আপনার নেটওয়ার্ক থেকে সাময়িকভাবে অর্ডার গ্রহণ স্থগিত আছে।' });
+  }
+
   // Validate customer details to block dummy/fake orders
   if (req.body.customerName || req.body.name || req.body.phone || req.body.address) {
     const val = validateOrderCustomerDetails({

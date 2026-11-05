@@ -24,6 +24,7 @@ import { instituteRouter } from './routes/instituteRoutes';
 import { imageRouter } from './routes/imageCDN';
 import { abandonedCartRouter } from './routes/abandonedCartRoutes';
 import { videoReviewRouter } from './routes/videoReviewRoutes';
+import { blacklistRouter } from './routes/blacklistRoutes';
 
 import { globalCache } from './services/cacheEngine';
 import { shardService } from './services/shardService';
@@ -135,6 +136,7 @@ app.use('/api/landing-pages', landingRouter);
 app.use('/api/institute', instituteRouter);
 app.use('/api/abandoned-carts', abandonedCartRouter);
 app.use('/api/video-reviews', videoReviewRouter);
+app.use('/api/blacklist', blacklistRouter);
 app.use('/cdn', imageRouter);
 
 // Local media static file serving

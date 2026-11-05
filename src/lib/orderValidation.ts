@@ -191,7 +191,8 @@ export function validateOrderCustomerDetails(data: {
     errors.push(phoneVal.error);
   }
 
-  const addressVal = validateRealAddress(data.address || '', true);
+  const isOptional = Boolean(data.allowOptionalAddress);
+  const addressVal = validateRealAddress(data.address || '', isOptional);
   if (!addressVal.isValid && addressVal.error) {
     errors.push(addressVal.error);
   }

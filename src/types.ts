@@ -1004,7 +1004,7 @@ export interface Brand {
   updatedAt?: string;
 }
 
-export type ActiveTab = 'dashboard' | 'products' | 'orders' | 'abandoned_carts' | 'customers' | 'coupons' | 'inventory' | 'category_management' | 'brand_management' | 'unit_management' | 'attribute_management' | 'slider_management' | 'header_settings' | 'flash_sale' | 'highlight_spotlight' | 'about_settings' | 'landing_setup' | 'payment_settings' | 'delivery_settings' | 'pixel_settings' | 'courier_settings' | 'profile' | 'points' | 'contact_messages' | 'blog_manager' | 'video_reviews';
+export type ActiveTab = 'dashboard' | 'products' | 'orders' | 'abandoned_carts' | 'customers' | 'coupons' | 'inventory' | 'category_management' | 'brand_management' | 'unit_management' | 'attribute_management' | 'slider_management' | 'header_settings' | 'flash_sale' | 'highlight_spotlight' | 'about_settings' | 'landing_setup' | 'payment_settings' | 'delivery_settings' | 'pixel_settings' | 'courier_settings' | 'profile' | 'points' | 'contact_messages' | 'blog_manager' | 'video_reviews' | 'anti_fraud';
 
 export interface ContactMessage {
   id: string;
@@ -1053,3 +1053,13 @@ export interface PointFaqItem {
   question: string;
   answer: string;
 }
+
+export interface BlacklistEntry {
+  id: string;
+  type: 'phone' | 'ip';
+  value: string; // e.g. "01712345678" or "103.25.12.4"
+  reason?: string;
+  createdAt: string;
+  createdBy?: string;
+}
+

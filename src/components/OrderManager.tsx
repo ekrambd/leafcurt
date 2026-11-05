@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { 
   ShoppingBag, ExternalLink, Search, Filter, Plus, Phone, MapPin, Calendar, 
   CheckCircle, Clock, Truck, XCircle, Trash2, Edit3, Printer, 
-  Check, ArrowUpDown, User, Package, DollarSign, Send, ShieldCheck,
+  Check, ArrowUpDown, User, Package, DollarSign, Send, ShieldCheck, ShieldAlert,
   ChevronDown, FileSpreadsheet, Download, Upload, MessageSquare,
   Copy, RefreshCw, FileText, CheckSquare, AlertCircle, Sparkles, Tag,
   ArrowLeft, MoreVertical
@@ -2048,6 +2048,28 @@ export default function OrderManager({
                                 >
                                   <Edit3 className="h-4 w-4 text-slate-500" />
                                   <span>Edit</span>
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    setOpenActionMenuOrderId(null);
+                                    if (confirm(`Do you want to block phone number "${order.phone}" from placing any future orders?`)) {
+                                      try {
+                                        const { ApiClient } = await import('../services/apiClient');
+                                        const res = await ApiClient.addBlacklist('phone', order.phone, `Blocked from order #${order.id.replace('ORD-', '')}`);
+                                        if (res.success) {
+                                          alert(`Phone ${order.phone} has been added to the anti-fraud blacklist!`);
+                                        }
+                                      } catch (err: any) {
+                                        alert(err?.message || 'Failed to block phone');
+                                      }
+                                    }
+                                  }}
+                                  className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-amber-700 hover:bg-amber-50 font-bold"
+                                >
+                                  <ShieldAlert className="h-4 w-4 text-amber-600" />
+                                  <span>Block Customer (Fake)</span>
                                 </button>
 
                                 <div className="border-t border-slate-100 my-1" />

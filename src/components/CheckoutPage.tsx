@@ -643,13 +643,13 @@ export default function CheckoutPage({
   const handlePlaceOrder = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validation against fake/dummy names and non-BD phones (Address is optional)
-    const validation = validateOrderCustomerDetails({ name, phone, address, allowOptionalAddress: true });
+    // Strict Validation: Real name, valid BD phone, and mandatory physical delivery address
+    const validation = validateOrderCustomerDetails({ name, phone, address });
     if (!validation.isValid) {
       setFieldErrors({
         name: validateCustomerName(name).error,
         phone: validateBdPhone(phone).error,
-        address: address.trim() ? validateRealAddress(address, true).error : undefined
+        address: validateRealAddress(address).error
       });
       alert(validation.errors[0]);
       return;
@@ -658,7 +658,17 @@ export default function CheckoutPage({
     setFieldErrors({});
     const cleanCustomerName = validation.sanitized.name;
     const cleanPhone = validation.sanitized.phone;
-    const cleanAddress = validation.sanitized.address || (thana && district ? `${thana}, ${district}` : (district || ''));
+    const cleanAddress = validation.sanitized.address;
+
+    // Client-side anti-fraud quick check
+    try {
+      const { ApiClient } = await import('../services/apiClient');
+      const checkRes = await ApiClient.checkBlacklist(cleanPhone);
+      if (checkRes.blocked) {
+        alert(checkRes.message || 'এই ফোন নম্বরটি স্থগিত তালিকায় রয়েছে। অর্ডারের জন্য কাস্টমার সাপোর্টে যোগাযোগ করুন।');
+        return;
+      }
+    } catch {}
 
     if (cart.length === 0) {
       alert('Your shopping bag is empty.');
@@ -1205,7 +1215,7 @@ export default function CheckoutPage({
                     <div className="flex items-center justify-between">
                       <label className="block text-xs font-bold text-slate-700 flex items-center gap-1.5">
                         <MapPin className="w-3.5 h-3.5 text-[#0284c7]" />
-                        <span>সম্পূর্ণ ডেলিভারি ঠিকানা (বাসা/রোড, থানা, এলাকা, জেলা)</span>
+                        <span>সম্পূর্ণ ডেলিভারি ঠিকানা (বাসা/রোড, থানা, এলাকা, জেলা) *</span>
                       </label>
                       <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
                         ✨ অটো-ক্যালকুলেশন
@@ -1215,20 +1225,23 @@ export default function CheckoutPage({
                     <div className="relative">
                       <input
                         type="text"
+                        required
                         value={address}
                         onChange={(e) => {
                           setAddress(e.target.value);
                           if (fieldErrors.address) {
-                            const val = validateRealAddress(e.target.value, true);
+                            const val = validateRealAddress(e.target.value);
                             if (val.isValid) setFieldErrors(prev => ({ ...prev, address: undefined }));
                           }
                         }}
                         onBlur={() => {
                           captureCurrentCart();
                           if (address.trim()) {
-                            const val = validateRealAddress(address, true);
+                            const val = validateRealAddress(address);
                             if (!val.isValid) setFieldErrors(prev => ({ ...prev, address: val.error }));
                             else setFieldErrors(prev => ({ ...prev, address: undefined }));
+                          } else {
+                            setFieldErrors(prev => ({ ...prev, address: 'সম্পূর্ণ ডেলিভারি ঠিকানা লিখুন (Please enter your delivery address).' }));
                           }
                         }}
                         placeholder={`যেমন: ${placeholderText}`}
